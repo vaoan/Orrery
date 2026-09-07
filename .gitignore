@@ -1,0 +1,10 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Superpowers scratch: ledgers, briefs, review packages
+.superpowers/
+
+.DS_Store
+Thumbs.db

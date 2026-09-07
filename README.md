@@ -10,7 +10,12 @@ is that model. It governs how projects are built. It contains no application cod
 ## Status
 
 Design approved, not yet implemented.
-See [`docs/specs/2026-09-06-orrery-design.md`](docs/specs/2026-09-06-orrery-design.md).
+
+- **Design:** [`docs/specs/2026-09-06-orrery-design.md`](docs/specs/2026-09-06-orrery-design.md)
+- **Next work:** [`docs/plans/2026-09-07-phase-2a-diff-eslint.md`](docs/plans/2026-09-07-phase-2a-diff-eslint.md) — CLI skeleton and `orrery diff-eslint`, the tool that sizes the reconciliation
+- **Decisions:** [`docs/decisions/`](docs/decisions/)
+
+Phase 0 (libra's kebab-case migration) is [vaoan/libra#413](https://github.com/vaoan/Libra/pull/413).
 
 ## The bodies
 
