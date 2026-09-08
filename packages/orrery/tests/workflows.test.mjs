@@ -82,3 +82,19 @@ describe(".github/pull_request_template.md", () => {
     expect(md).toContain("[GH-000]");
   });
 });
+
+describe(".github/workflows/observe.yml", () => {
+  const yaml = read(".github/workflows/observe.yml");
+  it("runs nightly and on demand", () => {
+    expect(yaml).toMatch(/  schedule:\n    - cron: /);
+    expect(yaml).toContain("workflow_dispatch:");
+  });
+  it("dry-runs by default and applies only when the repository variable says so", () => {
+    expect(yaml).toContain("vars.ORRERY_APPLY_POLICY == 'apply'");
+    expect(yaml).toContain("--dry-run");
+  });
+  it("iterates the registry and uses the admin token", () => {
+    expect(yaml).toContain("registry.json");
+    expect(yaml).toContain("secrets.ORRERY_ADMIN_TOKEN");
+  });
+});
