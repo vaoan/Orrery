@@ -125,6 +125,13 @@ describe("planRepoChanges", () => {
     state.labels.push({ name: "wontfix", color: "ffffff", description: "" });
     expect(planRepoChanges(state, policy)).toEqual([]);
   });
+
+  it("refuses a repository without a main branch", () => {
+    const state = compliantState();
+    state.branches.main = null;
+    state.protection.main = null;
+    expect(() => planRepoChanges(state, policy)).toThrow(/no main branch/);
+  });
 });
 
 describe("readRepoState", () => {
@@ -150,6 +157,18 @@ describe("readRepoState", () => {
 
   it("reports sharedCi false when ci.yml is absent or lacks the marker", async () => {
     const github = { request: async (m, p) => (p.endsWith("/repos/vaoan/x") ? { status: 200, data: { default_branch: "main" } } : { status: 404, data: null }) };
+    expect((await readRepoState(github, "vaoan/x")).sharedCi).toBe(false);
+  });
+
+  it("treats an unknown content encoding as no marker", async () => {
+    const github = {
+      request: async (m, p) =>
+        p.endsWith("/repos/vaoan/x")
+          ? { status: 200, data: { default_branch: "main" } }
+          : p.includes("/contents/")
+            ? { status: 200, data: { content: "# orrery-ci", encoding: "none" } }
+            : { status: 404, data: null },
+    };
     expect((await readRepoState(github, "vaoan/x")).sharedCi).toBe(false);
   });
 });

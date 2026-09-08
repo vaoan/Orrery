@@ -62,6 +62,10 @@ function protectionEquals(current, desired) {
 
 // Order matters: a branch must exist before it can be default or protected.
 export function planRepoChanges(state, policy) {
+  if (state.branches.main === null) {
+    throw new Error("repository has no main branch; create it before applying policy");
+  }
+
   const ops = [];
   const sourceSha = state.branches.main;
 
@@ -118,7 +122,8 @@ export async function readRepoState(github, repo, policy = { protectedBranches: 
   const { data: labels } = await github.request("GET", `${base}/labels?per_page=100`);
 
   const { data: ci } = await github.request("GET", `${base}/contents/.github/workflows/ci.yml`);
-  const ciText = ci?.content ? Buffer.from(ci.content, ci.encoding ?? "base64").toString("utf8") : "";
+  const ciEncoding = ci?.encoding ?? "base64";
+  const ciText = ci?.content && ciEncoding === "base64" ? Buffer.from(ci.content, "base64").toString("utf8") : "";
   const sharedCi = ciText.includes(policy.sharedCiMarker ?? "# orrery-ci");
 
   const settings = {};
