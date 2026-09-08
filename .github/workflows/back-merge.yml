@@ -27,13 +27,14 @@ jobs:
         if: steps.gap.outputs.behind != '0'
         env:
           GH_TOKEN: ${{ secrets.ORRERY_BOT_TOKEN }}
+          BEHIND: ${{ steps.gap.outputs.behind }}
         run: |
-          existing=$(gh pr list --repo "$GITHUB_REPOSITORY" --base develop --head main --state open --json number --jq '.[0].number')
+          existing=$(gh pr list --repo "$GITHUB_REPOSITORY" --base develop --head main --state open --json number --jq '.[0].number // empty')
           if [ -z "$existing" ]; then
             gh pr create --repo "$GITHUB_REPOSITORY" --base develop --head main \
               --title "chore(back-merge): main into develop [GH-000]" \
-              --body "Automatic back-merge. main is ${{ steps.gap.outputs.behind }} commit(s) ahead of develop. Merge commit, never squash." \
+              --body "Automatic back-merge. main is $BEHIND commit(s) ahead of develop. Merge commit, never squash." \
               --label back-merge --label orrery
-            existing=$(gh pr list --repo "$GITHUB_REPOSITORY" --base develop --head main --state open --json number --jq '.[0].number')
+            existing=$(gh pr list --repo "$GITHUB_REPOSITORY" --base develop --head main --state open --json number --jq '.[0].number // empty')
           fi
           gh pr merge "$existing" --repo "$GITHUB_REPOSITORY" --merge --auto

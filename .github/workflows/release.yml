@@ -18,14 +18,17 @@ jobs:
       - name: Version from the branch name
         id: version
         run: echo "version=${GITHUB_HEAD_REF#release/}" >> "$GITHUB_OUTPUT"
-        env:
-          GITHUB_HEAD_REF: ${{ github.event.pull_request.head.ref }}
       - name: Create the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          gh release create "${{ steps.version.outputs.version }}" \
+          if ! printf '%s' "$VERSION" | grep -Eq '^v[0-9]{4}\.[0-9]{2}\.[0-9]{2}\.[0-9]+$'; then
+            echo "::error::refusing to release: '$VERSION' is not vYYYY.MM.DD.N"
+            exit 1
+          fi
+          gh release create "$VERSION" \
             --repo "$GITHUB_REPOSITORY" \
             --target main \
-            --title "${{ steps.version.outputs.version }}" \
+            --title "$VERSION" \
             --generate-notes

@@ -53,6 +53,10 @@ describe(".github/workflows/back-merge.yml", () => {
   it("uses the bot token, not GITHUB_TOKEN, so the PR triggers checks", () => {
     expect(yaml).toContain("secrets.ORRERY_BOT_TOKEN");
   });
+  it("never treats jq's null as an existing PR", () => {
+    expect(yaml).toContain(".[0].number // empty");
+    expect(yaml).not.toContain(".[0].number'");
+  });
 });
 
 describe(".github/workflows/release.yml", () => {
@@ -61,6 +65,11 @@ describe(".github/workflows/release.yml", () => {
     expect(yaml).toContain("github.event.pull_request.merged == true");
     expect(yaml).toContain("startsWith(github.event.pull_request.head.ref, 'release/')");
     expect(yaml).toContain("gh release create");
+  });
+  it("passes the version through env and validates it before releasing", () => {
+    expect(yaml).toContain("VERSION: ${{ steps.version.outputs.version }}");
+    expect(yaml).toContain("grep -Eq '^v[0-9]{4}");
+    expect(yaml).not.toContain('gh release create "${{');
   });
 });
 
