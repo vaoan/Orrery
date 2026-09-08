@@ -1,0 +1,31 @@
+# Creates the GitHub Release when a release branch merges into main.
+name: release
+
+on:
+  pull_request:
+    branches: [main]
+    types: [closed]
+
+permissions:
+  contents: write
+
+jobs:
+  create:
+    name: create release
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Version from the branch name
+        id: version
+        run: echo "version=${GITHUB_HEAD_REF#release/}" >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.version.outputs.version }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target main \
+            --title "${{ steps.version.outputs.version }}" \
+            --generate-notes

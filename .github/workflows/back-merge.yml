@@ -1,0 +1,39 @@
+# Opens the merge-commit back-merge from main into develop after every push to main
+# (a release or a fix landing). Uses a bot token: PRs opened with GITHUB_TOKEN do not
+# trigger pull_request workflows, so the required checks would never run.
+name: back-merge
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  open:
+    name: open back-merge PR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Skip when develop already contains main
+        id: gap
+        run: |
+          git fetch --no-tags origin develop
+          echo "behind=$(git rev-list --count origin/develop..origin/main)" >> "$GITHUB_OUTPUT"
+      - name: Open or reuse the back-merge PR
+        if: steps.gap.outputs.behind != '0'
+        env:
+          GH_TOKEN: ${{ secrets.ORRERY_BOT_TOKEN }}
+        run: |
+          existing=$(gh pr list --repo "$GITHUB_REPOSITORY" --base develop --head main --state open --json number --jq '.[0].number')
+          if [ -z "$existing" ]; then
+            gh pr create --repo "$GITHUB_REPOSITORY" --base develop --head main \
+              --title "chore(back-merge): main into develop [GH-000]" \
+              --body "Automatic back-merge. main is ${{ steps.gap.outputs.behind }} commit(s) ahead of develop. Merge commit, never squash." \
+              --label back-merge --label orrery
+            existing=$(gh pr list --repo "$GITHUB_REPOSITORY" --base develop --head main --state open --json number --jq '.[0].number')
+          fi
+          gh pr merge "$existing" --repo "$GITHUB_REPOSITORY" --merge --auto
