@@ -17,8 +17,26 @@ describe("diffRules", () => {
 
   it("buckets a rule only one side sets", () => {
     const d = diffRules(cfg({ "no-var": ["error"] }), cfg({}));
-    expect(d.onlyA).toEqual(["no-var"]);
+    expect(d.onlyA).toEqual([{ rule: "no-var", value: ["error"] }]);
     expect(d.onlyB).toEqual([]);
+  });
+
+  it("buckets a one-sided rule set to off as offOnlyA, not onlyA", () => {
+    const d = diffRules(cfg({ r: ["off"] }), cfg({}));
+    expect(d.offOnlyA).toEqual(["r"]);
+    expect(d.onlyA).toEqual([]);
+  });
+
+  it("buckets a one-sided rule set to numeric 0 as offOnlyA, not onlyA", () => {
+    const d = diffRules(cfg({ r: [0] }), cfg({}));
+    expect(d.offOnlyA).toEqual(["r"]);
+    expect(d.onlyA).toEqual([]);
+  });
+
+  it("buckets a one-sided rule on the B side that is not off as onlyB, with its value", () => {
+    const d = diffRules(cfg({}), cfg({ r: "warn" }));
+    expect(d.onlyB).toEqual([{ rule: "r", value: "warn" }]);
+    expect(d.offOnlyB).toEqual([]);
   });
 
   it("buckets differing severities as a conflict carrying both values", () => {
@@ -45,12 +63,25 @@ describe("diffRules", () => {
   });
 
   it("returns empty buckets for two empty configs", () => {
-    expect(diffRules(cfg({}), cfg({}))).toEqual({ agree: [], onlyA: [], onlyB: [], conflict: [] });
+    expect(diffRules(cfg({}), cfg({}))).toEqual({
+      agree: [],
+      onlyA: [],
+      onlyB: [],
+      offOnlyA: [],
+      offOnlyB: [],
+      conflict: [],
+    });
   });
 
   it("sorts every bucket so output is stable across runs", () => {
     const d = diffRules(cfg({ b: ["error"], a: ["error"] }), cfg({ a: ["error"], b: ["error"] }));
     expect(d.agree).toEqual(["a", "b"]);
+  });
+
+  it("sorts by code point, not locale collation", () => {
+    const rules = { "no-var": ["error"], _x: ["error"], "@scope/x": ["error"] };
+    const d = diffRules(cfg(rules), cfg(rules));
+    expect(d.agree).toEqual(["@scope/x", "_x", "no-var"]);
   });
 
   it("treats trailing empty options object as equivalent to omitted options", () => {
