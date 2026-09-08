@@ -109,23 +109,26 @@ Recorded here because it shaped the body surface; built in Phase 2d.
   organisation, so org-level required workflows are unavailable. Orrery was
   made public on 2026-09-08 so the five public bodies can call its reusable
   workflow and install the package straight from the repository.
-- **No npm.** Bodies depend on the package by git tag,
-  `"@vaoan/orrery": "github:vaoan/Orrery#v1.2.0"` with the `packages/orrery`
-  subpath, which pnpm installs and Renovate bumps. A release is a git tag;
-  nothing leaves GitHub and no npm account or scope is needed. The exact pnpm
-  subpath syntax is verified in the Phase 2d plan.
+- **No npm, no tags: the latest is Orrery's `main`.** Bodies depend on the
+  package as `"@vaoan/orrery": "github:vaoan/Orrery#main"` with the
+  `packages/orrery` subpath. pnpm records the exact commit it installed in the
+  lockfile, so installs stay reproducible, and "latest" means the head of
+  `main`. A release is a merge to `main`; nothing leaves GitHub and no npm
+  account or scope is needed. The version in `package.json` is kept for humans
+  and changelogs, not for resolution. The exact pnpm subpath syntax is
+  verified in the Phase 2d plan.
 - **Orrery holds `.github/workflows/ci.yml`** defining jobs, caching and the
   matrix. Bodies reference it at `@main`, so a change to job layout reaches
   every body on its next run with no bump.
 - **Every job step is one verb**: `orrery ci lint`, `orrery ci typecheck`,
   `orrery ci test`. Verbs carry the logic and the tests.
 - **The currency gate.** `orrery ci` first compares the installed
-  `@vaoan/orrery` with Orrery's latest release tag and fails with "bump to X"
-  if the body is behind. Every pull request in that body is blocked until the bump
-  lands. Orrery's own release runs `observe` against all bodies for
-  information and tags the release regardless.
-- **The bump.** After tagging, the release job opens a bump PR in each body
-  with automerge. Green, it merges unattended. Red, the code fix goes into that
+  `@vaoan/orrery` commit with the head of Orrery's `main` and fails with
+  "bump to X" if the body is behind. Every pull request in that body is blocked
+  until the bump lands. Orrery's own merge to `main` runs `observe` against all
+  bodies for information and is never held back by the result.
+- **The bump.** On every merge to Orrery's `main`, a job opens a bump PR in
+  each body with automerge. Green, it merges unattended. Red, the code fix goes into that
   same PR while the currency gate holds everything else; main stays green.
 - **Deployment stays in each body's own YAML**, because environments and cloud
   credentials belong to the body.
@@ -226,9 +229,8 @@ Run from Orrery against checkouts of the bodies: locally the directories under
 It never blocks a release. It writes `docs/observations/<date>.md` and a JSON
 alongside. Three drifts, each its own script:
 
-- **Version drift.** The body's pinned `@vaoan/orrery` against Orrery's
-  latest release tag. Until tagging exists (2d), the latest is Orrery's own
-  `package.json` version.
+- **Version drift.** The commit of `@vaoan/orrery` recorded in the body's
+  lockfile against the head of Orrery's `main`, read with `git ls-remote`.
 - **Pointer drift.** Pointer files byte-identical to what `init` writes;
   `eslint.local.mjs` contains only additions and named-file exceptions;
   `orrery.config.mjs` carries only declared fields.
@@ -288,9 +290,18 @@ Deferred:
 
 - **2c** — the Claude plugin channel: skills, the 31 rule files, MCP servers,
   version-parity test.
-- **2d** — release tagging and the git-tag install path, the reusable
-  `ci.yml`, the `orrery ci` verbs and currency gate, `init`/`status`/`promote`,
-  the registry, bump-PR automation.
+- **2d** — the git install path from `main`, the reusable `ci.yml`, the
+  `orrery ci` verbs and currency gate, `init`/`status`/`promote`, the
+  registry, bump-PR automation.
+- **2e** — repository policy: branch strategy, branch naming, commit message
+  convention, branch protection, merge method, and their enforcement by hook
+  and by a script that applies settings through the GitHub API and reports
+  settings drift. Measured 2026-09-08: default branches split three `develop`
+  against three `main`; required status checks range from none (Orrery,
+  eclipse-con) to six (aeleos); merge methods, delete-on-merge and automerge
+  differ per repo; libra commits as `type(scope): subject [GH-000] (#n)` while
+  aeleos mixes that with free-form subjects; no repo runs commitlint. Needs
+  its own brainstorm.
 - **3** — touching any body.
 - **Later brainstorm** — architecture and shared types across bodies, which
   need a mechanism other than config files.
@@ -300,8 +311,9 @@ Deferred:
 - Orrery made public (2026-09-08), after a scan of all tracked files and the
   full history found no secrets, addresses or internal hosts.
 - No grace period; no rule at `warn`.
-- No npm. Bodies install from the public repository by git tag; a release is
-  a tag. Chosen because publishing packages was an unwanted obligation and the
+- No npm, no tags. Bodies install from the public repository's `main`; a
+  release is a merge. Chosen because publishing packages was an unwanted
+  obligation, fixed versions are what the constellation must avoid, and the
   public repository already provides everything the install needs.
 - The bundle is generated once, then owned as code. Generation, not authorship,
   because readability is handled by structure and record pointers, and hand
@@ -314,5 +326,5 @@ Deferred:
 
 `orrery diff-eslint --help` exits 2; "no sample file" exits 1 rather than 2;
 `pickSampleFile(dir, "")` falls through silently; `packageManager` and
-`license` before the first release tag; a real-ESLint fixture for
+`license` before the first body installs from `main`; a real-ESLint fixture for
 `defaultExec` belongs with the fixture body above.
