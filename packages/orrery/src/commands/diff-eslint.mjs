@@ -1,0 +1,62 @@
+import { parseArgs } from "node:util";
+import * as effective from "../lib/effective-config.mjs";
+import { diffRules } from "../lib/rule-diff.mjs";
+
+const USAGE = "usage: orrery diff-eslint <repoA> <repoB> [--file <path>] [--json]";
+
+export default async function diffEslint(argv, deps = effective) {
+  let values, positionals;
+  try {
+    ({ values, positionals } = parseArgs({
+      args: argv,
+      options: { file: { type: "string" }, json: { type: "boolean", default: false } },
+      allowPositionals: true,
+    }));
+  } catch (error) {
+    console.error(`${error.message}\n${USAGE}`);
+    return 2;
+  }
+
+  const [repoA, repoB] = positionals;
+  if (!repoA || !repoB) {
+    console.error(USAGE);
+    return 2;
+  }
+
+  let configA, configB, fileA, fileB;
+  try {
+    fileA = deps.pickSampleFile(repoA, values.file);
+    fileB = deps.pickSampleFile(repoB, values.file);
+    configA = deps.readEffectiveConfig(repoA, fileA);
+    configB = deps.readEffectiveConfig(repoB, fileB);
+  } catch (error) {
+    console.error(error.message);
+    return 1;
+  }
+
+  const result = diffRules(configA, configB);
+  const meta = { repoA, repoB, fileA, fileB };
+
+  if (values.json) {
+    console.log(JSON.stringify({ meta, ...result }, null, 2));
+    return 0;
+  }
+
+  console.log(`sample ${repoA}: ${fileA}`);
+  console.log(`sample ${repoB}: ${fileB}`);
+  console.log(`agree     ${result.agree.length}`);
+  console.log(`only ${repoA}  ${result.onlyA.length}`);
+  console.log(`only ${repoB}  ${result.onlyB.length}`);
+  console.log(`conflict  ${result.conflict.length}`);
+  console.log(`off only in ${repoA}  ${result.offOnlyA.length}`);
+  console.log(`off only in ${repoB}  ${result.offOnlyB.length}`);
+
+  if (result.conflict.length > 0) {
+    console.log("\nconflicts — each needs a ruling and a decision record:");
+    for (const { rule, a, b } of result.conflict) {
+      console.log(`  ${rule}\n    ${repoA}: ${JSON.stringify(a)}\n    ${repoB}: ${JSON.stringify(b)}`);
+    }
+  }
+
+  return 0;
+}

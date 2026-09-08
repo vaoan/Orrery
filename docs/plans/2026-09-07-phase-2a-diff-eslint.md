@@ -17,7 +17,7 @@
 - **This repository contains no application code.** Only the governance tool and its assets.
 - The boundary rule, from the spec: anything destined for `physics/` must be true for a repository that does not exist yet.
 - `diff-eslint` must not require the target repositories to be modified, and must not write anything into them.
-- Both donor repos exist locally: `Z:/Github/libra` (1,854-line `eslint.config.mjs`) and `Z:/Github/AeleOS` (850 lines). They share 13 of ~18 plugins.
+- Both donor repos exist locally: `Z:/Github/libra` (1,854-line `eslint.config.mjs`) and `Z:/Github/aeleos` (850 lines). They share 13 of ~18 plugins.
 
 ## Why this is built first
 
@@ -201,7 +201,10 @@ Wraps `eslint --print-config` in each target repository. Isolated from the diff 
 - Consumes: nothing from Task 1.
 - Produces:
   - `pickSampleFile(repoDir: string, preferred?: string) => string` — repo-relative path of a file to print the config for. Tries `preferred`, then a ranked list of likely paths, and throws a message naming what it tried if none exist.
-  - `readEffectiveConfig(repoDir: string, relativeFile: string, exec?) => object` — runs `pnpm exec eslint --print-config <file>` in `repoDir` and returns the parsed JSON. `exec` is injectable for tests.
+  - `resolveEslintBin(repoDir: string) => string` — absolute path of the `eslint` bin script installed in `repoDir`, resolved with Node's own resolution from that directory, and throws a message naming the repo when eslint is not installed there.
+  - `readEffectiveConfig(repoDir: string, relativeFile: string, exec?) => object` — runs the target repo's own ESLint with `--print-config <file>` (spawned with the current Node binary, no shell) in `repoDir` and returns the parsed JSON. `exec` is injectable for tests.
+
+Why not `pnpm exec eslint`: on Windows `pnpm` is a `.cmd` shim, so `execFileSync("pnpm", …)` fails with ENOENT unless `shell: true` is set, and a shell concatenates the arguments unescaped (Node warns with DEP0190). Resolving the repo's eslint and running it with `process.execPath` avoids both, and works under libra's hoisted and aeleos's isolated `node_modules` alike. Verified 2026-09-07 on this machine.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -211,12 +214,16 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { pickSampleFile, readEffectiveConfig } from "../src/lib/effective-config.mjs";
+import {
+  pickSampleFile,
+  readEffectiveConfig,
+  resolveEslintBin,
+} from "../src/lib/effective-config.mjs";
 
 let repo;
 beforeEach(() => {
   repo = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-"));
-  fs.mkdirSync(path.join(repo, "apps/store/src"), { recursive: true });
+  fs.mkdirSync(path.join(repo, "apps/store/src/app"), { recursive: true });
 });
 afterEach(() => fs.rmSync(repo, { recursive: true, force: true }));
 
@@ -227,12 +234,29 @@ describe("pickSampleFile", () => {
   });
 
   it("falls back to the first existing candidate", () => {
-    fs.writeFileSync(path.join(repo, "apps/store/src/index.ts"), "");
-    expect(pickSampleFile(repo)).toBe("apps/store/src/index.ts");
+    fs.writeFileSync(path.join(repo, "apps/store/src/app/layout.tsx"), "");
+    expect(pickSampleFile(repo)).toBe("apps/store/src/app/layout.tsx");
   });
 
   it("throws naming what it tried when nothing matches", () => {
     expect(() => pickSampleFile(repo)).toThrow(/no sample file found/i);
+  });
+});
+
+describe("resolveEslintBin", () => {
+  it("returns the bin script of the eslint installed in the repo", () => {
+    const pkg = path.join(repo, "node_modules/eslint");
+    fs.mkdirSync(path.join(pkg, "bin"), { recursive: true });
+    fs.writeFileSync(
+      path.join(pkg, "package.json"),
+      JSON.stringify({ name: "eslint", version: "0.0.0", bin: { eslint: "./bin/eslint.js" } })
+    );
+    fs.writeFileSync(path.join(pkg, "bin/eslint.js"), "");
+    expect(resolveEslintBin(repo)).toBe(path.join(pkg, "bin/eslint.js"));
+  });
+
+  it("throws naming the repo when eslint is not installed there", () => {
+    expect(() => resolveEslintBin(repo)).toThrow(/eslint is not installed/i);
   });
 });
 
@@ -261,14 +285,18 @@ Expected: FAIL — cannot resolve `../src/lib/effective-config.mjs`
 // packages/orrery/src/lib/effective-config.mjs
 import fs from "node:fs";
 import path from "node:path";
+import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
 
 // Ranked by how likely the file is to sit under the repo's main rule set rather
 // than an override block. A config printed for a test file or a config file
-// would understate the shared surface.
+// would understate the shared surface. Neither donor repo has an `index.ts`
+// under `apps/*/src`; the app root layout is the file every Next.js body has.
 const CANDIDATES = [
-  "apps/store/src/index.ts",
-  "apps/hub/src/index.ts",
+  "apps/store/src/app/layout.tsx",
+  "apps/hub/src/app/[locale]/layout.tsx",
+  "apps/store/src/proxy.ts",
+  "apps/hub/src/proxy.ts",
   "packages/shared/src/index.ts",
   "packages/identity/src/index.ts",
   "src/index.ts",
@@ -287,12 +315,30 @@ export function pickSampleFile(repoDirectory, preferred) {
   );
 }
 
+// Spawning `pnpm` directly fails on Windows (`pnpm` is a .cmd shim: ENOENT
+// without a shell), and a shell would concatenate the arguments unescaped.
+// Resolving the target repo's own ESLint and running it with this process's
+// Node avoids both, and works under hoisted and isolated node_modules alike.
+export function resolveEslintBin(repoDirectory) {
+  const require = createRequire(path.join(repoDirectory, "package.json"));
+
+  let manifestPath;
+  try {
+    manifestPath = require.resolve("eslint/package.json");
+  } catch {
+    throw new Error(`eslint is not installed in ${repoDirectory}; run pnpm install there first`);
+  }
+
+  const { bin } = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  return path.join(path.dirname(manifestPath), typeof bin === "string" ? bin : bin.eslint);
+}
+
 function defaultExec(repoDirectory, relativeFile) {
-  return execFileSync("pnpm", ["exec", "eslint", "--print-config", relativeFile], {
-    cwd: repoDirectory,
-    encoding: "utf8",
-    maxBuffer: 64 * 1024 * 1024,
-  });
+  return execFileSync(
+    process.execPath,
+    [resolveEslintBin(repoDirectory), "--print-config", relativeFile],
+    { cwd: repoDirectory, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }
+  );
 }
 
 export function readEffectiveConfig(repoDirectory, relativeFile, exec = defaultExec) {
@@ -311,7 +357,7 @@ export function readEffectiveConfig(repoDirectory, relativeFile, exec = defaultE
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `pnpm vitest run packages/orrery/tests/effective-config.test.mjs`
-Expected: PASS — 5 tests
+Expected: PASS — 7 tests
 
 - [ ] **Step 5: Commit**
 
@@ -614,16 +660,16 @@ Expected: PASS — 4 tests
 - [ ] **Step 5: Run the whole suite**
 
 Run: `pnpm test`
-Expected: PASS — 21 tests across 4 files
+Expected: PASS — 23 tests across 4 files
 
 - [ ] **Step 6: Run it against the real repositories**
 
 ```bash
-pnpm orrery diff-eslint Z:/Github/AeleOS Z:/Github/libra --json > /tmp/eslint-diff.json
-pnpm orrery diff-eslint Z:/Github/AeleOS Z:/Github/libra
+pnpm orrery diff-eslint Z:/Github/aeleos Z:/Github/libra --json > .superpowers/sdd/2026-09-07-phase-2a-diff-eslint/eslint-diff.json
+pnpm orrery diff-eslint Z:/Github/aeleos Z:/Github/libra
 ```
 
-Both repos must have `node_modules` installed for `eslint --print-config` to work; run `pnpm install` in each first if needed. If `pickSampleFile` cannot find a sample, pass `--file` explicitly — `apps/hub/src` for AeleOS, `apps/store/src` for libra.
+Both repos must have `node_modules` installed for `eslint --print-config` to work; run `pnpm install` in each first if needed (both were installed on 2026-09-07). `pickSampleFile` resolves to `apps/hub/src/app/[locale]/layout.tsx` for aeleos and `apps/store/src/app/layout.tsx` for libra; pass `--file` only if that changes. Expect roughly one minute per repo — aeleos's `--print-config` took 60 s on 2026-09-07 and reported 976 rules. The JSON file lands in the plan's git-ignored workspace, not in the tree; the decision record is the committed artifact.
 
 - [ ] **Step 7: Record the result**
 
@@ -641,7 +687,7 @@ git commit -m "feat(diff-eslint): wire the command and record the reconciliation
 ## Done when
 
 - `pnpm test` passes.
-- `pnpm orrery diff-eslint Z:/Github/AeleOS Z:/Github/libra` prints four bucket counts and an itemised conflict list.
+- `pnpm orrery diff-eslint Z:/Github/aeleos Z:/Github/libra` prints four bucket counts and an itemised conflict list.
 - `docs/decisions/0002-eslint-reconciliation-input.md` records the measurement, with no rulings in it.
 
 ## Next
