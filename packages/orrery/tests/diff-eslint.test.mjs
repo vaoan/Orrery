@@ -45,4 +45,14 @@ describe("diff-eslint command", () => {
     expect(error.mock.calls.flat().join("\n")).toContain("boom");
     error.mockRestore();
   });
+
+  it("exits 2 with a usage message on an unknown flag", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const code = await diffEslint(["a", "b", "--bogus"]);
+    expect(code).toBe(2);
+    const out = error.mock.calls.flat().join("\n");
+    expect(out).toContain("usage:");
+    expect(out).toContain("--bogus");
+    error.mockRestore();
+  });
 });

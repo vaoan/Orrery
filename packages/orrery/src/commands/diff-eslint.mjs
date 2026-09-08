@@ -2,16 +2,24 @@ import { parseArgs } from "node:util";
 import * as effective from "../lib/effective-config.mjs";
 import { diffRules } from "../lib/rule-diff.mjs";
 
+const USAGE = "usage: orrery diff-eslint <repoA> <repoB> [--file <path>] [--json]";
+
 export default async function diffEslint(argv, deps = effective) {
-  const { values, positionals } = parseArgs({
-    args: argv,
-    options: { file: { type: "string" }, json: { type: "boolean", default: false } },
-    allowPositionals: true,
-  });
+  let values, positionals;
+  try {
+    ({ values, positionals } = parseArgs({
+      args: argv,
+      options: { file: { type: "string" }, json: { type: "boolean", default: false } },
+      allowPositionals: true,
+    }));
+  } catch (error) {
+    console.error(`${error.message}\n${USAGE}`);
+    return 2;
+  }
 
   const [repoA, repoB] = positionals;
   if (!repoA || !repoB) {
-    console.error("usage: orrery diff-eslint <repoA> <repoB> [--file <path>] [--json]");
+    console.error(USAGE);
     return 2;
   }
 
