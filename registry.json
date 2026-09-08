@@ -1,0 +1,11 @@
+{
+  "$comment": "The constellation map. No version field on purpose: each body pins its own; orrery status reads them live.",
+  "bodies": {
+    "orrery":      { "repo": "vaoan/Orrery",      "role": "centre", "class": null },
+    "aeleos":      { "repo": "vaoan/AeleOS",      "role": "star",   "class": "next-supabase-mono" },
+    "libra":       { "repo": "vaoan/libra",       "role": "planet", "class": "next-supabase-mono" },
+    "puck":        { "repo": "vaoan/Puck",        "role": "planet", "class": "next-supabase-mono" },
+    "eclipse-con": { "repo": "vaoan/eclipse-con", "role": "planet", "class": "next-supabase-mono" },
+    "janus":       { "repo": "vaoan/Janus",       "role": "planet", "class": "next-supabase-mono" }
+  }
+}
