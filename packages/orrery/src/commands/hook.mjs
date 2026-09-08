@@ -4,10 +4,20 @@ import { checkCommitMessage, checkBranchName } from "../lib/git-flow.mjs";
 
 const USAGE = "usage: orrery hook <commit-msg|pre-push> [args]";
 
+// pnpm (verified: 11.20.0) only treats --if-present as its own flag when it
+// precedes the script name. Placed after ("pnpm run test --if-present", the
+// call-site order below), pnpm forwards it straight to the script instead,
+// and vitest then dies on an unknown option. Reorder only for the real spawn;
+// callers and tests keep passing the literal, readable ["run", "test", "--if-present"].
+function reorderIfPresent(command, args) {
+  if (command !== "pnpm" || args[0] !== "run" || !args.includes("--if-present")) return args;
+  return ["run", "--if-present", ...args.slice(1).filter((a) => a !== "--if-present")];
+}
+
 function defaultRun(command, args) {
   // pnpm is a .cmd shim on Windows; execFileSync needs a shell for it there. The
   // arguments are fixed literals, so shell concatenation cannot inject anything.
-  return execFileSync(command, args, { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"], shell: process.platform === "win32" && command === "pnpm" });
+  return execFileSync(command, reorderIfPresent(command, args), { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"], shell: process.platform === "win32" && command === "pnpm" });
 }
 
 export default async function hook(argv, deps = {}) {
