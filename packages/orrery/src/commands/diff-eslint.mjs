@@ -23,26 +23,33 @@ export default async function diffEslint(argv, deps = effective) {
     return 2;
   }
 
-  let configA, configB;
+  let configA, configB, fileA, fileB;
   try {
-    configA = deps.readEffectiveConfig(repoA, deps.pickSampleFile(repoA, values.file));
-    configB = deps.readEffectiveConfig(repoB, deps.pickSampleFile(repoB, values.file));
+    fileA = deps.pickSampleFile(repoA, values.file);
+    fileB = deps.pickSampleFile(repoB, values.file);
+    configA = deps.readEffectiveConfig(repoA, fileA);
+    configB = deps.readEffectiveConfig(repoB, fileB);
   } catch (error) {
     console.error(error.message);
     return 1;
   }
 
   const result = diffRules(configA, configB);
+  const meta = { repoA, repoB, fileA, fileB };
 
   if (values.json) {
-    console.log(JSON.stringify(result, null, 2));
+    console.log(JSON.stringify({ meta, ...result }, null, 2));
     return 0;
   }
 
+  console.log(`sample ${repoA}: ${fileA}`);
+  console.log(`sample ${repoB}: ${fileB}`);
   console.log(`agree     ${result.agree.length}`);
   console.log(`only ${repoA}  ${result.onlyA.length}`);
   console.log(`only ${repoB}  ${result.onlyB.length}`);
   console.log(`conflict  ${result.conflict.length}`);
+  console.log(`off only in ${repoA}  ${result.offOnlyA.length}`);
+  console.log(`off only in ${repoB}  ${result.offOnlyB.length}`);
 
   if (result.conflict.length > 0) {
     console.log("\nconflicts — each needs a ruling and a decision record:");

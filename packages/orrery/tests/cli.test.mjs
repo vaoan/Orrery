@@ -23,4 +23,13 @@ describe("run", () => {
     expect(error.mock.calls.flat().join("\n")).toContain("unknown command");
     error.mockRestore();
   });
+
+  it("dispatches to the real diff-eslint command module", async () => {
+    // Loads and runs the actual command through the dispatcher, rather than a
+    // mock, so a broken import path or export shape would fail this test.
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const code = await run(["diff-eslint", "only-one"]);
+    expect(code).toBe(2);
+    error.mockRestore();
+  });
 });
