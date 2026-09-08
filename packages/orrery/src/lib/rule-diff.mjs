@@ -6,10 +6,26 @@ const SEVERITY = { 0: "off", 1: "warn", 2: "error", off: "off", warn: "warn", er
  * numbers, the other strings. Normalising first keeps the conflict list free of
  * differences that are not real, which matters because every conflict costs a
  * human ruling.
+ *
+ * Trailing empty options objects (with zero own keys) are stripped before
+ * comparison because they are semantically equivalent to omitted options. Empty
+ * arrays and non-empty objects are never stripped — whether they equal "use
+ * defaults" requires per-rule schema knowledge we do not have.
  */
 function normalise(entry) {
   const value = Array.isArray(entry) ? entry : [entry];
   const [severity, ...options] = value;
+
+  // Strip trailing empty plain objects only
+  while (options.length > 0) {
+    const last = options[options.length - 1];
+    if (typeof last === "object" && last !== null && !Array.isArray(last) && Object.keys(last).length === 0) {
+      options.pop();
+    } else {
+      break;
+    }
+  }
+
   return JSON.stringify([SEVERITY[severity] ?? severity, ...options], sortedKeys);
 }
 

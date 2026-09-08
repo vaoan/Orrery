@@ -52,4 +52,42 @@ describe("diffRules", () => {
     const d = diffRules(cfg({ b: ["error"], a: ["error"] }), cfg({ a: ["error"], b: ["error"] }));
     expect(d.agree).toEqual(["a", "b"]);
   });
+
+  it("treats trailing empty options object as equivalent to omitted options", () => {
+    const d = diffRules(cfg({ r: ["error"] }), cfg({ r: ["error", {}] }));
+    expect(d.agree).toEqual(["r"]);
+    expect(d.conflict).toEqual([]);
+  });
+
+  it("strips multiple trailing empty options objects", () => {
+    const d = diffRules(cfg({ r: ["error", {}, {}] }), cfg({ r: ["error"] }));
+    expect(d.agree).toEqual(["r"]);
+    expect(d.conflict).toEqual([]);
+  });
+
+  it("treats non-empty options object as different from omitted options", () => {
+    const d = diffRules(cfg({ r: ["error", { a: 1 }] }), cfg({ r: ["error"] }));
+    expect(d.conflict).toHaveLength(1);
+    expect(d.agree).toEqual([]);
+  });
+
+  it("treats empty array in options as different from omitted options", () => {
+    const d = diffRules(cfg({ r: ["error", []] }), cfg({ r: ["error"] }));
+    expect(d.conflict).toHaveLength(1);
+    expect(d.agree).toEqual([]);
+  });
+
+  it("ignores key order in nested objects multiple levels deep", () => {
+    const a = cfg({ r: ["error", { outer: { y: 2, x: 1 }, list: [{ b: 1, a: 2 }] }] });
+    const b = cfg({ r: ["error", { outer: { x: 1, y: 2 }, list: [{ a: 2, b: 1 }] }] });
+    expect(diffRules(a, b).agree).toEqual(["r"]);
+  });
+
+  it("treats different array order in nested options as a conflict", () => {
+    const a = cfg({ r: ["error", [1, 2]] });
+    const b = cfg({ r: ["error", [2, 1]] });
+    const d = diffRules(a, b);
+    expect(d.conflict).toHaveLength(1);
+    expect(d.agree).toEqual([]);
+  });
 });
