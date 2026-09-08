@@ -95,4 +95,60 @@ describe("orrery ci", () => {
     expect(seen.some((s) => s === "show headsha:orrery.config.mjs")).toBe(true);
     q.restore();
   });
+
+  it("exits 1 with git's message when a git command fails", async () => {
+    const q = quiet();
+    const run = () => {
+      const e = new Error("spawn failed");
+      e.stderr = "fatal: could not read from remote repository\n";
+      throw e;
+    };
+    expect(await ci(["branch-sync"], { env: {}, run })).toBe(1);
+    expect(q.out()).toContain("could not read from remote repository");
+    q.restore();
+  });
+
+  it("treats a file absent on one side as a difference, not a crash", async () => {
+    const q = quiet();
+    const run = (c, a) => {
+      if (a[0] === "fetch") return "";
+      if (a[0] === "merge-base") return "mb";
+      if (a[0] === "diff") return "";
+      if (a[0] === "show") {
+        const ref = a[1];
+        if (ref === "origin/develop:eslint.local.mjs") {
+          const e = new Error("git show failed");
+          e.stderr = "fatal: path 'eslint.local.mjs' does not exist in 'origin/develop'\n";
+          throw e;
+        }
+        if (ref.endsWith(":eslint.local.mjs")) return "content";
+        return "same";
+      }
+      return "";
+    };
+    const env = { GITHUB_EVENT_PATH: event({ head: { ref: "feat/x", sha: "headsha" }, base: { ref: "develop" }, title: "t" }) };
+    expect(await ci(["config-drift"], { env, run })).toBe(1);
+    expect(q.out()).toContain("eslint.local.mjs");
+    q.restore();
+  });
+
+  it("does not mask a bad revision", async () => {
+    const q = quiet();
+    const run = (c, a) => {
+      if (a[0] === "fetch") return "";
+      if (a[0] === "merge-base") return "mb";
+      if (a[0] === "diff") return "";
+      if (a[0] === "show") {
+        const e = new Error("git show failed");
+        e.stderr = "fatal: invalid object name 'headsha'\n";
+        throw e;
+      }
+      return "";
+    };
+    const env = { GITHUB_EVENT_PATH: event({ head: { ref: "feat/x", sha: "headsha" }, base: { ref: "develop" }, title: "t" }) };
+    expect(await ci(["config-drift"], { env, run })).toBe(1);
+    expect(q.out()).toContain("invalid object name");
+    expect(q.out()).not.toContain("config-drift: ok");
+    q.restore();
+  });
 });

@@ -20,13 +20,18 @@ function defaultRun(command, args) {
 }
 
 // `git show ref:file` on a missing file exits non-zero; treat that as "absent" so a file that
-// exists on one side only is a real difference, not a crash.
+// exists on one side only is a real difference, not a crash. Only git's own "no such path"
+// diagnostics qualify — any other failure (a bad ref, a network error) is a real error and must
+// be rethrown, or a broken revision would silently read as "the file doesn't exist here".
+const ABSENT_FILE_PATTERN = /does not exist in|exists on disk, but not in/;
 function tolerantRun(run) {
   return (command, args) => {
     try {
       return run(command, args);
     } catch (error) {
-      if (args[0] === "show") return "";
+      if (args[0] === "show" && typeof error.stderr === "string" && ABSENT_FILE_PATTERN.test(error.stderr)) {
+        return "";
+      }
       throw error;
     }
   };
@@ -88,44 +93,50 @@ export default async function ci(argv, deps = {}) {
     return true;
   };
 
-  let result;
-  switch (verb) {
-    case "branch-name":
-      if (!need("head")) return 2;
-      result = checkBranchName(ctx.head);
-      break;
-    case "branch-target":
-      if (!need("head", "base")) return 2;
-      result = checkBranchTarget(ctx.head, ctx.base);
-      break;
-    case "pr-title": {
-      if (!need("head", "title", "repo")) return 2;
-      const github = createGithub({ token: resolveToken() });
-      const issueExists = async (number) => {
-        const { data } = await github.request("GET", `/repos/${ctx.repo}/issues/${number}`);
-        return Boolean(data) && !("pull_request" in data);
-      };
-      result = await checkPrTitle(ctx.title, ctx.head, { issueExists });
-      break;
+  try {
+    let result;
+    switch (verb) {
+      case "branch-name":
+        if (!need("head")) return 2;
+        result = checkBranchName(ctx.head);
+        break;
+      case "branch-target":
+        if (!need("head", "base")) return 2;
+        result = checkBranchTarget(ctx.head, ctx.base);
+        break;
+      case "pr-title": {
+        if (!need("head", "title", "repo")) return 2;
+        const github = createGithub({ token: resolveToken() });
+        const issueExists = async (number) => {
+          const { data } = await github.request("GET", `/repos/${ctx.repo}/issues/${number}`);
+          return Boolean(data) && !("pull_request" in data);
+        };
+        result = await checkPrTitle(ctx.title, ctx.head, { issueExists });
+        break;
+      }
+      case "branch-sync":
+        result = await checkBranchSync({ run });
+        break;
+      case "config-drift": {
+        if (!need("base", "headSha")) return 2;
+        const files = values.files ? values.files.split(",").map((f) => f.trim()).filter(Boolean) : DEFAULT_DRIFT_FILES;
+        run("git", ["fetch", "--no-tags", "origin", ctx.base]);
+        result = await checkConfigDrift({ run: tolerantRun(run), baseRef: `origin/${ctx.base}`, headSha: ctx.headSha, files });
+        break;
+      }
+      default:
+        return 2;
     }
-    case "branch-sync":
-      result = await checkBranchSync({ run });
-      break;
-    case "config-drift": {
-      if (!need("base", "headSha")) return 2;
-      const files = values.files ? values.files.split(",").map((f) => f.trim()).filter(Boolean) : DEFAULT_DRIFT_FILES;
-      run("git", ["fetch", "--no-tags", "origin", ctx.base]);
-      result = await checkConfigDrift({ run: tolerantRun(run), baseRef: `origin/${ctx.base}`, headSha: ctx.headSha, files });
-      break;
-    }
-    default:
-      return 2;
-  }
 
-  if (result.ok) {
-    console.log(`${verb}: ok`);
-    return 0;
+    if (result.ok) {
+      console.log(`${verb}: ok`);
+      return 0;
+    }
+    console.error(`${verb}: ${result.reason}`);
+    return 1;
+  } catch (error) {
+    const message = (typeof error.stderr === "string" && error.stderr.trim()) || error.message;
+    console.error(`${verb}: ${message}`);
+    return 1;
   }
-  console.error(`${verb}: ${result.reason}`);
-  return 1;
 }
