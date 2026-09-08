@@ -293,15 +293,11 @@ Deferred:
 - **2d** — the git install path from `main`, the reusable `ci.yml`, the
   `orrery ci` verbs and currency gate, `init`/`status`/`promote`, the
   registry, bump-PR automation.
-- **2e** — repository policy: branch strategy, branch naming, commit message
-  convention, branch protection, merge method, and their enforcement by hook
-  and by a script that applies settings through the GitHub API and reports
-  settings drift. Measured 2026-09-08: default branches split three `develop`
-  against three `main`; required status checks range from none (Orrery,
-  eclipse-con) to six (aeleos); merge methods, delete-on-merge and automerge
-  differ per repo; libra commits as `type(scope): subject [GH-000] (#n)` while
-  aeleos mixes that with free-form subjects; no repo runs commitlint. Needs
-  its own brainstorm.
+- **2e** — repository policy: branch flow, naming, titles, protection, merge
+  methods, hooks, releases, and `orrery repo apply`. Designed the same day in
+  `docs/specs/2026-09-08-phase-2e-repository-policy-design.md`. **2e runs
+  before 2b** and is applied to Orrery first, so the 2b work lands through
+  the flow every body will use.
 - **3** — touching any body.
 - **Later brainstorm** — architecture and shared types across bodies, which
   need a mechanism other than config files.
