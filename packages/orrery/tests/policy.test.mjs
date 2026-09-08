@@ -53,6 +53,21 @@ describe("validatePolicy", () => {
     p.labels.push({ name: "x", color: "red", description: "" });
     expect(validatePolicy(p)).toContain("label x has an invalid colour: red");
   });
+
+  it("requires main to be protected", () => {
+    const p = valid();
+    p.protectedBranches = ["develop"];
+    delete p.protection.main;
+    delete p.requiredChecks.main;
+    expect(validatePolicy(p)).toEqual(["protectedBranches must include main"]);
+  });
+
+  it("rejects a required check that is not a non-empty string", () => {
+    const p = valid();
+    p.requiredChecks.develop = ["test", 42, ""];
+    expect(validatePolicy(p)).toContain("requiredChecks.develop entry 1 must be a non-empty string");
+    expect(validatePolicy(p)).toContain("requiredChecks.develop entry 2 must be a non-empty string");
+  });
 });
 
 describe("loadPolicy", () => {
