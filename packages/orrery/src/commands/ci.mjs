@@ -1,0 +1,131 @@
+import fs from "node:fs";
+import { parseArgs } from "node:util";
+import { execFileSync } from "node:child_process";
+import { createGithub as realCreateGithub, resolveToken as realResolveToken } from "../lib/github.mjs";
+import {
+  checkBranchName, checkBranchTarget, checkPrTitle, checkBranchSync, checkConfigDrift,
+} from "../lib/git-flow.mjs";
+
+const VERBS = ["branch-target", "branch-name", "pr-title", "branch-sync", "config-drift"];
+const USAGE = `usage: orrery ci <${VERBS.join("|")}> [--head <branch>] [--base <branch>] [--title <text>] [--repo <owner/name>] [--head-sha <sha>] [--files a,b,c]`;
+
+export const DEFAULT_DRIFT_FILES = [
+  "eslint.config.mjs", "eslint.local.mjs", "tsconfig.json", "tsconfig.base.json",
+  "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "orrery.config.mjs",
+  ".github/workflows/ci.yml",
+];
+
+function defaultRun(command, args) {
+  return execFileSync(command, args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+}
+
+// `git show ref:file` on a missing file exits non-zero; treat that as "absent" so a file that
+// exists on one side only is a real difference, not a crash.
+function tolerantRun(run) {
+  return (command, args) => {
+    try {
+      return run(command, args);
+    } catch (error) {
+      if (args[0] === "show") return "";
+      throw error;
+    }
+  };
+}
+
+function readEvent(env) {
+  const file = env.GITHUB_EVENT_PATH;
+  if (!file || !fs.existsSync(file)) return {};
+  const event = JSON.parse(fs.readFileSync(file, "utf8"));
+  const pr = event.pull_request ?? {};
+  return {
+    head: pr.head?.ref,
+    base: pr.base?.ref,
+    title: pr.title,
+    headSha: pr.head?.sha,
+    repo: event.repository?.full_name,
+  };
+}
+
+export default async function ci(argv, deps = {}) {
+  const { env = process.env, run = defaultRun, createGithub = realCreateGithub, resolveToken = realResolveToken } = deps;
+
+  let values, positionals;
+  try {
+    ({ values, positionals } = parseArgs({
+      args: argv,
+      options: {
+        head: { type: "string" }, base: { type: "string" }, title: { type: "string" },
+        repo: { type: "string" }, "head-sha": { type: "string" }, files: { type: "string" },
+      },
+      allowPositionals: true,
+    }));
+  } catch (error) {
+    console.error(`${error.message}\n${USAGE}`);
+    return 2;
+  }
+
+  const [verb] = positionals;
+  if (!VERBS.includes(verb)) {
+    console.error(USAGE);
+    return 2;
+  }
+
+  const event = readEvent(env);
+  const ctx = {
+    head: values.head ?? event.head,
+    base: values.base ?? event.base,
+    title: values.title ?? event.title,
+    headSha: values["head-sha"] ?? event.headSha,
+    repo: values.repo ?? event.repo,
+  };
+  const need = (...keys) => {
+    for (const key of keys) {
+      if (!ctx[key]) {
+        console.error(`--${key === "headSha" ? "head-sha" : key} is required for ${verb} (or run inside a pull_request workflow)`);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  let result;
+  switch (verb) {
+    case "branch-name":
+      if (!need("head")) return 2;
+      result = checkBranchName(ctx.head);
+      break;
+    case "branch-target":
+      if (!need("head", "base")) return 2;
+      result = checkBranchTarget(ctx.head, ctx.base);
+      break;
+    case "pr-title": {
+      if (!need("head", "title", "repo")) return 2;
+      const github = createGithub({ token: resolveToken() });
+      const issueExists = async (number) => {
+        const { data } = await github.request("GET", `/repos/${ctx.repo}/issues/${number}`);
+        return Boolean(data) && !("pull_request" in data);
+      };
+      result = await checkPrTitle(ctx.title, ctx.head, { issueExists });
+      break;
+    }
+    case "branch-sync":
+      result = await checkBranchSync({ run });
+      break;
+    case "config-drift": {
+      if (!need("base", "headSha")) return 2;
+      const files = values.files ? values.files.split(",").map((f) => f.trim()).filter(Boolean) : DEFAULT_DRIFT_FILES;
+      run("git", ["fetch", "--no-tags", "origin", ctx.base]);
+      result = await checkConfigDrift({ run: tolerantRun(run), baseRef: `origin/${ctx.base}`, headSha: ctx.headSha, files });
+      break;
+    }
+    default:
+      return 2;
+  }
+
+  if (result.ok) {
+    console.log(`${verb}: ok`);
+    return 0;
+  }
+  console.error(`${verb}: ${result.reason}`);
+  return 1;
+}
