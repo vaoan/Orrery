@@ -22,25 +22,53 @@ pnpm orrery diff-eslint Z:/Github/aeleos Z:/Github/libra --json
 | | aeleos | libra |
 |---|---|---|
 | Repo path | `Z:/Github/aeleos` | `Z:/Github/libra` |
-| Git branch | `fix/clerk-test-identity-leak` | `develop` |
-| Git commit | `b9e1c4d` | `1c79de72` |
-| Sample file (`pickSampleFile`) | `apps/hub/src/app/[locale]/layout.tsx` | `apps/store/src/app/layout.tsx` |
+| Git branch | `main` | `develop` |
+| Git commit | `ead5f71` | `1c79de72` |
+| Sample file (`pickSampleFile`, recorded in `meta`) | `apps/hub/src/app/[locale]/layout.tsx` | `apps/store/src/app/layout.tsx` |
 | `eslint` version (`node_modules/eslint/package.json`) | 9.39.5 | 9.39.4 |
 
 Both repositories had `node_modules` already installed; no install or other
-mutating command was run against either.
+mutating command was run against either. The JSON output's own `meta` block
+(`{ repoA, repoB, fileA, fileB }`) is the authoritative record of which repos
+and files were compared — the table above is provenance for *how* that
+measurement was taken, not a re-derivation of it.
+
+## Method: one-sided rules are bucketed by effect, not presence
+
+A rule set to `off` on one side and simply absent on the other side of
+`eslint --print-config` are behaviourally identical — neither lints anything.
+Counting that pairing as "an opinion the other repo lacks" — the original
+behaviour of this tool — overstated the one-sided lists with hundreds of
+no-ops and made the reconciliation backlog look far larger than it is.
+
+`diffRules` now normalises each one-sided rule's severity before bucketing
+it: a one-sided rule whose severity is `off` goes into `offOnlyA`/`offOnlyB`
+as a bare rule name (there is no value worth showing for a no-op), and only a
+one-sided rule that is actually enabled goes into `onlyA`/`onlyB`, carrying
+its raw value. `agree` and `conflict` are unaffected — a rule off on both
+sides was already, and remains, an agreement, and a rule off on one side but
+set to something else on the other was already, and remains, a conflict.
+
+This changed the one-sided counts from the first measurement (2026-09-06):
+`onlyA` fell from 391 to 35 (the other 356 were
+one-sided `off`s, now in `offOnlyA`), and `onlyB` fell from 34 to 20
+(the other 14 are now in `offOnlyB`). `agree` and `conflict` are
+unchanged at 530 and 55.
 
 ## Bucket counts
 
 | Bucket | Count |
 |---|---|
 | agree | 530 |
-| onlyA (aeleos only) | 391 |
-| onlyB (libra only) | 34 |
+| onlyA (aeleos only, enabled) | 35 |
+| onlyB (libra only, enabled) | 20 |
+| offOnlyA (aeleos only, off) | 356 |
+| offOnlyB (libra only, off) | 14 |
 | conflict | 55 |
 
-`agree + onlyA + conflict` = 976 = the total rule count `eslint --print-config`
-reported for aeleos. `agree + onlyB + conflict` = 619 = the total for libra.
+`agree + onlyA + offOnlyA + conflict` = 976 = the total rule count
+`eslint --print-config` reported for aeleos. `agree + onlyB + offOnlyB + conflict`
+= 619 = the total for libra.
 
 ## Conflicts
 
@@ -214,13 +242,79 @@ exactly as `diffRules` reported them (raw `rules` entries from
   - aeleos: [2]
   - libra: [0]
 
-## onlyA — set only in aeleos
+## onlyA — set only in aeleos, and enabled
 
-391 rules.
+35 rules. Values are the raw `rules` entry from `eslint --print-config`.
+
+- `@next/next/no-location-assign-relative-destination`: [1]
+- `@typescript-eslint/no-deprecated`: [2]
+- `better-tailwindcss/no-concatenated-classes`: [2]
+- `jsdoc/check-param-names`: [2]
+- `jsdoc/no-types`: [2]
+- `jsdoc/require-description`: [2,{"checkConstructors":false,"checkGetters":true,"checkSetters":true}]
+- `jsdoc/require-jsdoc`: [2,{"publicOnly":true,"require":{"FunctionDeclaration":true,"ArrowFunctionExpression":true,"FunctionExpression":true,"MethodDefinition":true,"ClassDeclaration":true,"ClassExpression":false},"contexts":["TSTypeAliasDeclaration","TSInterfaceDeclaration"],"checkAllFunctionExpressions":false,"checkConstructors":true,"checkGetters":true,"checkSetters":true,"enableFixer":true,"exemptEmptyConstructors":false,"exemptEmptyFunctions":false,"exemptOverloadedImplementations":false,"fixerMessage":"","skipInterveningOverloadedDeclarations":true}]
+- `jsdoc/require-param-description`: [2]
+- `jsdoc/require-returns-description`: [2]
+- `jsx-a11y/anchor-is-valid`: [2]
+- `jsx-a11y/no-autofocus`: [2]
+- `security/detect-eval-with-expression`: [2]
+- `security/detect-unsafe-regex`: [2]
+- `sonarjs/assertions-in-test-cases`: [2]
+- `sonarjs/async-test-assertions`: [2]
+- `sonarjs/explicit-test-skip`: [2]
+- `sonarjs/hooks-before-test-cases`: [2]
+- `sonarjs/memoize-cache-key`: [2]
+- `sonarjs/no-debug-commands-in-ui-tests`: [2]
+- `sonarjs/no-default-utility-imports`: [2]
+- `sonarjs/no-duplicate-test-title`: [2]
+- `sonarjs/no-empty-test-title`: [2]
+- `sonarjs/no-fixed-wait-in-tests`: [2]
+- `sonarjs/no-floating-point-equality`: [2]
+- `sonarjs/no-forced-browser-interaction`: [2]
+- `sonarjs/no-incompatible-assertion-types`: [2]
+- `sonarjs/no-interpolation-in-inline-snapshots`: [2]
+- `sonarjs/no-mixed-completion-style`: [2]
+- `sonarjs/no-trivial-assertions`: [2]
+- `sonarjs/parameterized-tests`: [2]
+- `sonarjs/prefer-native-lodash-alternative`: [2]
+- `sonarjs/prefer-specific-assertions`: [2]
+- `sonarjs/super-linear-regex`: [2]
+- `sonarjs/synchronous-suite-callback`: [2]
+- `tsdoc/syntax`: [2]
+
+## onlyB — set only in libra, and enabled
+
+20 rules. Values are the raw `rules` entry from `eslint --print-config`.
+
+- `@tanstack/query/infinite-query-property-order`: [2]
+- `@tanstack/query/mutation-property-order`: [2]
+- `@tanstack/query/no-rest-destructuring`: [1]
+- `@tanstack/query/no-unstable-deps`: [2]
+- `@tanstack/query/no-void-query-fn`: [2]
+- `@tanstack/query/stable-query-client`: [2]
+- `@typescript-eslint/consistent-type-imports`: [2,{"prefer":"type-imports","fixStyle":"inline-type-imports"}]
+- `@typescript-eslint/naming-convention`: [2,{"selector":"default","format":["camelCase"],"leadingUnderscore":"allow"},{"selector":"variable","format":["camelCase","UPPER_CASE","PascalCase"],"leadingUnderscore":"allow"},{"selector":"function","format":["camelCase","PascalCase"]},{"selector":"parameter","format":["camelCase"],"leadingUnderscore":"allow"},{"selector":"typeLike","format":["PascalCase"]},{"selector":"enumMember","format":["PascalCase","UPPER_CASE"]},{"selector":"property","format":["camelCase","UPPER_CASE","PascalCase","snake_case"],"leadingUnderscore":"allow"},{"selector":"property","modifiers":["requiresQuotes"],"format":null},{"selector":"property","filter":{"regex":"^__html$","match":true},"format":null},{"selector":"variable","modifiers":["destructured"],"format":["camelCase","UPPER_CASE","PascalCase","snake_case"]},{"selector":"classicAccessor","format":["camelCase","UPPER_CASE","PascalCase"]},{"selector":"import","format":null}]
+- `@typescript-eslint/no-magic-numbers`: [2,{"ignore":[-1,0,1],"ignoreArrayIndexes":true,"ignoreEnums":true,"ignoreNumericLiteralTypes":true,"ignoreReadonlyClassProperties":true,"ignoreTypeIndexes":true,"detectObjects":false,"enforceConst":false,"ignoreDefaultValues":false,"ignoreClassFieldInitialValues":false}]
+- `@typescript-eslint/no-non-null-assertion`: [2]
+- `import/no-duplicates`: [2]
+- `import/order`: [2,{"newlines-between":"always","pathGroups":[{"pattern":"@/**","group":"internal","position":"after"},{"pattern":"@shared/**","group":"internal","position":"after"},{"pattern":"@ui/**","group":"internal","position":"after"}],"pathGroupsExcludedImportTypes":["builtin"],"alphabetize":{"order":"asc","caseInsensitive":true,"orderImportKind":"ignore"},"distinctGroup":true,"sortTypesGroup":false,"named":false,"warnOnUnassignedImports":false}]
+- `no-restricted-syntax`: [2,{"selector":"MemberExpression[computed=true][object.name='flags'][property.type='MemberExpression'][property.object.name='FeatureFlag']","message":"Do not access flags[FeatureFlag.X] directly. Use hasFlag(FeatureFlag.X, flags) or useHasFlag(FeatureFlag.X). See: shared/application/utils/featureFlagChecks.ts"},{"selector":"MemberExpression[computed=false][object.name='flags'][property.name=/^show/]","message":"Do not access flags.showXxx directly. Use hasFlag(FeatureFlag.X, flags) or useHasFlag(FeatureFlag.X). See: shared/application/utils/featureFlagChecks.ts"}]
+- `no-unassigned-vars`: [2]
+- `no-useless-assignment`: [2]
+- `preserve-caught-error`: [2,{"requireCatchParameter":false}]
+- `react/jsx-no-constructed-context-values`: [2]
+- `react/no-danger`: [2]
+- `react/no-multi-comp`: [2,{"ignoreStateless":false}]
+- `react/no-unstable-nested-components`: [2]
+
+## offOnlyA — set only in aeleos, and off
+
+356 rules. Absent from libra's config entirely; since aeleos sets them to
+`off`, the two repos behave identically for these rules today. Listed as
+rule names only — there is no value worth showing for a no-op.
 
 - `@babel/object-curly-spacing`
 - `@babel/semi`
-- `@next/next/no-location-assign-relative-destination`
 - `@stylistic/array-bracket-newline`
 - `@stylistic/array-bracket-spacing`
 - `@stylistic/array-element-newline`
@@ -411,7 +505,6 @@ exactly as `diffRules` reported them (raw `rules` entries from
 - `@typescript-eslint/keyword-spacing`
 - `@typescript-eslint/lines-around-comment`
 - `@typescript-eslint/member-delimiter-style`
-- `@typescript-eslint/no-deprecated`
 - `@typescript-eslint/no-extra-parens`
 - `@typescript-eslint/no-extra-semi`
 - `@typescript-eslint/object-curly-spacing`
@@ -429,7 +522,6 @@ exactly as `diffRules` reported them (raw `rules` entries from
 - `babel/object-curly-spacing`
 - `babel/quotes`
 - `babel/semi`
-- `better-tailwindcss/no-concatenated-classes`
 - `block-spacing`
 - `brace-style`
 - `comma-dangle`
@@ -458,17 +550,9 @@ exactly as `diffRules` reported them (raw `rules` entries from
 - `implicit-arrow-linebreak`
 - `indent`
 - `indent-legacy`
-- `jsdoc/check-param-names`
-- `jsdoc/no-types`
-- `jsdoc/require-description`
-- `jsdoc/require-jsdoc`
 - `jsdoc/require-param`
-- `jsdoc/require-param-description`
 - `jsdoc/require-param-type`
-- `jsdoc/require-returns-description`
 - `jsdoc/require-returns-type`
-- `jsx-a11y/anchor-is-valid`
-- `jsx-a11y/no-autofocus`
 - `jsx-quotes`
 - `key-spacing`
 - `keyword-spacing`
@@ -522,32 +606,9 @@ exactly as `diffRules` reported them (raw `rules` entries from
 - `react/jsx-tag-spacing`
 - `react/jsx-wrap-multilines`
 - `rest-spread-spacing`
-- `security/detect-eval-with-expression`
-- `security/detect-unsafe-regex`
 - `semi`
 - `semi-spacing`
 - `semi-style`
-- `sonarjs/assertions-in-test-cases`
-- `sonarjs/async-test-assertions`
-- `sonarjs/explicit-test-skip`
-- `sonarjs/hooks-before-test-cases`
-- `sonarjs/memoize-cache-key`
-- `sonarjs/no-debug-commands-in-ui-tests`
-- `sonarjs/no-default-utility-imports`
-- `sonarjs/no-duplicate-test-title`
-- `sonarjs/no-empty-test-title`
-- `sonarjs/no-fixed-wait-in-tests`
-- `sonarjs/no-floating-point-equality`
-- `sonarjs/no-forced-browser-interaction`
-- `sonarjs/no-incompatible-assertion-types`
-- `sonarjs/no-interpolation-in-inline-snapshots`
-- `sonarjs/no-mixed-completion-style`
-- `sonarjs/no-trivial-assertions`
-- `sonarjs/parameterized-tests`
-- `sonarjs/prefer-native-lodash-alternative`
-- `sonarjs/prefer-specific-assertions`
-- `sonarjs/super-linear-regex`
-- `sonarjs/synchronous-suite-callback`
 - `space-after-function-name`
 - `space-after-keywords`
 - `space-before-blocks`
@@ -566,7 +627,6 @@ exactly as `diffRules` reported them (raw `rules` entries from
 - `switch-colon-spacing`
 - `template-curly-spacing`
 - `template-tag-spacing`
-- `tsdoc/syntax`
 - `vue/array-bracket-newline`
 - `vue/array-bracket-spacing`
 - `vue/array-element-newline`
@@ -610,31 +670,12 @@ exactly as `diffRules` reported them (raw `rules` entries from
 - `wrap-regex`
 - `yield-star-spacing`
 
-## onlyB — set only in libra
+## offOnlyB — set only in libra, and off
 
-34 rules.
+14 rules. Absent from aeleos's config entirely; since libra sets them to
+`off`, the two repos behave identically for these rules today.
 
 - `@tanstack/query/exhaustive-deps`
-- `@tanstack/query/infinite-query-property-order`
-- `@tanstack/query/mutation-property-order`
-- `@tanstack/query/no-rest-destructuring`
-- `@tanstack/query/no-unstable-deps`
-- `@tanstack/query/no-void-query-fn`
-- `@tanstack/query/stable-query-client`
-- `@typescript-eslint/consistent-type-imports`
-- `@typescript-eslint/naming-convention`
-- `@typescript-eslint/no-magic-numbers`
-- `@typescript-eslint/no-non-null-assertion`
-- `import/no-duplicates`
-- `import/order`
-- `no-restricted-syntax`
-- `no-unassigned-vars`
-- `no-useless-assignment`
-- `preserve-caught-error`
-- `react/jsx-no-constructed-context-values`
-- `react/no-danger`
-- `react/no-multi-comp`
-- `react/no-unstable-nested-components`
 - `security/detect-object-injection`
 - `sonarjs/aws-s3-bucket-server-encryption`
 - `sonarjs/certificate-transparency`
