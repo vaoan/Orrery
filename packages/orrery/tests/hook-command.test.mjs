@@ -37,7 +37,7 @@ describe("orrery hook", () => {
     const calls = [];
     const run = (c, a) => { calls.push([c, ...a].join(" ")); return c === "git" ? "feat/x\n" : ""; };
     expect(await hook(["pre-push"], { run, env: {} })).toBe(0);
-    expect(calls).toEqual(["git branch --show-current", "pnpm run test --if-present"]);
+    expect(calls).toEqual(["git branch --show-current", "pnpm run --if-present test"]);
   });
 
   it("pre-push fails on a bad branch name before running tests", async () => {

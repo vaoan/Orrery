@@ -21,6 +21,17 @@ afterEach(() => fs.rmSync(repo, { recursive: true, force: true }));
 const runHook = (args, env = {}) =>
   spawnSync(process.execPath, [bin, "hook", ...args], { cwd: repo, encoding: "utf8", env: { ...process.env, ORRERY_HOOK_SKIP_TESTS: "1", ...env } });
 
+// Does NOT set ORRERY_HOOK_SKIP_TESTS, so pre-push spawns the real pnpm binary
+// and actually runs (or looks for) the repo's test script.
+const runHookReal = (args, env = {}) =>
+  spawnSync(process.execPath, [bin, "hook", ...args], { cwd: repo, encoding: "utf8", env: { ...process.env, ...env } });
+
+const writePackageJson = (scripts) =>
+  fs.writeFileSync(
+    path.join(repo, "package.json"),
+    JSON.stringify({ name: "t", version: "0.0.0", private: true, ...(scripts ? { scripts } : {}) }, null, 2)
+  );
+
 describe("hooks as processes", () => {
   it("commit-msg exits 1 on a bad subject and 0 on a good one", () => {
     const f = path.join(repo, "msg");
@@ -38,4 +49,41 @@ describe("hooks as processes", () => {
     execFileSync("git", ["checkout", "-q", "-b", "feat/good"], { cwd: repo });
     expect(runHook(["pre-push"]).status).toBe(0);
   });
+
+  it(
+    "pre-push runs the test script through real pnpm and passes when there is no test script",
+    () => {
+      execFileSync("git", ["checkout", "-q", "-b", "feat/good"], { cwd: repo });
+      writePackageJson(); // no scripts.test at all
+      // With the old ["run", "test", "--if-present"] order, real pnpm forwards
+      // --if-present to the missing script and reports "Missing script", exiting
+      // 1; this test discriminates that from the fixed ["run", "--if-present", "test"] order.
+      const result = runHookReal(["pre-push"]);
+      expect(result.status).toBe(0);
+    },
+    60000
+  );
+
+  it(
+    "pre-push fails when the test script fails",
+    () => {
+      execFileSync("git", ["checkout", "-q", "-b", "feat/good"], { cwd: repo });
+      writePackageJson({ test: 'node -e "process.exit(1)"' });
+      const result = runHookReal(["pre-push"]);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toMatch(/tests failed/);
+    },
+    60000
+  );
+
+  it(
+    "pre-push passes when the test script passes",
+    () => {
+      execFileSync("git", ["checkout", "-q", "-b", "feat/good"], { cwd: repo });
+      writePackageJson({ test: 'node -e "process.exit(0)"' });
+      const result = runHookReal(["pre-push"]);
+      expect(result.status).toBe(0);
+    },
+    60000
+  );
 });
