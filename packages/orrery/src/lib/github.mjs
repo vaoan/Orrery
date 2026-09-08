@@ -44,12 +44,17 @@ export function createGithub({ token, fetchImpl = fetch, baseUrl = "https://api.
     if (response.status === 204) return { status: 204, data: null };
 
     if (response.status >= 400) {
-      let message = "";
+      const text = await response.text();
+      let message = text;
       try {
-        message = (await response.json()).message ?? "";
+        const parsed = JSON.parse(text);
+        if (typeof parsed.message === "string" && parsed.message) {
+          message = parsed.message;
+        }
       } catch {
-        message = await response.text();
+        // JSON parse failed, use raw text
       }
+      message = message.trim().slice(0, 200);
       throw new GithubError(response.status, message, path);
     }
 

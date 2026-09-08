@@ -51,4 +51,34 @@ describe("createGithub", () => {
     const gh = createGithub({ token: "t", fetchImpl: async () => ({ status: 204, ok: true, json: async () => { throw new Error("no body"); }, text: async () => "" }) });
     expect(await gh.request("DELETE", "/x")).toEqual({ status: 204, data: null });
   });
+
+  it("surfaces a non-JSON error body as the GithubError message", async () => {
+    let callCount = 0;
+    const fetchImpl = async () => {
+      callCount = 0;
+      return {
+        status: 502,
+        ok: false,
+        text: async () => {
+          callCount++;
+          if (callCount > 1) throw new TypeError("Body is unusable: Body has already been read");
+          return "<html>Bad gateway</html>";
+        },
+        json: async () => {
+          callCount++;
+          if (callCount > 1) throw new TypeError("Body is unusable: Body has already been read");
+          throw new SyntaxError("Unexpected token <");
+        },
+      };
+    };
+    const gh = createGithub({ token: "t", fetchImpl });
+    await expect(gh.request("GET", "/x")).rejects.toMatchObject({ status: 502, message: /Bad gateway/ });
+    await expect(gh.request("GET", "/x")).rejects.toBeInstanceOf(GithubError);
+  });
+
+  it("uses the raw body when JSON has no message", async () => {
+    const gh = createGithub({ token: "t", fetchImpl: async () => ({ status: 422, ok: false, text: async () => '{"errors":[{"field":"contexts"}]}', json: async () => { throw new SyntaxError("unexpected"); } }) });
+    await expect(gh.request("PUT", "/x")).rejects.toMatchObject({ status: 422, message: /contexts/ });
+    await expect(gh.request("PUT", "/x")).rejects.toBeInstanceOf(GithubError);
+  });
 });
