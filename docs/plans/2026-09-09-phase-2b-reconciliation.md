@@ -1114,6 +1114,7 @@ describe("knip", () => {
     expect(normaliseEntry("tests/**/*.test.tsx")).toBe("tests/**/*.{ts,tsx}");
     expect(normaliseEntry("tests/**/*.test.ts")).toBe("tests/**/*.{ts,tsx}");
     expect(normaliseEntry("tests/**/*.test.{ts,tsx}")).toBe("tests/**/*.{ts,tsx}");
+    expect(normaliseEntry("tests/**/*.{test,spec}.{ts,tsx}")).toBe("tests/**/*.{ts,tsx}");
     expect(normaliseEntry("src/**/*.tsx")).toBe("src/**/*.tsx");
   });
 });
