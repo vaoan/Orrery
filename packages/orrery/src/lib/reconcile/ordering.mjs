@@ -58,25 +58,25 @@ export const PRE_RULINGS = {
     chosen: ["error", {
       mode: "all",
       "should-validate-template": true,
-      "jsx-attributes": { include: { union: "jsx-attributes.include" } },
-      ignoreAttribute: { fromSide: "b" },
-      words: { exclude: { parameter: "i18n.excludedWords" } },
+      "jsx-attributes": { include: { $union: "jsx-attributes.include" } },
+      ignoreAttribute: { $fromSide: "b" },
+      words: { exclude: { $parameter: "i18n.excludedWords" } },
     }],
     test: "benefit",
     note: "mode all and the union of checked attributes are strictest; ignoreAttribute keeps libra's list because attribute names such as className are not user-facing text; excluded words are body data",
   },
   "sonarjs/no-duplicate-string": {
-    chosen: ["error", { threshold: 2, ignoreStrings: { union: "ignoreStrings", join: "|" } }],
+    chosen: ["error", { threshold: 2, ignoreStrings: { $union: "ignoreStrings", join: "|" } }],
     test: "benefit",
     note: "threshold 2 is strictest; ignoreStrings is the union because both sides exempt machine strings (MIME types, CSS variables, Tailwind classes), not code",
   },
   "boundaries/dependencies": {
-    chosen: ["error", { default: "disallow", rules: { parameter: "boundaries.allow", base: "a" } }],
+    chosen: ["error", { default: "disallow", rules: { $parameter: "boundaries.allow", base: "a" } }],
     test: "parameter",
     note: "aeleos's layered policy (domain/application/presentation) is the class base because it is stricter; each body's extra element types and their allowed edges are parameters",
   },
   "boundaries/elements": {
-    chosen: [{ parameter: "boundaries.elements", base: "class" }],
+    chosen: [{ $parameter: "boundaries.elements", base: "class" }],
     test: "parameter",
     note: "element paths are body data on top of the class's standard app/features/shared/proxy layout",
   },
@@ -127,10 +127,10 @@ function parameterise(rule, optionsA, optionsB) {
   if (!param) return null;
   if (rule === "no-restricted-imports") {
     const universal = [...(oa.patterns ?? []), ...(ob.patterns ?? [])].filter((p) => (p.group ?? []).some((g) => g.startsWith("../")));
-    return [{ patterns: [...universal, { parameter: PARAMETER_NAME.patterns }] }];
+    return [{ patterns: [...universal, { $parameter: PARAMETER_NAME.patterns }] }];
   }
   const merged = { ...oa, ...ob };
-  merged[param] = { parameter: PARAMETER_NAME[param] ?? param };
+  merged[param] = { $parameter: PARAMETER_NAME[param] ?? param };
   for (const k of Object.keys(merged)) if (k !== param && EXEMPTION_KEY.test(k)) delete merged[k];
   return [merged];
 }

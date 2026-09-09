@@ -44,4 +44,13 @@ describe("reconcileEslint", () => {
     expect(r.chosen).toEqual(["error", { threshold: 2, ignoreStrings: "application/json|text-[a-z-]+|var\\(--x\\)" }]);
     expect(r.test).toBe("benefit");
   });
+
+  it("leaves ordinary option keys named union, fromSide or parameter untouched", () => {
+    const a = { source: cfg({ "unicorn/x": ["error", { union: ["a", "b"], fromSide: "left", parameter: 1, other: 2 }] }) };
+    const b = { source: cfg({ "unicorn/x": ["warn", { union: ["a", "b"], fromSide: "left", parameter: 1, other: 2 }] }) };
+    expect(() => reconcileEslint(a, b)).not.toThrow();
+    const [r] = reconcileEslint(a, b);
+    expect(r.chosen).toEqual(["error", { union: ["a", "b"], fromSide: "left", parameter: 1, other: 2 }]);
+    expect(r.test).toBe("strictest");
+  });
 });

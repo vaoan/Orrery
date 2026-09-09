@@ -28,21 +28,23 @@ export function reconcileEslint(eslintA, eslintB) {
   return rows.sort((x, y) => SURFACE_ORDER.indexOf(x.surface) - SURFACE_ORDER.indexOf(y.surface) || compare(x.key, y.key));
 }
 
-// Pre-rulings carry markers that need both sides' real values: { union: "key" } (the union of
-// that key's arrays from both sides; `join` turns it into one string), { fromSide: "a"|"b" }.
-// { parameter } markers survive: the bundle writer turns them into body config reads.
+// Pre-rulings carry markers that need both sides' real values: { $union: "key" } (the union of
+// that key's arrays from both sides; `join` turns it into one string), { $fromSide: "a"|"b" }.
+// { $parameter } markers survive: the bundle writer turns them into body config reads. Markers
+// are namespaced with a `$` prefix so a plugin's own option object can never be mistaken for one
+// — `union`, `fromSide` and `parameter` are all names real ESLint rule options use.
 export function resolveMarkers(value, optionsA, optionsB) {
   const at = (options, key) => key.split(".").reduce((o, k) => o?.[k], options[0] ?? {});
   const walk = (v, keyPath) => {
     if (Array.isArray(v)) return v.map((x, i) => walk(x, keyPath));
     if (v && typeof v === "object") {
-      if ("union" in v) {
-        const both = [].concat(at(optionsA, v.union) ?? [], at(optionsB, v.union) ?? []);
+      if ("$union" in v) {
+        const both = [].concat(at(optionsA, v.$union) ?? [], at(optionsB, v.$union) ?? []);
         const items = v.join ? both.flatMap((s) => String(s).split(v.join)) : both;
         const unique = [...new Set(items)].sort();
         return v.join ? unique.join(v.join) : unique;
       }
-      if ("fromSide" in v) return at(v.fromSide === "a" ? optionsA : optionsB, keyPath) ?? null;
+      if ("$fromSide" in v) return at(v.$fromSide === "a" ? optionsA : optionsB, keyPath) ?? null;
       return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, walk(x, keyPath ? `${keyPath}.${k}` : k)]));
     }
     return v;
