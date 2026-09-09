@@ -42,9 +42,11 @@ jobs:
           git config user.name "orrery"
           git config user.email "orrery@users.noreply.github.com"
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          # select(. != null) makes an empty result print nothing; without it jq
+          # prints the text null and the guard would treat it as a PR.
           existing=$(gh pr list --repo "$GITHUB_REPOSITORY" --base develop --state open --json number,headRefName \
-            --jq '[.[] | select(.headRefName | startswith("back-merge/"))][0] | "\(.number) \(.headRefName)"' )
-          if [ -n "$existing" ] && [ "$existing" != " " ]; then
+            --jq '[.[] | select(.headRefName | startswith("back-merge/"))][0] | select(. != null) | "\(.number) \(.headRefName)"' )
+          if [ -n "$existing" ]; then
             number=${existing%% *}; branch=${existing#* }
             git fetch --no-tags origin "$branch"
             git checkout -q -B "$branch" "origin/$branch"

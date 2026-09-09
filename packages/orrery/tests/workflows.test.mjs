@@ -66,6 +66,22 @@ describe(".github/workflows/back-merge.yml", () => {
     expect(yaml).toContain(".[0].number // empty");
     expect(yaml).not.toContain(".[0].number'");
   });
+  it("prints nothing for the existing-PR lookup when no back-merge is open", () => {
+    expect(yaml).toContain('select(. != null) | "\\(.number) \\(.headRefName)"');
+    expect(yaml).not.toContain('][0] | "\\(.number)');
+  });
+  it("the existing-PR lookup logic yields empty for no match and 'number branch' for a match", () => {
+    // Mirrors the yaml's jq expression
+    // `[.[] | select(.headRefName | startswith("back-merge/"))][0] | select(. != null) | "\(.number) \(.headRefName)"`
+    // in plain JavaScript, since gh's jq cannot run inside vitest. Update this
+    // alongside any change to that jq expression.
+    const pick = (prs) => {
+      const m = prs.filter((p) => p.headRefName.startsWith("back-merge/"))[0];
+      return m == null ? "" : `${m.number} ${m.headRefName}`;
+    };
+    expect(pick([])).toBe("");
+    expect(pick([{ number: 42, headRefName: "back-merge/abc1234" }])).toBe("42 back-merge/abc1234");
+  });
 });
 
 describe(".github/workflows/release.yml", () => {
