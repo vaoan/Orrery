@@ -95,10 +95,13 @@ Rows are the single shape every reconciler emits:
 ```javascript
 // { tool: "eslint", surface: "source" | "component" | "unit-test" | "e2e" | "script" | "package" | "*",
 //   key: "sonarjs/cognitive-complexity", a: <value|null>, b: <value|null>,
-//   chosen: <value> | { parameter: "tailwind.entryPoint" } | null,
+//   chosen: <value> | { $parameter: "tailwind.entryPoint" } | null,
 //   test: "agree" | "adopt" | "inert" | "strictest" | "consistency" | "benefit" | "parameter" | "residue",
 //   tier: "physics" | "class" | "local" | null, note: "" }
 ```
+
+`chosen` markers (`$union`, `$fromSide`, `$parameter`) are namespaced with a `$` prefix so an ordinary
+rule option happening to be named `union`, `fromSide`, or `parameter` can never be mistaken for one.
 
 ---
 
@@ -490,14 +493,14 @@ describe("stricter: exemptions", () => {
 describe("stricter: parameters", () => {
   it("marks project data as a parameter and keeps the stricter severity", () => {
     const r = stricter("better-tailwindcss/no-conflicting-classes", ["error"], ["error", { entryPoint: "apps/store/src/app/globals.css" }]);
-    expect(r.chosen).toEqual(["error", { entryPoint: { parameter: "tailwind.entryPoint" } }]);
+    expect(r.chosen).toEqual(["error", { entryPoint: { $parameter: "tailwind.entryPoint" } }]);
     expect(r.test).toBe("parameter");
   });
   it("splits no-restricted-imports into the universal pattern and alias parameters", () => {
     const a = ["error", { patterns: [{ group: ["../*"] }] }];
     const b = ["error", { patterns: [{ group: ["@ui/*"] }, { group: ["@shared/*"] }] }];
     const r = stricter("no-restricted-imports", a, b);
-    expect(r.chosen).toEqual(["error", { patterns: [{ group: ["../*"] }, { parameter: "imports.restrictedPatterns" }] }]);
+    expect(r.chosen).toEqual(["error", { patterns: [{ group: ["../*"] }, { $parameter: "imports.restrictedPatterns" }] }]);
     expect(r.test).toBe("parameter");
   });
 });
@@ -591,25 +594,25 @@ export const PRE_RULINGS = {
     chosen: ["error", {
       mode: "all",
       "should-validate-template": true,
-      "jsx-attributes": { include: { union: "jsx-attributes.include" } },
-      ignoreAttribute: { fromSide: "b" },
-      words: { exclude: { parameter: "i18n.excludedWords" } },
+      "jsx-attributes": { include: { $union: "jsx-attributes.include" } },
+      ignoreAttribute: { $fromSide: "b" },
+      words: { exclude: { $parameter: "i18n.excludedWords" } },
     }],
     test: "benefit",
     note: "mode all and the union of checked attributes are strictest; ignoreAttribute keeps libra's list because attribute names such as className are not user-facing text; excluded words are body data",
   },
   "sonarjs/no-duplicate-string": {
-    chosen: ["error", { threshold: 2, ignoreStrings: { union: "ignoreStrings", join: "|" } }],
+    chosen: ["error", { threshold: 2, ignoreStrings: { $union: "ignoreStrings", join: "|" } }],
     test: "benefit",
     note: "threshold 2 is strictest; ignoreStrings is the union because both sides exempt machine strings (MIME types, CSS variables, Tailwind classes), not code",
   },
   "boundaries/dependencies": {
-    chosen: ["error", { default: "disallow", rules: { parameter: "boundaries.allow", base: "a" } }],
+    chosen: ["error", { default: "disallow", rules: { $parameter: "boundaries.allow", base: "a" } }],
     test: "parameter",
     note: "aeleos's layered policy (domain/application/presentation) is the class base because it is stricter; each body's extra element types and their allowed edges are parameters",
   },
   "boundaries/elements": {
-    chosen: [{ parameter: "boundaries.elements", base: "class" }],
+    chosen: [{ $parameter: "boundaries.elements", base: "class" }],
     test: "parameter",
     note: "element paths are body data on top of the class's standard app/features/shared/proxy layout",
   },
@@ -660,10 +663,10 @@ function parameterise(rule, optionsA, optionsB) {
   if (!param) return null;
   if (rule === "no-restricted-imports") {
     const universal = [...(oa.patterns ?? []), ...(ob.patterns ?? [])].filter((p) => (p.group ?? []).some((g) => g.startsWith("../")));
-    return [{ patterns: [...universal, { parameter: PARAMETER_NAME.patterns }] }];
+    return [{ patterns: [...universal, { $parameter: PARAMETER_NAME.patterns }] }];
   }
   const merged = { ...oa, ...ob };
-  merged[param] = { parameter: PARAMETER_NAME[param] ?? param };
+  merged[param] = { $parameter: PARAMETER_NAME[param] ?? param };
   for (const k of Object.keys(merged)) if (k !== param && EXEMPTION_KEY.test(k)) delete merged[k];
   return [merged];
 }
@@ -901,21 +904,21 @@ export function reconcileEslint(eslintA, eslintB) {
   return rows.sort((x, y) => SURFACE_ORDER.indexOf(x.surface) - SURFACE_ORDER.indexOf(y.surface) || compare(x.key, y.key));
 }
 
-// Pre-rulings carry markers that need both sides' real values: { union: "key" } (the union of
-// that key's arrays from both sides; `join` turns it into one string), { fromSide: "a"|"b" }.
-// { parameter } markers survive: the bundle writer turns them into body config reads.
+// Pre-rulings carry markers that need both sides' real values: { $union: "key" } (the union of
+// that key's arrays from both sides; `join` turns it into one string), { $fromSide: "a"|"b" }.
+// { $parameter } markers survive: the bundle writer turns them into body config reads.
 export function resolveMarkers(value, optionsA, optionsB) {
   const at = (options, key) => key.split(".").reduce((o, k) => o?.[k], options[0] ?? {});
   const walk = (v, keyPath) => {
     if (Array.isArray(v)) return v.map((x, i) => walk(x, keyPath));
     if (v && typeof v === "object") {
-      if ("union" in v) {
-        const both = [].concat(at(optionsA, v.union) ?? [], at(optionsB, v.union) ?? []);
+      if ("$union" in v) {
+        const both = [].concat(at(optionsA, v.$union) ?? [], at(optionsB, v.$union) ?? []);
         const items = v.join ? both.flatMap((s) => String(s).split(v.join)) : both;
         const unique = [...new Set(items)].sort();
         return v.join ? unique.join(v.join) : unique;
       }
-      if ("fromSide" in v) return at(v.fromSide === "a" ? optionsA : optionsB, keyPath) ?? null;
+      if ("$fromSide" in v) return at(v.$fromSide === "a" ? optionsA : optionsB, keyPath) ?? null;
       return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, walk(x, keyPath ? `${keyPath}.${k}` : k)]));
     }
     return v;
@@ -994,7 +997,7 @@ describe("tsconfig", () => {
     expect(r["compilerOptions.jsx"]).toMatchObject({ test: "adopt", chosen: "react-jsx", tier: "class" });
     expect(r["compilerOptions.lib"]).toMatchObject({ test: "adopt", tier: "class" });
     expect(r["compilerOptions.ignoreDeprecations"]).toMatchObject({ test: "adopt", tier: "class" });
-    expect(r["compilerOptions.types"]).toMatchObject({ test: "parameter", chosen: { parameter: "tsconfig.types" } });
+    expect(r["compilerOptions.types"]).toMatchObject({ test: "parameter", chosen: { $parameter: "tsconfig.types" } });
     expect(r["include"]).toMatchObject({ test: "parameter" });
   });
   it("treats skipLibCheck false as stricter and allowJs false as stricter", () => {
@@ -1040,7 +1043,7 @@ describe("simple tools", () => {
     const r = by(reconcileCspell({ version: "0.2", language: "en,en-GB", allowCompoundWords: true, ignorePaths: ["node_modules"], words: ["aeleos"] }, { version: "0.2", language: "en,en-GB", allowCompoundWords: true, ignorePaths: ["node_modules", ".next"], words: ["libra"] }));
     expect(r.version).toMatchObject({ test: "agree", tier: "physics" });
     expect(r.ignorePaths).toMatchObject({ test: "benefit", chosen: [".next", "node_modules"], tier: "class" });
-    expect(r.words).toMatchObject({ test: "parameter", chosen: { parameter: "spelling" } });
+    expect(r.words).toMatchObject({ test: "parameter", chosen: { $parameter: "spelling" } });
   });
   it("lint-staged unions extensions per group and keeps the more specific secretlint invocation", () => {
     const r = by(reconcileLintStaged(
@@ -1053,7 +1056,7 @@ describe("simple tools", () => {
   it("hooks: pre-commit is lint-staged plus each body's own checks as a parameter", () => {
     const r = by(reconcileHooks({ preCommit: "pnpm lint-staged --concurrent false --no-stash --no-revert\npnpm check:docs --staged\npnpm check:agent-notes --staged\n" }, { preCommit: "pnpm lint-staged --concurrent false --no-stash --no-revert\npnpm sherif\npnpm syncpack:lint\n" }));
     expect(r["pre-commit.lint-staged"]).toMatchObject({ test: "agree", chosen: "pnpm lint-staged --concurrent false --no-stash --no-revert", tier: "physics" });
-    expect(r["pre-commit.checks"]).toMatchObject({ test: "parameter", chosen: { parameter: "hooks.preCommit" }, a: ["pnpm check:docs --staged", "pnpm check:agent-notes --staged"], b: ["pnpm sherif", "pnpm syncpack:lint"] });
+    expect(r["pre-commit.checks"]).toMatchObject({ test: "parameter", chosen: { $parameter: "hooks.preCommit" }, a: ["pnpm check:docs --staged", "pnpm check:agent-notes --staged"], b: ["pnpm sherif", "pnpm syncpack:lint"] });
   });
   it("ls-lint is generated from ADR 0001, not reconciled", () => {
     const [row] = reconcileLsLint();
@@ -1070,7 +1073,7 @@ describe("knip", () => {
     const b = { workspaces: { "apps/store": { entry: ["src/app/**/*.{ts,tsx}", "src/features/*/index.ts", "src/shared/infrastructure/i18n/request.ts", "tests/**/*.{ts,tsx}"] }, "apps/admin": { entry: ["src/app/**/*.{ts,tsx}", "src/features/*/index.ts", "src/shared/infrastructure/i18n/request.ts", "tests/**/*.{ts,tsx}"] } } };
     const r = by(reconcileKnip(a, b));
     expect(r["apps.entry"]).toMatchObject({ test: "benefit", chosen: ["src/app/**/*.{ts,tsx}", "src/features/*/index.ts", "tests/**/*.{ts,tsx}"], tier: "class" });
-    expect(r["apps.extraEntries"]).toMatchObject({ test: "parameter", chosen: { parameter: "knip.extraEntries" } });
+    expect(r["apps.extraEntries"]).toMatchObject({ test: "parameter", chosen: { $parameter: "knip.extraEntries" } });
     expect(r["apps.extraEntries"].b).toContain("src/shared/infrastructure/i18n/request.ts");
   });
 });
@@ -1081,8 +1084,8 @@ describe("syncpack", () => {
     const b = { versionGroups: [{ packages: ["**"], dependencies: ["api", "shared"], dependencyTypes: ["prod", "dev"], pinVersion: "workspace:*" }, { dependencies: ["react", "react-dom"], dependencyTypes: ["peer"], isIgnored: true }] };
     const r = by(reconcileSyncpack(a, b));
     expect(r["versionGroups.workspace"]).toMatchObject({ test: "agree", tier: "physics" });
-    expect(r["versionGroups.workspace.dependencies"]).toMatchObject({ test: "parameter", chosen: { parameter: "workspacePackages" } });
-    expect(r["versionGroups.floatingPeers.dependencies"]).toMatchObject({ test: "parameter", chosen: { parameter: "floatingPeers" } });
+    expect(r["versionGroups.workspace.dependencies"]).toMatchObject({ test: "parameter", chosen: { $parameter: "workspacePackages" } });
+    expect(r["versionGroups.floatingPeers.dependencies"]).toMatchObject({ test: "parameter", chosen: { $parameter: "floatingPeers" } });
   });
   it("leaves a third group as residue", () => {
     const extra = { versionGroups: [{ packages: ["**"], dependencies: ["x"], dependencyTypes: ["prod", "dev"], pinVersion: "workspace:*" }, { dependencies: ["y"], dependencyTypes: ["peer"], isIgnored: true }, { label: "odd", dependencies: ["z"] }] };
@@ -1146,7 +1149,7 @@ export function reconcileCspell(a, b) {
   for (const key of ["ignorePaths", "flagWords", "ignoreWords"]) {
     if (a[key] || b[key]) rows.push(row("cspell", key, { a: a[key] ?? null, b: b[key] ?? null, chosen: union(a[key] ?? [], b[key] ?? []), test: "benefit", tier: "class", note: "union of paths that are generated or vendored" }));
   }
-  rows.push(row("cspell", "words", { a: a.words ?? null, b: b.words ?? null, chosen: { parameter: "spelling" }, test: "parameter", tier: "class", note: "a project's vocabulary is its data" }));
+  rows.push(row("cspell", "words", { a: a.words ?? null, b: b.words ?? null, chosen: { $parameter: "spelling" }, test: "parameter", tier: "class", note: "a project's vocabulary is its data" }));
   return rows;
 }
 
@@ -1185,7 +1188,7 @@ export function reconcileHooks(a, b) {
   const lintStagedB = lb.find((l) => l.includes("lint-staged"));
   const rows = [];
   rows.push(liftKey("hooks", "pre-commit.lint-staged", lintStagedA, lintStagedB, "physics"));
-  rows.push(row("hooks", "pre-commit.checks", { a: la.filter((l) => l !== lintStagedA), b: lb.filter((l) => l !== lintStagedB), chosen: { parameter: "hooks.preCommit" }, test: "parameter", tier: "physics", note: "the hook runs lint-staged for everyone, then each body's own staged checks" }));
+  rows.push(row("hooks", "pre-commit.checks", { a: la.filter((l) => l !== lintStagedA), b: lb.filter((l) => l !== lintStagedB), chosen: { $parameter: "hooks.preCommit" }, test: "parameter", tier: "physics", note: "the hook runs lint-staged for everyone, then each body's own staged checks" }));
   return rows.filter(Boolean);
 }
 
@@ -1236,13 +1239,13 @@ export function reconcileTsconfig(a, b) {
       else if (same(norm(va), norm(vb))) rows.push(row("tsconfig", k, { ...base, chosen: norm(va), test: "agree", tier }));
       else rows.push(row("tsconfig", k, { ...base, chosen: null, test: "residue", tier, note: "differing enum with no strictness order" }));
     } else if (PARAMETER.includes(key)) {
-      rows.push(row("tsconfig", k, { ...base, chosen: { parameter: `tsconfig.${key}` }, test: "parameter", tier: "class", note: "per-app data" }));
+      rows.push(row("tsconfig", k, { ...base, chosen: { $parameter: `tsconfig.${key}` }, test: "parameter", tier: "class", note: "per-app data" }));
     } else {
       rows.push(row("tsconfig", k, { ...base, chosen: null, test: "residue", tier: "class", note: "compiler option not classified; add it to tsconfig.mjs" }));
     }
   }
   for (const key of PARAMETER_TOP) {
-    if (a?.[key] !== undefined || b?.[key] !== undefined) rows.push(row("tsconfig", key, { a: a?.[key] ?? null, b: b?.[key] ?? null, chosen: { parameter: `tsconfig.${key}` }, test: "parameter", tier: "class", note: "per-app data" }));
+    if (a?.[key] !== undefined || b?.[key] !== undefined) rows.push(row("tsconfig", key, { a: a?.[key] ?? null, b: b?.[key] ?? null, chosen: { $parameter: `tsconfig.${key}` }, test: "parameter", tier: "class", note: "per-app data" }));
   }
   return rows;
 }
@@ -1306,11 +1309,11 @@ export function reconcileKnip(a, b) {
       const flatA = union(...Object.values(extrasA));
       const flatB = union(...Object.values(extrasB));
       const extraName = { entry: "extraEntries", project: "extraProjects" }[field];
-      if (flatA.length || flatB.length) rows.push(row("knip", `${kind}.${extraName}`, { a: flatA, b: flatB, chosen: { parameter: `knip.${extraName}` }, test: "parameter", tier: "class", note: "workspace-specific entries are body data" }));
+      if (flatA.length || flatB.length) rows.push(row("knip", `${kind}.${extraName}`, { a: flatA, b: flatB, chosen: { $parameter: `knip.${extraName}` }, test: "parameter", tier: "class", note: "workspace-specific entries are body data" }));
     }
   }
   const root = (c) => c?.workspaces?.["."];
-  if (root(a) || root(b)) rows.push(row("knip", "root", { a: root(a) ?? null, b: root(b) ?? null, chosen: { parameter: "knip.root" }, test: "parameter", tier: "class", note: "the root workspace lists a body's own scripts and tests" }));
+  if (root(a) || root(b)) rows.push(row("knip", "root", { a: root(a) ?? null, b: root(b) ?? null, chosen: { $parameter: "knip.root" }, test: "parameter", tier: "class", note: "the root workspace lists a body's own scripts and tests" }));
   return rows;
 }
 ```
@@ -1332,11 +1335,11 @@ export function reconcileSyncpack(a, b) {
   const pa = find(ga, PEERS); const pb = find(gb, PEERS);
   if (wa && wb) {
     rows.push(row("syncpack", "versionGroups.workspace", { a: shape(wa), b: shape(wb), chosen: WORKSPACE, test: "agree", tier: "physics", note: "workspace packages are reached by protocol, never by version" }));
-    rows.push(row("syncpack", "versionGroups.workspace.dependencies", { a: wa.dependencies, b: wb.dependencies, chosen: { parameter: "workspacePackages" }, test: "parameter", tier: "physics" }));
+    rows.push(row("syncpack", "versionGroups.workspace.dependencies", { a: wa.dependencies, b: wb.dependencies, chosen: { $parameter: "workspacePackages" }, test: "parameter", tier: "physics" }));
   }
   if (pa && pb) {
     rows.push(row("syncpack", "versionGroups.floatingPeers", { a: shape(pa), b: shape(pb), chosen: PEERS, test: "agree", tier: "physics", note: "peer dependencies in packages may float wider than apps pin" }));
-    rows.push(row("syncpack", "versionGroups.floatingPeers.dependencies", { a: pa.dependencies, b: pb.dependencies, chosen: { parameter: "floatingPeers" }, test: "parameter", tier: "physics" }));
+    rows.push(row("syncpack", "versionGroups.floatingPeers.dependencies", { a: pa.dependencies, b: pb.dependencies, chosen: { $parameter: "floatingPeers" }, test: "parameter", tier: "physics" }));
   }
   for (const [side, groups] of [["a", ga], ["b", gb]]) {
     for (const g of groups) if (g !== wa && g !== wb && g !== pa && g !== pb) rows.push(row("syncpack", `versionGroups.${g.label ?? "unlabelled"}`, { [side]: g, chosen: null, test: "residue", tier: "physics", note: "a version group outside the two shared rules" }));
@@ -1805,8 +1808,8 @@ const row = (extra) => ({ tool: "eslint", surface: "source", key: "no-var", a: n
 
 describe("literal", () => {
   it("renders parameters as body reads and everything else as stable JSON", () => {
-    expect(literal(["error", { entryPoint: { parameter: "tailwind.entryPoint" } }])).toBe('["error", { "entryPoint": body.tailwind.entryPoint }]');
-    expect(literal(["error", { patterns: [{ group: ["../*"] }, { parameter: "imports.restrictedPatterns" }] }])).toBe('["error", { "patterns": [{ "group": ["../*"] }, ...body.imports.restrictedPatterns] }]');
+    expect(literal(["error", { entryPoint: { $parameter: "tailwind.entryPoint" } }])).toBe('["error", { "entryPoint": body.tailwind.entryPoint }]');
+    expect(literal(["error", { patterns: [{ group: ["../*"] }, { $parameter: "imports.restrictedPatterns" }] }])).toBe('["error", { "patterns": [{ "group": ["../*"] }, ...body.imports.restrictedPatterns] }]');
     expect(literal({ b: 1, a: [2] })).toBe('{ "a": [2], "b": 1 }');
   });
 });
@@ -1835,7 +1838,7 @@ describe("renderPhysicsEslint", () => {
 
 describe("renderClassEslint", () => {
   it("emits blocks per surface with base language options, physics rules, class rules, and local last", () => {
-    const rows = [row({ key: "no-var" }), row({ key: "react/jsx-key", tier: "class" }), row({ key: "better-tailwindcss/no-conflicting-classes", tier: "class", chosen: ["error", { entryPoint: { parameter: "tailwind.entryPoint" } }], test: "parameter" })];
+    const rows = [row({ key: "no-var" }), row({ key: "react/jsx-key", tier: "class" }), row({ key: "better-tailwindcss/no-conflicting-classes", tier: "class", chosen: ["error", { entryPoint: { $parameter: "tailwind.entryPoint" } }], test: "parameter" })];
     const src = renderClassEslint(rows, provenance);
     expect(src).toContain('import physics from "../../physics/eslint.mjs";');
     expect(src).toContain('import base from "./eslint.base.mjs";');
@@ -1852,7 +1855,7 @@ describe("renderTsconfig / renderStylelint / renderFunction", () => {
     const rows = [
       { tool: "tsconfig", surface: "*", key: "compilerOptions.strict", chosen: true, tier: "physics", test: "agree" },
       { tool: "tsconfig", surface: "*", key: "compilerOptions.jsx", chosen: "react-jsx", tier: "class", test: "adopt" },
-      { tool: "tsconfig", surface: "*", key: "compilerOptions.types", chosen: { parameter: "tsconfig.types" }, tier: "class", test: "parameter" },
+      { tool: "tsconfig", surface: "*", key: "compilerOptions.types", chosen: { $parameter: "tsconfig.types" }, tier: "class", test: "parameter" },
     ];
     const { physics, klass } = renderTsconfig(rows, provenance);
     expect(JSON.parse(physics)).toEqual({ $comment: expect.stringContaining("GENERATED"), compilerOptions: { strict: true } });
@@ -1866,7 +1869,7 @@ describe("renderTsconfig / renderStylelint / renderFunction", () => {
     expect(src).toContain('"no-duplicate-selectors": true');
   });
   it("renders a generic tool as a function with parameters spliced in", () => {
-    const rows = [{ tool: "cspell", surface: "*", key: "version", chosen: "0.2", tier: "physics", test: "agree" }, { tool: "cspell", surface: "*", key: "words", chosen: { parameter: "spelling" }, tier: "class", test: "parameter" }, { tool: "cspell", surface: "*", key: "ignorePaths", chosen: ["node_modules"], tier: "class", test: "benefit" }];
+    const rows = [{ tool: "cspell", surface: "*", key: "version", chosen: "0.2", tier: "physics", test: "agree" }, { tool: "cspell", surface: "*", key: "words", chosen: { $parameter: "spelling" }, tier: "class", test: "parameter" }, { tool: "cspell", surface: "*", key: "ignorePaths", chosen: ["node_modules"], tier: "class", test: "benefit" }];
     const src = renderFunction("cspell", rows, provenance);
     expect(src).toContain('export default function cspell(body = {}) {');
     expect(src).toContain('"version": "0.2"');
@@ -1956,9 +1959,9 @@ const header = (p, record) => `// GENERATED by orrery reconcile from ${p.a.name}
 
 // Stable source rendering: sorted keys, parameters as body reads, spreads for parameter arrays.
 export function literal(value, indent = "") {
-  if (value && typeof value === "object" && !Array.isArray(value) && "parameter" in value) return `body.${value.parameter}`;
+  if (value && typeof value === "object" && !Array.isArray(value) && "$parameter" in value) return `body.${value.$parameter}`;
   if (Array.isArray(value)) {
-    const parts = value.map((v) => (v && typeof v === "object" && !Array.isArray(v) && "parameter" in v ? `...body.${v.parameter}` : literal(v, indent)));
+    const parts = value.map((v) => (v && typeof v === "object" && !Array.isArray(v) && "$parameter" in v ? `...body.${v.$parameter}` : literal(v, indent)));
     return `[${parts.join(", ")}]`;
   }
   if (value && typeof value === "object") {
@@ -2067,7 +2070,7 @@ export function renderTsconfig(rows, provenance) {
   const physics = { $comment: jsonHeader(provenance, "0005-tsconfig.md"), compilerOptions: {} };
   const klass = { $comment: jsonHeader(provenance, "0005-tsconfig.md"), extends: "../../physics/tsconfig.json", compilerOptions: {} };
   for (const r of toolRows(rows, "tsconfig")) {
-    if (r.chosen && typeof r.chosen === "object" && "parameter" in r.chosen) continue; // per-app data stays in the app's tsconfig
+    if (r.chosen && typeof r.chosen === "object" && "$parameter" in r.chosen) continue; // per-app data stays in the app's tsconfig
     setPath(r.tier === "physics" ? physics : klass, r.key, r.chosen);
   }
   return { physics: JSON.stringify(physics, null, 2) + "\n", klass: JSON.stringify(klass, null, 2) + "\n" };
@@ -2351,8 +2354,8 @@ const SAMPLES = {
 const body = (await import(path.join(fixture, "orrery.config.mjs").replace(/^([A-Za-z]):/, "file:///$1:"))).default;
 
 const resolveParameters = (value) => {
-  if (Array.isArray(value)) return value.flatMap((v) => (v && typeof v === "object" && "parameter" in v ? (read(v.parameter) ?? []) : [resolveParameters(v)]));
-  if (value && typeof value === "object") return "parameter" in value ? read(value.parameter) : Object.fromEntries(Object.entries(value).map(([k, v]) => [k, resolveParameters(v)]));
+  if (Array.isArray(value)) return value.flatMap((v) => (v && typeof v === "object" && "$parameter" in v ? (read(v.$parameter) ?? []) : [resolveParameters(v)]));
+  if (value && typeof value === "object") return "$parameter" in value ? read(value.$parameter) : Object.fromEntries(Object.entries(value).map(([k, v]) => [k, resolveParameters(v)]));
   return value;
 };
 const read = (dotted) => dotted.split(".").reduce((o, k) => o?.[k], body);
@@ -2678,7 +2681,7 @@ describe("materialise", () => {
 describe("effectiveMismatches", () => {
   const rows = [
     { tool: "eslint", surface: "source", key: "no-var", chosen: ["error"], tier: "physics", test: "agree" },
-    { tool: "eslint", surface: "source", key: "better-tailwindcss/x", chosen: ["error", { entryPoint: { parameter: "tailwind.entryPoint" } }], tier: "class", test: "parameter" },
+    { tool: "eslint", surface: "source", key: "better-tailwindcss/x", chosen: ["error", { entryPoint: { $parameter: "tailwind.entryPoint" } }], tier: "class", test: "parameter" },
     { tool: "eslint", surface: "source", key: "unicorn/inert", chosen: null, tier: null, test: "inert" },
   ];
   const body = { tailwind: { entryPoint: "g.css" } };
@@ -2851,8 +2854,8 @@ const binOf = (pkg, rel) => path.join(path.dirname(requireFromOrrery.resolve(`${
 const norm = (v) => JSON.stringify([severityOf(v), ...optionsOf(v)]);
 const read = (body, dotted) => dotted.split(".").reduce((o, k) => o?.[k], body);
 const resolveParameters = (value, body) => {
-  if (Array.isArray(value)) return value.flatMap((v) => (v && typeof v === "object" && !Array.isArray(v) && "parameter" in v ? read(body, v.parameter) ?? [] : [resolveParameters(v, body)]));
-  if (value && typeof value === "object") return "parameter" in value ? read(body, value.parameter) : Object.fromEntries(Object.entries(value).map(([k, v]) => [k, resolveParameters(v, body)]));
+  if (Array.isArray(value)) return value.flatMap((v) => (v && typeof v === "object" && !Array.isArray(v) && "$parameter" in v ? read(body, v.$parameter) ?? [] : [resolveParameters(v, body)]));
+  if (value && typeof value === "object") return "$parameter" in value ? read(body, value.$parameter) : Object.fromEntries(Object.entries(value).map(([k, v]) => [k, resolveParameters(v, body)]));
   return value;
 };
 

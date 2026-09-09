@@ -56,14 +56,14 @@ describe("stricter: exemptions", () => {
 describe("stricter: parameters", () => {
   it("marks project data as a parameter and keeps the stricter severity", () => {
     const r = stricter("better-tailwindcss/no-conflicting-classes", ["error"], ["error", { entryPoint: "apps/store/src/app/globals.css" }]);
-    expect(r.chosen).toEqual(["error", { entryPoint: { parameter: "tailwind.entryPoint" } }]);
+    expect(r.chosen).toEqual(["error", { entryPoint: { $parameter: "tailwind.entryPoint" } }]);
     expect(r.test).toBe("parameter");
   });
   it("splits no-restricted-imports into the universal pattern and alias parameters", () => {
     const a = ["error", { patterns: [{ group: ["../*"] }] }];
     const b = ["error", { patterns: [{ group: ["@ui/*"] }, { group: ["@shared/*"] }] }];
     const r = stricter("no-restricted-imports", a, b);
-    expect(r.chosen).toEqual(["error", { patterns: [{ group: ["../*"] }, { parameter: "imports.restrictedPatterns" }] }]);
+    expect(r.chosen).toEqual(["error", { patterns: [{ group: ["../*"] }, { $parameter: "imports.restrictedPatterns" }] }]);
     expect(r.test).toBe("parameter");
   });
 });
