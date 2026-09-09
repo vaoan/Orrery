@@ -54,15 +54,19 @@ The tier is an **export path**, not a directory anyone copies from:
 ## Commands the CLI will expose
 
 ```
-orrery init --class next-supabase-mono   scaffold a new body, register it
-orrery check                             validate a body has not drifted
-orrery status                            report every body's pinned version
-orrery promote <path> --to physics       lift a local rule into the shared tier
-orrery diff-eslint <repoA> <repoB>       rule-by-rule effective-config diff
+orrery diff-eslint <repoA> <repoB>       rule-by-rule effective-config diff        (built, 2a)
+orrery repo apply <owner/name>           bring a repository to policy/repository.json (built, 2e)
+orrery ci <verb>                         branch-target, branch-name, pr-title, branch-sync, config-drift (built, 2e)
+orrery hook <commit-msg|pre-push>        the git hooks, pointed at from .husky/    (built, 2e)
+orrery release                           cut release/vYYYY.MM.DD.N from develop    (built, 2e)
+orrery init --class next-supabase-mono   scaffold a new body, register it         (2d)
+orrery check                             validate a body has not drifted          (2d)
+orrery status                            report every body's pinned version       (2d)
+orrery promote <path> --to physics       lift a local rule into the shared tier   (2d)
 ```
 
-`diff-eslint` is built **first**. It sizes the reconciliation work; without it,
-merging libra's 1,854-line and aeleos's 850-line eslint configs is guesswork.
+`diff-eslint` was built first. It sized the reconciliation: see
+`docs/decisions/0002-eslint-reconciliation-input.md`.
 
 ## Working here
 

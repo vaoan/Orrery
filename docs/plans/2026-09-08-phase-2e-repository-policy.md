@@ -2934,3 +2934,7 @@ Also update `CLAUDE.md`'s "Commands the CLI will expose" block to list `repo app
   lands on develop. A hotfix is big words. And: when execution corners the
   agent into an unplanned fix, it stops and asks; a needed fix means a
   misunderstanding or a plan conflict.
+- **2026-09-09:** Task 13's application to the five bodies is deferred to the
+  production cut-over that closes the whole programme, by the owner's
+  decision; until then the nightly observation runs in report mode and
+  Orrery is kept ready.
