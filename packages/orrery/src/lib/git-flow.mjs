@@ -5,6 +5,7 @@ const TYPE_ALT = TYPES.join("|");
 export const BRANCH_PATTERN = new RegExp(`^(${TYPE_ALT})\\/[a-z0-9]+(?:-[a-z0-9]+)*$`);
 export const RELEASE_PATTERN = /^release\/(v\d{4}\.\d{2}\.\d{2}\.\d+)$/;
 export const HOTFIX_PATTERN = /^hotfix\/[a-z0-9]+(?:-[a-z0-9]+)*$/;
+export const BACK_MERGE_PATTERN = /^back-merge\/[0-9a-f]{7,40}$/;
 // Subject: 1-80 chars, no leading whitespace, never containing another tag. Exactly one tag at the end.
 export const TITLE_PATTERN = new RegExp(`^(${TYPE_ALT})(?:\\(([a-z0-9-]+)\\))?: ((?=\\S)(?:(?!\\[GH-)[^\\r\\n]){1,80}) \\[GH-(\\d+)\\]$`);
 export const COMMIT_PATTERN = new RegExp(
@@ -15,6 +16,7 @@ const ok = () => ({ ok: true, reason: "" });
 const fail = (reason) => ({ ok: false, reason });
 
 export function branchType(name) {
+  if (BACK_MERGE_PATTERN.test(name)) return "back-merge";
   if (RELEASE_PATTERN.test(name)) return "release";
   if (HOTFIX_PATTERN.test(name)) return "hotfix";
   const match = BRANCH_PATTERN.exec(name);
@@ -24,7 +26,7 @@ export function branchType(name) {
 export function checkBranchName(name) {
   if (branchType(name)) return ok();
   return fail(
-    `branch "${name}" must be type/short-kebab-description with type one of ${TYPE_ALT}, hotfix/short-kebab-description, or release/vYYYY.MM.DD.N`
+    `branch "${name}" must be type/short-kebab-description with type one of ${TYPE_ALT}, hotfix/short-kebab-description, release/vYYYY.MM.DD.N, or back-merge/<sha> (automation only)`
   );
 }
 
@@ -35,10 +37,9 @@ export function checkBranchTarget(head, base) {
     return fail(`branch "${head}" cannot target main: only release/* and hotfix/* may target main`);
   }
   if (base === "develop") {
-    if (head === "main") return ok(); // the automatic back-merge
     if (type === "release") return fail(`release branch "${head}" must target main, not develop`);
     if (type === "hotfix") return fail(`hotfix branch "${head}" must target main, not develop`);
-    if (head === "develop" || type === null) return fail(`branch "${head}" cannot target develop`);
+    if (head === "main" || head === "develop" || type === null) return fail(`branch "${head}" cannot target develop`);
     return ok();
   }
   return ok(); // stacked branches and other bases are not governed
@@ -63,6 +64,8 @@ export async function checkPrTitle(title, headBranch, { issueExists }) {
     if (!title.startsWith(`${expected} `)) return fail(`release title must be ${expected} [GH-n]`);
   } else if (type === "hotfix") {
     if (parsed.type !== "fix") return fail(`title type ${parsed.type} does not match branch type hotfix (a hotfix carries a fix title)`);
+  } else if (type === "back-merge") {
+    if (parsed.type !== "chore") return fail(`title type ${parsed.type} does not match branch type back-merge (a back-merge carries a chore title)`);
   } else if (type && parsed.type !== type) {
     return fail(`title type ${parsed.type} does not match branch type ${type}`);
   }
@@ -76,6 +79,13 @@ export function checkCommitMessage(message) {
   const subject = message.split(/\r?\n/, 1)[0];
   if (COMMIT_PATTERN.test(subject)) return ok();
   return fail(`commit subject "${subject}" must be type(scope): subject with type one of ${TYPE_ALT}`);
+}
+
+// The back-merge (head back-merge/<sha> into base develop) is the PR that resolves the
+// freeze, so it cannot itself be subject to it. `back-merge/*` is automation-only, and a
+// fork branch of that shape gets no exemption: sameRepo must be verified by the caller.
+export function isBackMerge({ head, base, sameRepo }) {
+  return branchType(head) === "back-merge" && base === "develop" && sameRepo === true;
 }
 
 export async function checkBranchSync({ run }) {

@@ -52,6 +52,10 @@ The policy file is the record of the values; this ADR is the record of why.
   Phase 2d before any body enables the shared CI.
 - Tool-authored commits (`orrery release`'s bump) carry no agent trailers, by
   design.
+- Until the GitHub App exists, the bot login is the account that owns the bot
+  token, so the author check cannot distinguish the workflow from that
+  account at a keyboard; the App and a `refs/heads/back-merge/**` creation
+  ruleset are Phase 2d cut-over preconditions.
 
 ## Application log
 
@@ -75,3 +79,8 @@ The flow was exercised end to end on Orrery before any body: release v2026.09.09
   owner tightened the route to the two branch types above and added the rule
   that an agent cornered into an unplanned fix must stop and ask instead of
   taking the hotfix route on its own judgment.
+- **2026-09-09 (option B):** the back-merge goes through an intermediate
+  `back-merge/<sha>` branch so "Update branch" never merges develop into main
+  and strict stays on both branches; `back-merge/*` is automation-only,
+  enforced by an author check now and by a GitHub App identity plus a
+  creation ruleset in Phase 2d.

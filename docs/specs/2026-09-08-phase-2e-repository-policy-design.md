@@ -42,6 +42,7 @@ libra's flow is adopted everywhere, tightened.
 | `type/short-kebab-description` | one branch per change; deleted on merge | no |
 | `release/vYYYY.MM.DD.N` | cut from develop by `orrery release`; the only planned route into main | no |
 | `hotfix/short-kebab-description` | a hotfix; the only unplanned route into main; its title type is fix | no |
+| `back-merge/<main-sha7>` | cut from main by the back-merge workflow; the only branch that carries main into develop; created by automation only | no |
 
 `type` is one of `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `chore`,
 `revert`. The description is kebab-case. Any other name is rejected by the
@@ -54,7 +55,7 @@ pre-push hook and again by CI, so a bad name never reaches a pull request.
 | `type/*` | `develop` | squash | one commit per change; its message is the PR title; develop reads as a changelog |
 | `release/*` | `main` | merge commit | main keeps develop's squashed commits intact; a release is one mergeable point |
 | `hotfix/*` | `main` | squash | a hotfix is one commit; its title carries type fix |
-| `main` | `develop` | merge commit, automatic | the back-merge; a squash would create a different commit and main would stay "ahead" forever |
+| `back-merge/*` | `develop` | merge commit, automatic | the back-merge; a squash would leave main's commits outside develop's ancestry and `branch-sync` would never return to zero |
 
 Rebase merging is disabled everywhere: it rewrites history and defeats the
 freshness rule. A `type/*` branch targeting `main`, or a `release/*` or
@@ -67,8 +68,8 @@ cumbersome; quality outranks convenience.
 
 1. A `hotfix/*` or `release/*` PR merges into main. main now has commits
    develop lacks.
-2. A workflow opens the back-merge PR from main into develop immediately, with
-   automerge on. Green, it merges within minutes.
+2. A workflow cuts `back-merge/<sha>` from main and opens it into develop
+   immediately, with automerge on. Green, it merges within minutes.
 3. While main has any commit develop lacks, **every PR into develop fails the
    `branch-sync` check**. Nothing in the feature PR can fix it; the message
    names the open back-merge PR and says it must land first.
@@ -96,6 +97,8 @@ type(scope): subject [GH-n]
 - Exactly one `[GH-n]`. `GH-000` is the explicit marker for on-the-fly work
   with no issue. Any other number must resolve to an existing issue in that
   repository, checked by CI, so a typo cannot pass as a reference.
+- A `back-merge/*` branch carries a `chore` title and must be authored by the
+  bot login.
 
 Squash merges use the PR title as the commit message, which is what makes
 develop's history a changelog.
@@ -238,3 +241,8 @@ phase gives them the policy file and the commands they call.
   misunderstanding or a plan conflict.
 - Amended 2026-09-09: the bodies are not touched until the production
   cut-over; every phase leaves Orrery ready and proven read-only.
+- Amended 2026-09-09 (option B): the back-merge goes through an intermediate
+  `back-merge/<sha>` branch so "Update branch" never merges develop into main
+  and strict stays on both branches; `back-merge/*` is automation-only,
+  enforced by an author check now and by a GitHub App identity plus a
+  creation ruleset in Phase 2d.

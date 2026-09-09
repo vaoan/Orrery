@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   TYPES, branchType, checkBranchName, checkBranchTarget, parsePrTitle, checkPrTitle,
-  checkCommitMessage, checkBranchSync, checkConfigDrift,
+  checkCommitMessage, checkBranchSync, checkConfigDrift, isBackMerge,
 } from "../src/lib/git-flow.mjs";
 
 describe("branch names", () => {
@@ -18,6 +18,9 @@ describe("branch names", () => {
     ["develop", false],
     ["hotfix/checkout-total", true],
     ["hotfix/Checkout", false],
+    ["back-merge/abc1234", true],
+    ["back-merge/ABC1234", false],
+    ["back-merge/abc", false], // too short
   ])("%s -> %s", (name, ok) => {
     expect(checkBranchName(name).ok).toBe(ok);
   });
@@ -32,6 +35,7 @@ describe("branch names", () => {
     expect(branchType("release/v2026.09.08.1")).toBe("release");
     expect(branchType("hotfix/x")).toBe("hotfix");
     expect(branchType("main")).toBeNull();
+    expect(branchType("back-merge/abc1234")).toBe("back-merge");
   });
 });
 
@@ -43,7 +47,9 @@ describe("branch targets", () => {
     ["hotfix/x", "main", true],
     ["hotfix/x", "develop", false],
     ["release/v2026.09.08.1", "main", true],
-    ["main", "develop", true],                 // the back-merge
+    ["main", "develop", false],                 // main is no longer a PR head
+    ["back-merge/abc1234", "develop", true],
+    ["back-merge/abc1234", "main", false],
     ["feat/x", "main", false],
     ["docs/x", "main", false],
     ["release/v2026.09.08.1", "develop", false],
@@ -118,6 +124,17 @@ describe("PR titles", () => {
     expect(bad.ok).toBe(false);
     expect(bad.reason).toMatch(/must be chore\(release\): v2026\.09\.08\.1/);
   });
+
+  it("a back-merge branch must carry a chore title", async () => {
+    const r = await checkPrTitle("chore(back-merge): main into develop [GH-000]", "back-merge/abc1234", { issueExists: async () => true });
+    expect(r.ok).toBe(true);
+  });
+
+  it("rejects a back-merge branch with a non-chore title", async () => {
+    const r = await checkPrTitle("feat(x): y [GH-000]", "back-merge/abc1234", { issueExists: async () => true });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toMatch(/a back-merge carries a chore title/);
+  });
 });
 
 describe("commit messages", () => {
@@ -185,5 +202,27 @@ describe("config drift", () => {
     expect(r.ok).toBe(false);
     expect(r.stale).toEqual(["eslint.config.mjs"]);
     expect(r.reason).toMatch(/eslint\.config\.mjs.*differs from origin\/develop without this PR changing it/);
+  });
+});
+
+describe("isBackMerge", () => {
+  it("is true only for a same-repository back-merge branch into develop", () => {
+    expect(isBackMerge({ head: "back-merge/abc1234", base: "develop", sameRepo: true })).toBe(true);
+  });
+
+  it("is false when the repository differs (a fork)", () => {
+    expect(isBackMerge({ head: "back-merge/abc1234", base: "develop", sameRepo: false })).toBe(false);
+  });
+
+  it("is false when sameRepo is undefined", () => {
+    expect(isBackMerge({ head: "back-merge/abc1234", base: "develop" })).toBe(false);
+  });
+
+  it("is false for main as the head", () => {
+    expect(isBackMerge({ head: "main", base: "develop", sameRepo: true })).toBe(false);
+  });
+
+  it("is false when the base is not develop", () => {
+    expect(isBackMerge({ head: "back-merge/abc1234", base: "main", sameRepo: true })).toBe(false);
   });
 });

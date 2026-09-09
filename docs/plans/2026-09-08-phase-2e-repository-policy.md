@@ -2938,3 +2938,8 @@ Also update `CLAUDE.md`'s "Commands the CLI will expose" block to list `repo app
   production cut-over that closes the whole programme, by the owner's
   decision; until then the nightly observation runs in report mode and
   Orrery is kept ready.
+- **2026-09-09 (option B):** the back-merge goes through an intermediate
+  `back-merge/<sha>` branch so "Update branch" never merges develop into main
+  and strict stays on both branches; `back-merge/*` is automation-only,
+  enforced by an author check now and by a GitHub App identity plus a
+  creation ruleset in Phase 2d.
