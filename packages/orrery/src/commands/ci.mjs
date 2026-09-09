@@ -9,6 +9,10 @@ import {
 const VERBS = ["branch-target", "branch-name", "pr-title", "branch-sync", "config-drift"];
 const USAGE = `usage: orrery ci <${VERBS.join("|")}> [--head <branch>] [--base <branch>] [--title <text>] [--repo <owner/name>] [--head-sha <sha>] [--files a,b,c]`;
 
+// Design spec step 2: the back-merge (head main into base develop) is the PR that
+// resolves the freeze, so it cannot itself be subject to it.
+const isBackMerge = (ctx) => ctx.head === "main" && ctx.base === "develop";
+
 export const DEFAULT_DRIFT_FILES = [
   "eslint.config.mjs", "eslint.local.mjs", "tsconfig.json", "tsconfig.base.json",
   "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "orrery.config.mjs",
@@ -98,6 +102,10 @@ export default async function ci(argv, deps = {}) {
     switch (verb) {
       case "branch-name":
         if (!need("head")) return 2;
+        if (isBackMerge(ctx)) {
+          console.log("branch-name: ok (back-merge from main into develop)");
+          return 0;
+        }
         result = checkBranchName(ctx.head);
         break;
       case "branch-target":
@@ -115,6 +123,10 @@ export default async function ci(argv, deps = {}) {
         break;
       }
       case "branch-sync":
+        if (isBackMerge(ctx)) {
+          console.log("branch-sync: ok (this is the back-merge that closes the gap)");
+          return 0;
+        }
         result = await checkBranchSync({ run });
         break;
       case "config-drift": {
