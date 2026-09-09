@@ -31,12 +31,14 @@ export function reconcileStylelint(a, b) {
     // On against an explicit off: on wins outright.
     if (sa === "off" && sb === "on") { rows.push(row("stylelint", k, { ...base, chosen: vb, test: "strictest", note: "on over off" })); continue; }
     if (sb === "off" && sa === "on") { rows.push(row("stylelint", k, { ...base, chosen: va, test: "strictest", note: "on over off" })); continue; }
+    // Both off, just spelled differently (null versus false): they agree on the outcome.
+    if (sa === "off" && sb === "off") { rows.push(row("stylelint", k, { ...base, chosen: null, test: "agree", note: "both sides disable the rule" })); continue; }
     if (key === "at-rule-no-unknown" && Array.isArray(va) && Array.isArray(vb)) {
       const merged = [true, { ...(va[1] ?? {}), ...(vb[1] ?? {}), ignoreAtRules: union(va[1]?.ignoreAtRules ?? [], vb[1]?.ignoreAtRules ?? []) }];
       rows.push(row("stylelint", k, { ...base, chosen: merged, test: "benefit", note: "union of Tailwind at-rules: every one listed exists in the framework and must parse" }));
       continue;
     }
-    rows.push(row("stylelint", k, { ...base, chosen: null, test: "residue", note: (va === null || vb === null) ? "explicit off versus a non-boolean value" : "two different non-null values" }));
+    rows.push(row("stylelint", k, { ...base, chosen: null, test: "residue", note: "two different non-null values" }));
   }
   return rows;
 }

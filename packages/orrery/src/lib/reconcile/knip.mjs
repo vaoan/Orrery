@@ -1,6 +1,19 @@
 import { row, union } from "./simple.mjs";
 
-const normaliseEntry = (e) => e.replace("**/*.tsx", "**/*.{ts,tsx}").replace("**/*.test.{ts,tsx}", "**/*.{ts,tsx}").replace("**/*.test.ts", "**/*.{ts,tsx}");
+// Every test-file glob form, whichever extension spelling a donor wrote, folds to the one
+// shared pattern. Each match is end-anchored ($) so it only fires on the glob's actual
+// suffix — a plain string search would treat "**/*.test.ts" as a substring of
+// "**/*.test.tsx" and truncate it into a corrupted glob ("**/*.{ts,tsx}x").
+// The App Router entry convention ("…/app/**/*.tsx") is the one non-test form real donors
+// disagree on spelling (one writes it without .ts); it folds too, anchored the same way so
+// an unrelated "**/*.tsx" glob elsewhere in a body's own entries is left alone.
+export const normaliseEntry = (e) =>
+  e
+    .replace(/\*\*\/\*\.test\.ts$/, "**/*.{ts,tsx}")
+    .replace(/\*\*\/\*\.test\.tsx$/, "**/*.{ts,tsx}")
+    .replace(/\*\*\/\*\.test\.\{ts,tsx\}$/, "**/*.{ts,tsx}")
+    .replace(/\*\*\/\*\.\{test,spec\}\.\{ts,tsx\}$/, "**/*.{ts,tsx}")
+    .replace(/app\/\*\*\/\*\.tsx$/, "app/**/*.{ts,tsx}");
 const appWorkspaces = (config) => Object.entries(config?.workspaces ?? {}).filter(([name]) => name.startsWith("apps/"));
 const packageWorkspaces = (config) => Object.entries(config?.workspaces ?? {}).filter(([name]) => name.startsWith("packages/"));
 

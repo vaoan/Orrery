@@ -984,7 +984,7 @@ import { describe, it, expect } from "vitest";
 import { reconcileTsconfig } from "../src/lib/reconcile/tsconfig.mjs";
 import { reconcileStylelint } from "../src/lib/reconcile/stylelint.mjs";
 import { reconcilePrettier, reconcileSecretlint, reconcileJscpd, reconcileCspell, reconcileLintStaged, reconcileHooks, reconcileLsLint } from "../src/lib/reconcile/simple.mjs";
-import { reconcileKnip } from "../src/lib/reconcile/knip.mjs";
+import { reconcileKnip, normaliseEntry } from "../src/lib/reconcile/knip.mjs";
 import { reconcileSyncpack } from "../src/lib/reconcile/syncpack.mjs";
 
 const by = (rows) => Object.fromEntries(rows.map((r) => [r.key, r]));
@@ -1049,6 +1049,10 @@ describe("stylelint", () => {
     const rows = reconcileStylelint(aeleosConfig, libraConfig);
     expect(rows.some((r) => r.test === "residue")).toBe(false);
   });
+  it("settles both sides disabling a rule, however they spelled it, as agreement", () => {
+    const r = by(reconcileStylelint({ rules: { x: null } }, { rules: { x: false } }));
+    expect(r["rules.x"]).toMatchObject({ test: "agree", chosen: null });
+  });
 });
 
 describe("simple tools", () => {
@@ -1105,6 +1109,12 @@ describe("knip", () => {
     const b = { workspaces: { "packages/shared": { entry: ["tests/**/*.{ts,tsx}"] } } };
     const r = by(reconcileKnip(a, b));
     expect(r["packages.entry"]).toMatchObject({ chosen: ["tests/**/*.{ts,tsx}"] });
+  });
+  it("folds every test-file glob form to the shared pattern without corrupting .tsx", () => {
+    expect(normaliseEntry("tests/**/*.test.tsx")).toBe("tests/**/*.{ts,tsx}");
+    expect(normaliseEntry("tests/**/*.test.ts")).toBe("tests/**/*.{ts,tsx}");
+    expect(normaliseEntry("tests/**/*.test.{ts,tsx}")).toBe("tests/**/*.{ts,tsx}");
+    expect(normaliseEntry("src/**/*.tsx")).toBe("src/**/*.tsx");
   });
 });
 
@@ -1316,12 +1326,14 @@ export function reconcileStylelint(a, b) {
     // On against an explicit off: on wins outright.
     if (sa === "off" && sb === "on") { rows.push(row("stylelint", k, { ...base, chosen: vb, test: "strictest", note: "on over off" })); continue; }
     if (sb === "off" && sa === "on") { rows.push(row("stylelint", k, { ...base, chosen: va, test: "strictest", note: "on over off" })); continue; }
+    // Both off, just spelled differently (null versus false): they agree on the outcome.
+    if (sa === "off" && sb === "off") { rows.push(row("stylelint", k, { ...base, chosen: null, test: "agree", note: "both sides disable the rule" })); continue; }
     if (key === "at-rule-no-unknown" && Array.isArray(va) && Array.isArray(vb)) {
       const merged = [true, { ...(va[1] ?? {}), ...(vb[1] ?? {}), ignoreAtRules: union(va[1]?.ignoreAtRules ?? [], vb[1]?.ignoreAtRules ?? []) }];
       rows.push(row("stylelint", k, { ...base, chosen: merged, test: "benefit", note: "union of Tailwind at-rules: every one listed exists in the framework and must parse" }));
       continue;
     }
-    rows.push(row("stylelint", k, { ...base, chosen: null, test: "residue", note: (va === null || vb === null) ? "explicit off versus a non-boolean value" : "two different non-null values" }));
+    rows.push(row("stylelint", k, { ...base, chosen: null, test: "residue", note: "two different non-null values" }));
   }
   return rows;
 }
@@ -1331,7 +1343,20 @@ export function reconcileStylelint(a, b) {
 // packages/orrery/src/lib/reconcile/knip.mjs
 import { row, union } from "./simple.mjs";
 
-const normaliseEntry = (e) => e.replace("**/*.tsx", "**/*.{ts,tsx}").replace("**/*.test.{ts,tsx}", "**/*.{ts,tsx}").replace("**/*.test.ts", "**/*.{ts,tsx}");
+// Every test-file glob form, whichever extension spelling a donor wrote, folds to the one
+// shared pattern. Each match is end-anchored ($) so it only fires on the glob's actual
+// suffix — a plain string search would treat "**/*.test.ts" as a substring of
+// "**/*.test.tsx" and truncate it into a corrupted glob ("**/*.{ts,tsx}x").
+// The App Router entry convention ("…/app/**/*.tsx") is the one non-test form real donors
+// disagree on spelling (one writes it without .ts); it folds too, anchored the same way so
+// an unrelated "**/*.tsx" glob elsewhere in a body's own entries is left alone.
+export const normaliseEntry = (e) =>
+  e
+    .replace(/\*\*\/\*\.test\.ts$/, "**/*.{ts,tsx}")
+    .replace(/\*\*\/\*\.test\.tsx$/, "**/*.{ts,tsx}")
+    .replace(/\*\*\/\*\.test\.\{ts,tsx\}$/, "**/*.{ts,tsx}")
+    .replace(/\*\*\/\*\.\{test,spec\}\.\{ts,tsx\}$/, "**/*.{ts,tsx}")
+    .replace(/app\/\*\*\/\*\.tsx$/, "app/**/*.{ts,tsx}");
 const appWorkspaces = (config) => Object.entries(config?.workspaces ?? {}).filter(([name]) => name.startsWith("apps/"));
 const packageWorkspaces = (config) => Object.entries(config?.workspaces ?? {}).filter(([name]) => name.startsWith("packages/"));
 
