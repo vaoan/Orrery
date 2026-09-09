@@ -41,7 +41,7 @@ libra's flow is adopted everywhere, tightened.
 | `develop` | the default branch; where all work lands | yes |
 | `type/short-kebab-description` | one branch per change; deleted on merge | no |
 | `release/vYYYY.MM.DD.N` | cut from develop by `orrery release`; the only planned route into main | no |
-| `fix/short-kebab-description` | a hotfix; the only unplanned route into main | no |
+| `hotfix/short-kebab-description` | a hotfix; the only unplanned route into main; its title type is fix | no |
 
 `type` is one of `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `chore`,
 `revert`. The description is kebab-case. Any other name is rejected by the
@@ -53,20 +53,20 @@ pre-push hook and again by CI, so a bad name never reaches a pull request.
 |---|---|---|---|
 | `type/*` | `develop` | squash | one commit per change; its message is the PR title; develop reads as a changelog |
 | `release/*` | `main` | merge commit | main keeps develop's squashed commits intact; a release is one mergeable point |
-| `fix/*` | `main` | squash | a hotfix is one commit |
+| `hotfix/*` | `main` | squash | a hotfix is one commit; its title carries type fix |
 | `main` | `develop` | merge commit, automatic | the back-merge; a squash would create a different commit and main would stay "ahead" forever |
 
 Rebase merging is disabled everywhere: it rewrites history and defeats the
-freshness rule. A `type/*` branch targeting `main`, or a `release/*` branch
-targeting `develop`, fails the Branch Target check.
+freshness rule. A `type/*` branch targeting `main`, or a `release/*` or
+`hotfix/*` branch targeting `develop`, fails the Branch Target check.
 
 ### The back-merge and the develop freeze
 
 This is the sequence the flow exists to guarantee. It is deliberately
 cumbersome; quality outranks convenience.
 
-1. A `fix/*` or `release/*` PR merges into main. main now has commits develop
-   lacks.
+1. A `hotfix/*` or `release/*` PR merges into main. main now has commits
+   develop lacks.
 2. A workflow opens the back-merge PR from main into develop immediately, with
    automerge on. Green, it merges within minutes.
 3. While main has any commit develop lacks, **every PR into develop fails the
@@ -90,7 +90,8 @@ type(scope): subject [GH-n]
 ```
 
 - `type` is the same set as branch types and **must equal the branch's type**.
-  A `fix/*` branch with a `feat:` title is rejected.
+  A `fix/*` branch with a `feat:` title is rejected; a `hotfix/*` branch
+  carries a `fix` title.
 - `subject` is at most 80 characters.
 - Exactly one `[GH-n]`. `GH-000` is the explicit marker for on-the-fly work
   with no issue. Any other number must resolve to an existing issue in that
@@ -230,3 +231,7 @@ phase gives them the policy file and the commands they call.
 - Signatures not required.
 - Releases cut by a command, never by a schedule.
 - 2e runs before 2b and is applied to Orrery first.
+- Amended 2026-09-09: main only receives `release/*` and `hotfix/*`; `fix/*`
+  lands on develop. A hotfix is big words. And: when execution corners the
+  agent into an unplanned fix, it stops and asks; a needed fix means a
+  misunderstanding or a plan conflict.

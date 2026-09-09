@@ -16,6 +16,8 @@ describe("branch names", () => {
     ["feature/x", false],
     ["main", false],
     ["develop", false],
+    ["hotfix/checkout-total", true],
+    ["hotfix/Checkout", false],
   ])("%s -> %s", (name, ok) => {
     expect(checkBranchName(name).ok).toBe(ok);
   });
@@ -28,6 +30,7 @@ describe("branch names", () => {
   it("extracts the type", () => {
     expect(branchType("fix/a")).toBe("fix");
     expect(branchType("release/v2026.09.08.1")).toBe("release");
+    expect(branchType("hotfix/x")).toBe("hotfix");
     expect(branchType("main")).toBeNull();
   });
 });
@@ -35,8 +38,10 @@ describe("branch names", () => {
 describe("branch targets", () => {
   it.each([
     ["feat/x", "develop", true],
-    ["fix/x", "main", true],
+    ["fix/x", "main", false],
     ["fix/x", "develop", true],
+    ["hotfix/x", "main", true],
+    ["hotfix/x", "develop", false],
     ["release/v2026.09.08.1", "main", true],
     ["main", "develop", true],                 // the back-merge
     ["feat/x", "main", false],
@@ -48,7 +53,7 @@ describe("branch targets", () => {
   });
 
   it("explains which branches may target main", () => {
-    expect(checkBranchTarget("feat/x", "main").reason).toMatch(/only release\/\* and fix\/\* may target main/);
+    expect(checkBranchTarget("feat/x", "main").reason).toMatch(/only release\/\* and hotfix\/\* may target main/);
   });
 });
 
@@ -93,6 +98,17 @@ describe("PR titles", () => {
     expect(r.ok).toBe(false);
     expect(r.reason).toMatch(/GH-999 does not exist/);
     expect((await checkPrTitle("fix(x): y [GH-12]", "fix/x", { issueExists: async (n) => n === 12 })).ok).toBe(true);
+  });
+
+  it("a hotfix branch must carry a fix title", async () => {
+    const r = await checkPrTitle("fix(cart): total [GH-000]", "hotfix/checkout-total", { issueExists: async () => true });
+    expect(r.ok).toBe(true);
+  });
+
+  it("rejects a hotfix branch with a non-fix title", async () => {
+    const r = await checkPrTitle("feat(cart): total [GH-000]", "hotfix/checkout-total", { issueExists: async () => true });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toMatch(/a hotfix carries a fix title/);
   });
 
   it("release branches must carry chore(release) titles with the version", async () => {

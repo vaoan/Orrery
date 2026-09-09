@@ -2927,3 +2927,10 @@ Also update `CLAUDE.md`'s "Commands the CLI will expose" block to list `repo app
 4. Two tokens rather than one: an admin token that only Orrery's nightly job holds, and a bot token for PR-opening workflows, because a fine-grained token cannot open PRs that trigger checks without pull-request write, and the admin token should not travel.
 5. The nightly observation dry-runs until `ORRERY_APPLY_POLICY=apply` is set in Task 13, so nothing touches a body before the confirmation the spec requires.
 6. `pre-push` runs the body's `test` script rather than libra's scoped selection, which is libra-local; the docker health check is not carried into the shared hook.
+
+## Amendments
+
+- **2026-09-09:** main only receives `release/*` and `hotfix/*`; `fix/*`
+  lands on develop. A hotfix is big words. And: when execution corners the
+  agent into an unplanned fix, it stops and asks; a needed fix means a
+  misunderstanding or a plan conflict.

@@ -4,6 +4,7 @@ const TYPE_ALT = TYPES.join("|");
 
 export const BRANCH_PATTERN = new RegExp(`^(${TYPE_ALT})\\/[a-z0-9]+(?:-[a-z0-9]+)*$`);
 export const RELEASE_PATTERN = /^release\/(v\d{4}\.\d{2}\.\d{2}\.\d+)$/;
+export const HOTFIX_PATTERN = /^hotfix\/[a-z0-9]+(?:-[a-z0-9]+)*$/;
 // Subject: 1-80 chars, no leading whitespace, never containing another tag. Exactly one tag at the end.
 export const TITLE_PATTERN = new RegExp(`^(${TYPE_ALT})(?:\\(([a-z0-9-]+)\\))?: ((?=\\S)(?:(?!\\[GH-)[^\\r\\n]){1,80}) \\[GH-(\\d+)\\]$`);
 export const COMMIT_PATTERN = new RegExp(
@@ -15,6 +16,7 @@ const fail = (reason) => ({ ok: false, reason });
 
 export function branchType(name) {
   if (RELEASE_PATTERN.test(name)) return "release";
+  if (HOTFIX_PATTERN.test(name)) return "hotfix";
   const match = BRANCH_PATTERN.exec(name);
   return match ? match[1] : null;
 }
@@ -22,19 +24,20 @@ export function branchType(name) {
 export function checkBranchName(name) {
   if (branchType(name)) return ok();
   return fail(
-    `branch "${name}" must be type/short-kebab-description with type one of ${TYPE_ALT}, or release/vYYYY.MM.DD.N`
+    `branch "${name}" must be type/short-kebab-description with type one of ${TYPE_ALT}, hotfix/short-kebab-description, or release/vYYYY.MM.DD.N`
   );
 }
 
 export function checkBranchTarget(head, base) {
   const type = branchType(head);
   if (base === "main") {
-    if (type === "release" || type === "fix") return ok();
-    return fail(`branch "${head}" cannot target main: only release/* and fix/* may target main`);
+    if (type === "release" || type === "hotfix") return ok();
+    return fail(`branch "${head}" cannot target main: only release/* and hotfix/* may target main`);
   }
   if (base === "develop") {
     if (head === "main") return ok(); // the automatic back-merge
     if (type === "release") return fail(`release branch "${head}" must target main, not develop`);
+    if (type === "hotfix") return fail(`hotfix branch "${head}" must target main, not develop`);
     if (head === "develop" || type === null) return fail(`branch "${head}" cannot target develop`);
     return ok();
   }
@@ -58,6 +61,8 @@ export async function checkPrTitle(title, headBranch, { issueExists }) {
     const version = RELEASE_PATTERN.exec(headBranch)[1];
     const expected = `chore(release): ${version}`;
     if (!title.startsWith(`${expected} `)) return fail(`release title must be ${expected} [GH-n]`);
+  } else if (type === "hotfix") {
+    if (parsed.type !== "fix") return fail(`title type ${parsed.type} does not match branch type hotfix (a hotfix carries a fix title)`);
   } else if (type && parsed.type !== type) {
     return fail(`title type ${parsed.type} does not match branch type ${type}`);
   }

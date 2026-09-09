@@ -11,7 +11,7 @@ repository brought to policy, on 2026-09-08, before any body.
 | Setting | Value | Deciding test |
 |---|---|---|
 | default branch | develop | consistency: libra, Puck, Janus already |
-| routes into main | release/*, fix/* only | strictest: predictable release line |
+| routes into main | release/*, hotfix/* only | strictest: a hotfix is big words |
 | feature merge | squash | consistency: every repo already allows it |
 | release merge | merge commit | benefit: main keeps develop's commits intact |
 | back-merge | merge commit, automatic | strictest: a squash would leave main "ahead" forever |
@@ -37,3 +37,13 @@ The policy file is the record of the values; this ADR is the record of why.
   Task 4 hit this against the fixture repository, which was made public for
   that reason. A future private body needs GitHub Pro, or to be made public,
   before `orrery repo apply` can protect it.
+
+## Amendments
+
+- **2026-09-09:** main now receives only `release/*` and `hotfix/*`; `fix/*`
+  moved to develop alongside `feat/*`, and a `hotfix/*` PR's title carries
+  type `fix`. Reason: the first real release exposed that the back-merge PR
+  failed two checks, and the agent hot-fixed through main without asking. The
+  owner tightened the route to the two branch types above and added the rule
+  that an agent cornered into an unplanned fix must stop and ask instead of
+  taking the hotfix route on its own judgment.

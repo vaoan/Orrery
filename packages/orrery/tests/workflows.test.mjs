@@ -77,7 +77,7 @@ describe(".github/pull_request_template.md", () => {
   it("states the routes the checks enforce", () => {
     const md = read(".github/pull_request_template.md");
     expect(md).toContain("`type/*` → `develop`");
-    expect(md).toContain("`fix/*` → `main`");
+    expect(md).toContain("`hotfix/*` → `main`");
     expect(md).toContain("`release/*` → `main`");
     expect(md).toContain("[GH-000]");
   });
