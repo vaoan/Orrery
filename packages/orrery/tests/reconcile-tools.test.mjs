@@ -5,7 +5,7 @@ import { describe, it, expect } from "vitest";
 import { reconcileTsconfig } from "../src/lib/reconcile/tsconfig.mjs";
 import { reconcileStylelint } from "../src/lib/reconcile/stylelint.mjs";
 import { reconcilePrettier, reconcileSecretlint, reconcileJscpd, reconcileCspell, reconcileLintStaged, reconcileHooks, reconcileLsLint } from "../src/lib/reconcile/simple.mjs";
-import { reconcileKnip } from "../src/lib/reconcile/knip.mjs";
+import { reconcileKnip, normaliseEntry } from "../src/lib/reconcile/knip.mjs";
 import { reconcileSyncpack } from "../src/lib/reconcile/syncpack.mjs";
 
 const by = (rows) => Object.fromEntries(rows.map((r) => [r.key, r]));
@@ -70,6 +70,10 @@ describe("stylelint", () => {
     const rows = reconcileStylelint(aeleosConfig, libraConfig);
     expect(rows.some((r) => r.test === "residue")).toBe(false);
   });
+  it("settles both sides disabling a rule, however they spelled it, as agreement", () => {
+    const r = by(reconcileStylelint({ rules: { x: null } }, { rules: { x: false } }));
+    expect(r["rules.x"]).toMatchObject({ test: "agree", chosen: null });
+  });
 });
 
 describe("simple tools", () => {
@@ -126,6 +130,12 @@ describe("knip", () => {
     const b = { workspaces: { "packages/shared": { entry: ["tests/**/*.{ts,tsx}"] } } };
     const r = by(reconcileKnip(a, b));
     expect(r["packages.entry"]).toMatchObject({ chosen: ["tests/**/*.{ts,tsx}"] });
+  });
+  it("folds every test-file glob form to the shared pattern without corrupting .tsx", () => {
+    expect(normaliseEntry("tests/**/*.test.tsx")).toBe("tests/**/*.{ts,tsx}");
+    expect(normaliseEntry("tests/**/*.test.ts")).toBe("tests/**/*.{ts,tsx}");
+    expect(normaliseEntry("tests/**/*.test.{ts,tsx}")).toBe("tests/**/*.{ts,tsx}");
+    expect(normaliseEntry("src/**/*.tsx")).toBe("src/**/*.tsx");
   });
 });
 
