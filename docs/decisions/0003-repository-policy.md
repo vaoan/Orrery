@@ -38,6 +38,19 @@ The policy file is the record of the values; this ADR is the record of why.
   that reason. A future private body needs GitHub Pro, or to be made public,
   before `orrery repo apply` can protect it.
 
+## Application log
+
+| Body | Date | Status | Detail |
+|---|---|---|---|
+| Orrery | 2026-09-08 | applied | develop created from main, settings, protection, 11 labels; required checks added after PR #2 merged: 5 on main, 6 on develop |
+| aeleos | 2026-09-09 | deferred | 16 operations (dry run 2026-09-09; apply deferred to the production cut-over by the owner's decision; nightly observe stays in report mode) |
+| libra | 2026-09-09 | deferred | 14 operations (dry run 2026-09-09; apply deferred to the production cut-over by the owner's decision; nightly observe stays in report mode) |
+| Puck | 2026-09-09 | deferred | 14 operations (dry run 2026-09-09; apply deferred to the production cut-over by the owner's decision; nightly observe stays in report mode) |
+| eclipse-con | 2026-09-09 | deferred | 16 operations (dry run 2026-09-09; apply deferred to the production cut-over by the owner's decision; nightly observe stays in report mode) |
+| Janus | 2026-09-09 | deferred | 14 operations (dry run 2026-09-09; apply deferred to the production cut-over by the owner's decision; nightly observe stays in report mode) |
+
+The flow was exercised end to end on Orrery before any body: release v2026.09.09.1 (PR #7, merge commit), hotfix through main (PR #9), automatic back-merge (PR #8).
+
 ## Amendments
 
 - **2026-09-09:** main now receives only `release/*` and `hotfix/*`; `fix/*`

@@ -208,9 +208,9 @@ in Orrery and are referenced the same way.
 4. The `commit-msg` and `pre-push` hooks in the bundle.
 5. `orrery release`.
 6. `repo apply` wired into the nightly observation.
-7. **Apply to the five bodies.** This step changes how their contributors
-   work the next morning, so it is presented and confirmed before it runs,
-   even though the plan is approved.
+7. **Apply to the five bodies.** Deferred 2026-09-09 by the owner to the
+   production cut-over that closes the whole programme; until then the
+   nightly observation runs in report mode and Orrery is kept ready.
 
 **Done when** Orrery runs on the flow with every check required, `repo apply`
 is idempotent against every registered repository, and a fixture body born
@@ -235,3 +235,5 @@ phase gives them the policy file and the commands they call.
   lands on develop. A hotfix is big words. And: when execution corners the
   agent into an unplanned fix, it stops and asks; a needed fix means a
   misunderstanding or a plan conflict.
+- Amended 2026-09-09: the bodies are not touched until the production
+  cut-over; every phase leaves Orrery ready and proven read-only.

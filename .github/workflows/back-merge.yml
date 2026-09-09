@@ -1,5 +1,5 @@
 # Opens the merge-commit back-merge from main into develop after every push to main
-# (a release or a fix landing). Uses a bot token: PRs opened with GITHUB_TOKEN do not
+# (a release or a hotfix landing). Uses a bot token: PRs opened with GITHUB_TOKEN do not
 # trigger pull_request workflows, so the required checks would never run.
 name: back-merge
 
