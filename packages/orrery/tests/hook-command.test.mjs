@@ -18,8 +18,19 @@ describe("orrery hook", () => {
     e.mockRestore();
   });
 
-  it("commit-msg accepts a conventional subject and ignores comment lines", async () => {
-    expect(await hook(["commit-msg", msgFile("# comment\nfeat(x): y\n\nbody\n")])).toBe(0);
+  it("commit-msg accepts a conventional subject and strips git's trailing comment block", async () => {
+    expect(await hook(["commit-msg", msgFile("feat(x): y\n\nbody\n# Please enter the commit message for your changes.\n# Lines starting with '#' will be ignored.\n")])).toBe(0);
+  });
+
+  it("commit-msg keeps a '#' line inside the body, since only the trailing block is git's", async () => {
+    expect(await hook(["commit-msg", msgFile("feat(x): y\n\n# heading\nmore text\n")])).toBe(0);
+  });
+
+  it("commit-msg rejects a message that is only comment lines", async () => {
+    const e = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await hook(["commit-msg", msgFile("# just comments\n# nothing else\n")])).toBe(1);
+    expect(e.mock.calls.flat().join("\n")).toContain("commit-msg:");
+    e.mockRestore();
   });
 
   it("commit-msg rejects a free-form subject with the reason", async () => {

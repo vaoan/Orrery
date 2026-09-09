@@ -2874,7 +2874,7 @@ Save the output to the workspace. Expected operations per body, from the 2026-09
 
 Show the human the five dry-run outputs and this sentence, then wait:
 
-> Applying will change how anyone working on these repositories works tomorrow: develop becomes the default branch on aeleos and eclipse-con, rebase merging is disabled everywhere, merging requires a PR with resolved conversations, and squash titles come from the PR title. Their existing required checks are preserved. Nothing in their code changes. Say "apply" to proceed, or name the repositories to skip.
+> Applying will change how anyone working on these repositories works tomorrow: develop becomes the default branch on aeleos and eclipse-con, rebase merging is disabled everywhere, merging requires a PR with resolved conversations, and squash titles come from the PR title. Their existing required checks are preserved. Required approvals become 0 on both branches (all five bodies already require 0 as of 2026-09-09). Nothing in their code changes. Say "apply" to proceed, or name the repositories to skip.
 
 - [ ] **Step 5: Apply, verify idempotence, flip the nightly to apply mode**
 

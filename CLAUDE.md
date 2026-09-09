@@ -114,3 +114,7 @@ these repositories:
 - **vitest treats `vi.mock()` at a path that does not exist as a silent no-op.**
   The suite stays green while the mock does nothing. Never take a passing suite as
   evidence that mock paths are correct.
+- **This repository sets `core.autocrlf=true` locally on Windows.** The index is
+  LF; checkout rewrites working files to CRLF, so a test that regex-matches `\n`
+  fails here and passes on Linux CI. `.gitattributes` forces LF; tests that read
+  files normalise line endings anyway.

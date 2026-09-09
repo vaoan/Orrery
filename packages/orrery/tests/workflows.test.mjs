@@ -5,7 +5,9 @@ import { fileURLToPath } from "node:url";
 import { loadPolicy } from "../src/lib/policy.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
-const read = (f) => fs.readFileSync(path.join(root, f), "utf8");
+// These tests assert file shape, not line endings, so normalise \r\n to \n regardless
+// of how the working tree checked the file out (see CLAUDE.md's core.autocrlf note).
+const read = (f) => fs.readFileSync(path.join(root, f), "utf8").replace(/\r\n/g, "\n");
 const jobNames = (yaml) => [...yaml.matchAll(/^  ([a-z-]+):\n(?:    [^\n]*\n)*?    name: \1\n/gm)].map((m) => m[1]);
 
 describe(".github/workflows/ci.yml", () => {
@@ -96,5 +98,9 @@ describe(".github/workflows/observe.yml", () => {
   it("iterates the registry and uses the admin token", () => {
     expect(yaml).toContain("registry.json");
     expect(yaml).toContain("secrets.ORRERY_ADMIN_TOKEN");
+  });
+  it("fails the job when any body could not be observed", () => {
+    expect(yaml).toContain("failed=1");
+    expect(yaml).toContain("exit 1");
   });
 });

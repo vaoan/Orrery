@@ -25,7 +25,7 @@ export default async function release(argv, deps = {}) {
 
   const versionFile = path.resolve(values["version-file"]);
   try {
-    const plan = planRelease({ run, today, versionFile });
+    const plan = await planRelease({ run, today, versionFile });
     if (values["dry-run"]) {
       console.log(`would cut ${plan.branch} from origin/develop, bump ${versionFile}, and open "${plan.title}" into main`);
       return 0;

@@ -41,20 +41,26 @@ jobs:
             echo "Mode: $MODE"
             echo
           } > "$out"
+          failed=0
           for repo in $(node -e 'const r=require("./registry.json");console.log(Object.values(r.bodies).map(b=>b.repo).join(" "))'); do
             echo "## $repo" >> "$out"
             if [ "$MODE" = "apply" ]; then
-              pnpm -s orrery repo apply "$repo" >> "$out" 2>&1 || echo "FAILED: $repo" >> "$out"
+              pnpm -s orrery repo apply "$repo" >> "$out" 2>&1 || { echo "FAILED: $repo" >> "$out"; failed=1; }
             else
-              pnpm -s orrery repo apply "$repo" --dry-run >> "$out" 2>&1 || echo "FAILED: $repo" >> "$out"
+              pnpm -s orrery repo apply "$repo" --dry-run >> "$out" 2>&1 || { echo "FAILED: $repo" >> "$out"; failed=1; }
             fi
             echo >> "$out"
           done
           cat "$out"
+          [ "$failed" = "0" ] || exit 1
       - name: Commit the observation
         run: |
           git config user.name "orrery"
           git config user.email "orrery@users.noreply.github.com"
           git add docs/observations
           git diff --cached --quiet || git commit -m "docs(observe): repository policy $(date -u +%F) [GH-000]"
-          git push origin HEAD:develop || echo "develop is protected; observation kept in the run log"
+          if git push origin HEAD:develop; then
+            exit 0
+          fi
+          echo "::notice::develop is protected; the observation stays in this run's log"
+          exit 0

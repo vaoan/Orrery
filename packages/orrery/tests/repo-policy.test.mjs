@@ -96,6 +96,7 @@ describe("planRepoChanges", () => {
     expect(op).toEqual({
       kind: "update-settings",
       patch: { allow_rebase_merge: false, squash_merge_commit_title: "PR_TITLE" },
+      current: { allow_rebase_merge: true, squash_merge_commit_title: "COMMIT_OR_PR_TITLE" },
     });
   });
 
@@ -107,6 +108,17 @@ describe("planRepoChanges", () => {
     expect(ops[0].kind).toBe("set-protection");
     expect(ops[0].branch).toBe("main");
     expect(ops[0].body.required_conversation_resolution).toBe(true);
+    expect(ops[0].current).toBe(state.protection.main);
+    expect(ops[0].current.required_conversation_resolution).toBe(false);
+  });
+
+  it("re-sets protection when only a required context is missing", () => {
+    const state = compliantState();
+    state.protection.develop.required_status_checks.contexts = policy.requiredChecks.develop.filter((c) => c !== "branch-sync");
+    const ops = planRepoChanges(state, policy);
+    expect(ops).toHaveLength(1);
+    expect(ops[0].kind).toBe("set-protection");
+    expect(ops[0].branch).toBe("develop");
   });
 
   it("creates missing labels and updates ones whose colour or description differs", () => {
