@@ -84,6 +84,36 @@ describe("orrery ci", () => {
     q.restore();
   });
 
+  it("branch-name passes for the back-merge from main into develop", async () => {
+    const q = quiet();
+    expect(await ci(["branch-name", "--head", "main", "--base", "develop"], { env: {} })).toBe(0);
+    expect(q.out()).toContain("back-merge");
+    q.restore();
+  });
+
+  it("branch-name still rejects main as a head for any other base", async () => {
+    const q = quiet();
+    expect(await ci(["branch-name", "--head", "main", "--base", "feat/x"], { env: {} })).toBe(1);
+    q.restore();
+  });
+
+  it("branch-sync passes for the back-merge even while main is ahead", async () => {
+    const q = quiet();
+    const calls = [];
+    const run = (c, a) => { calls.push(a); return a[0] === "rev-list" ? "2" : ""; };
+    expect(await ci(["branch-sync", "--head", "main", "--base", "develop"], { env: {}, run })).toBe(0);
+    expect(q.out()).toContain("back-merge");
+    expect(calls.some((a) => a[0] === "rev-list")).toBe(false);
+    q.restore();
+  });
+
+  it("branch-sync still fails an ordinary PR while main is ahead", async () => {
+    const q = quiet();
+    const run = (c, a) => (a[0] === "rev-list" ? "2" : "");
+    expect(await ci(["branch-sync", "--head", "feat/x", "--base", "develop"], { env: {}, run })).toBe(1);
+    q.restore();
+  });
+
   it("runs config-drift with the default file list and the event's refs", async () => {
     const q = quiet();
     const seen = [];
