@@ -86,7 +86,9 @@ cut by `orrery release`) and `hotfix/*` (squash, PR title type `fix`). Every
 push to main is followed by an automatic merge-commit back-merge into
 develop, and while main is ahead of develop, every other PR into develop is
 frozen by `branch-sync`. PR titles are `type(scope): subject [GH-n]`, with
-`GH-000` for work with no issue.
+`GH-000` for work with no issue. The back-merge travels on a
+`back-merge/<sha>` branch cut from main by the workflow; nobody else creates
+those.
 
 ### When execution corners you
 

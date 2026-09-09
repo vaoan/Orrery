@@ -27,7 +27,14 @@ describe("orrery ci", () => {
 
   it("reads head, base and title from the event file", async () => {
     const q = quiet();
-    const env = { GITHUB_EVENT_PATH: event({ head: { ref: "feat/x", sha: "h" }, base: { ref: "main" }, title: "feat(x): y [GH-000]" }) };
+    const env = {
+      GITHUB_EVENT_PATH: event({
+        head: { ref: "feat/x", sha: "h", repo: { full_name: "vaoan/x" } },
+        base: { ref: "main", repo: { full_name: "vaoan/x" } },
+        title: "feat(x): y [GH-000]",
+        user: { login: "alice" },
+      }),
+    };
     expect(await ci(["branch-target"], { env })).toBe(1);
     expect(q.out()).toContain("only release/* and hotfix/* may target main");
     q.restore();
@@ -84,10 +91,40 @@ describe("orrery ci", () => {
     q.restore();
   });
 
-  it("branch-name passes for the back-merge from main into develop", async () => {
+  it("branch-name passes for an automation back-merge in the same repository", async () => {
     const q = quiet();
-    expect(await ci(["branch-name", "--head", "main", "--base", "develop"], { env: {} })).toBe(0);
+    const argv = [
+      "branch-name", "--head", "back-merge/abc1234", "--base", "develop",
+      "--head-repo", "vaoan/Orrery", "--base-repo", "vaoan/Orrery", "--author", "vaoan",
+    ];
+    expect(await ci(argv, { env: {} })).toBe(0);
     expect(q.out()).toContain("back-merge");
+    q.restore();
+  });
+
+  it("branch-name rejects a back-merge from a fork", async () => {
+    const q = quiet();
+    // A fork's PR author is never the bot login, so the mandatory author gate
+    // (which fires for any back-merge/* head, regardless of the sameRepo
+    // exemption) rejects it before the fork condition is even consulted.
+    const argv = [
+      "branch-name", "--head", "back-merge/abc1234", "--base", "develop",
+      "--head-repo", "someone/Orrery", "--base-repo", "vaoan/Orrery", "--author", "someone",
+    ];
+    expect(await ci(argv, { env: {} })).toBe(1);
+    expect(q.out()).not.toContain("ok (back-merge");
+    expect(q.out()).toContain("only the back-merge workflow");
+    q.restore();
+  });
+
+  it("branch-name rejects a back-merge opened by a human", async () => {
+    const q = quiet();
+    const argv = [
+      "branch-name", "--head", "back-merge/abc1234", "--base", "develop",
+      "--head-repo", "vaoan/Orrery", "--base-repo", "vaoan/Orrery", "--author", "alice",
+    ];
+    expect(await ci(argv, { env: {} })).toBe(1);
+    expect(q.out()).toContain("only the back-merge workflow");
     q.restore();
   });
 
@@ -97,13 +134,40 @@ describe("orrery ci", () => {
     q.restore();
   });
 
-  it("branch-sync passes for the back-merge even while main is ahead", async () => {
+  it("branch-name honours ORRERY_BOT_LOGIN as the expected author", async () => {
+    const q = quiet();
+    const argv = [
+      "branch-name", "--head", "back-merge/abc1234", "--base", "develop",
+      "--head-repo", "vaoan/Orrery", "--base-repo", "vaoan/Orrery", "--author", "orrery[bot]",
+    ];
+    expect(await ci(argv, { env: { ORRERY_BOT_LOGIN: "orrery[bot]" } })).toBe(0);
+    q.restore();
+  });
+
+  it("branch-sync passes for the same-repo back-merge without asking git", async () => {
     const q = quiet();
     const calls = [];
     const run = (c, a) => { calls.push(a); return a[0] === "rev-list" ? "2" : ""; };
-    expect(await ci(["branch-sync", "--head", "main", "--base", "develop"], { env: {}, run })).toBe(0);
+    const argv = [
+      "branch-sync", "--head", "back-merge/abc1234", "--base", "develop",
+      "--head-repo", "vaoan/Orrery", "--base-repo", "vaoan/Orrery", "--author", "vaoan",
+    ];
+    expect(await ci(argv, { env: {}, run })).toBe(0);
     expect(q.out()).toContain("back-merge");
     expect(calls.some((a) => a[0] === "rev-list")).toBe(false);
+    q.restore();
+  });
+
+  it("branch-sync still runs for a fork back-merge", async () => {
+    const q = quiet();
+    const calls = [];
+    const run = (c, a) => { calls.push(a); return a[0] === "rev-list" ? "0" : ""; };
+    const argv = [
+      "branch-sync", "--head", "back-merge/abc1234", "--base", "develop",
+      "--head-repo", "someone/Orrery", "--base-repo", "vaoan/Orrery", "--author", "vaoan",
+    ];
+    expect(await ci(argv, { env: {}, run })).toBe(0);
+    expect(calls.some((a) => a[0] === "rev-list")).toBe(true);
     q.restore();
   });
 

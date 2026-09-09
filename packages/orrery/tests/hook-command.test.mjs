@@ -26,6 +26,12 @@ describe("orrery hook", () => {
     expect(await hook(["commit-msg", msgFile("feat(x): y\n\n# heading\nmore text\n")])).toBe(0);
   });
 
+  it("commit-msg keeps a leading comment line as the subject", async () => {
+    const e = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await hook(["commit-msg", msgFile("# comment\nfeat(x): y\n")])).toBe(1);
+    e.mockRestore();
+  });
+
   it("commit-msg rejects a message that is only comment lines", async () => {
     const e = vi.spyOn(console, "error").mockImplementation(() => {});
     expect(await hook(["commit-msg", msgFile("# just comments\n# nothing else\n")])).toBe(1);

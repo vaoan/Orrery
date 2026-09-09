@@ -48,9 +48,16 @@ describe(".github/workflows/back-merge.yml", () => {
   it("runs on push to main and opens a merge-commit PR into develop with automerge", () => {
     expect(yaml).toMatch(/  push:\n    branches: \[main\]/);
     expect(yaml).toContain("--base develop");
-    expect(yaml).toContain("--head main");
     expect(yaml).toContain("--merge --auto");
     expect(yaml).not.toContain("--squash");
+  });
+  it("cuts an intermediate back-merge/<sha> branch from main rather than using main as the PR head", () => {
+    expect(yaml).toContain('back-merge/$(git rev-parse --short=7 origin/main)');
+    expect(yaml).not.toContain("--head main");
+  });
+  it("checks out without persisting the default token and pushes with the bot token instead", () => {
+    expect(yaml).toContain("persist-credentials: false");
+    expect(yaml).toContain("x-access-token:${GH_TOKEN}");
   });
   it("uses the bot token, not GITHUB_TOKEN, so the PR triggers checks", () => {
     expect(yaml).toContain("secrets.ORRERY_BOT_TOKEN");

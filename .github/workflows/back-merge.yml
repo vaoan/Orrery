@@ -1,6 +1,11 @@
 # Opens the merge-commit back-merge from main into develop after every push to main
-# (a release or a hotfix landing). Uses a bot token: PRs opened with GITHUB_TOKEN do not
-# trigger pull_request workflows, so the required checks would never run.
+# (a release or a hotfix landing). main is never a pull request head: the workflow cuts
+# an intermediate back-merge/<main-sha7> branch from main and opens that into develop, so
+# "Update branch" (which merges develop into the PR head) only ever touches the
+# intermediate branch and never main, and "require branches to be up to date" can stay on
+# for both protected branches without ever being asked to rewrite main.
+# Uses a bot token: pushes and PRs made with GITHUB_TOKEN do not trigger pull_request
+# workflows, so the required checks (and thus auto-merge) would never run.
 name: back-merge
 
 on:
@@ -9,7 +14,8 @@ on:
 
 permissions:
   contents: read
-  # contents: read is for checkout; the PR is opened with the bot PAT, which carries its own scopes.
+  # contents: read is for checkout; the branch push and the PR are made with the bot PAT,
+  # which carries its own scopes.
 
 jobs:
   open:
@@ -19,23 +25,38 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Skip when develop already contains main
         id: gap
         run: |
-          git fetch --no-tags origin develop
+          git fetch --no-tags origin main develop
           echo "behind=$(git rev-list --count origin/develop..origin/main)" >> "$GITHUB_OUTPUT"
-      - name: Open or reuse the back-merge PR
+      - name: Open or update the back-merge PR
         if: steps.gap.outputs.behind != '0'
         env:
           GH_TOKEN: ${{ secrets.ORRERY_BOT_TOKEN }}
           BEHIND: ${{ steps.gap.outputs.behind }}
         run: |
-          existing=$(gh pr list --repo "$GITHUB_REPOSITORY" --base develop --head main --state open --json number --jq '.[0].number // empty')
-          if [ -z "$existing" ]; then
-            gh pr create --repo "$GITHUB_REPOSITORY" --base develop --head main \
+          # Pushes must use the bot token, not GITHUB_TOKEN: pushes made with GITHUB_TOKEN
+          # do not trigger the PR's checks, and a back-merge PR without checks never merges.
+          git config user.name "orrery"
+          git config user.email "orrery@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          existing=$(gh pr list --repo "$GITHUB_REPOSITORY" --base develop --state open --json number,headRefName \
+            --jq '[.[] | select(.headRefName | startswith("back-merge/"))][0] | "\(.number) \(.headRefName)"' )
+          if [ -n "$existing" ] && [ "$existing" != " " ]; then
+            number=${existing%% *}; branch=${existing#* }
+            git fetch --no-tags origin "$branch"
+            git checkout -q -B "$branch" "origin/$branch"
+            git merge --no-edit origin/main
+            git push origin "$branch"
+          else
+            branch="back-merge/$(git rev-parse --short=7 origin/main)"
+            git push origin "origin/main:refs/heads/$branch"
+            gh pr create --repo "$GITHUB_REPOSITORY" --base develop --head "$branch" \
               --title "chore(back-merge): main into develop [GH-000]" \
-              --body "Automatic back-merge. main is $BEHIND commit(s) ahead of develop. Merge commit, never squash." \
+              --body "Automatic back-merge. main is $BEHIND commit(s) ahead of develop. Merge commit, never squash. Branch created by the back-merge workflow; humans and agents must not create back-merge/* branches." \
               --label back-merge --label orrery
-            existing=$(gh pr list --repo "$GITHUB_REPOSITORY" --base develop --head main --state open --json number --jq '.[0].number // empty')
+            number=$(gh pr list --repo "$GITHUB_REPOSITORY" --base develop --head "$branch" --state open --json number --jq '.[0].number // empty')
           fi
-          gh pr merge "$existing" --repo "$GITHUB_REPOSITORY" --merge --auto
+          gh pr merge "$number" --repo "$GITHUB_REPOSITORY" --merge --auto

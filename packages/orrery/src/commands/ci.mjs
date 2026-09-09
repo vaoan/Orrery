@@ -3,15 +3,11 @@ import { parseArgs } from "node:util";
 import { execFileSync } from "node:child_process";
 import { createGithub as realCreateGithub, resolveToken as realResolveToken } from "../lib/github.mjs";
 import {
-  checkBranchName, checkBranchTarget, checkPrTitle, checkBranchSync, checkConfigDrift,
+  branchType, checkBranchName, checkBranchTarget, checkPrTitle, checkBranchSync, checkConfigDrift, isBackMerge,
 } from "../lib/git-flow.mjs";
 
 const VERBS = ["branch-target", "branch-name", "pr-title", "branch-sync", "config-drift"];
-const USAGE = `usage: orrery ci <${VERBS.join("|")}> [--head <branch>] [--base <branch>] [--title <text>] [--repo <owner/name>] [--head-sha <sha>] [--files a,b,c]`;
-
-// Design spec step 2: the back-merge (head main into base develop) is the PR that
-// resolves the freeze, so it cannot itself be subject to it.
-const isBackMerge = (ctx) => ctx.head === "main" && ctx.base === "develop";
+const USAGE = `usage: orrery ci <${VERBS.join("|")}> [--head <branch>] [--base <branch>] [--title <text>] [--repo <owner/name>] [--head-sha <sha>] [--head-repo <owner/name>] [--base-repo <owner/name>] [--author <login>] [--files a,b,c]`;
 
 export const DEFAULT_DRIFT_FILES = [
   "eslint.config.mjs", "eslint.local.mjs", "tsconfig.json", "tsconfig.base.json",
@@ -52,6 +48,9 @@ function readEvent(env) {
     title: pr.title,
     headSha: pr.head?.sha,
     repo: event.repository?.full_name,
+    headRepo: pr.head?.repo?.full_name,
+    baseRepo: pr.base?.repo?.full_name,
+    author: pr.user?.login,
   };
 }
 
@@ -65,6 +64,7 @@ export default async function ci(argv, deps = {}) {
       options: {
         head: { type: "string" }, base: { type: "string" }, title: { type: "string" },
         repo: { type: "string" }, "head-sha": { type: "string" }, files: { type: "string" },
+        "head-repo": { type: "string" }, "base-repo": { type: "string" }, author: { type: "string" },
       },
       allowPositionals: true,
     }));
@@ -80,12 +80,18 @@ export default async function ci(argv, deps = {}) {
   }
 
   const event = readEvent(env);
+  const headRepo = values["head-repo"] ?? event.headRepo;
+  const baseRepo = values["base-repo"] ?? event.baseRepo;
   const ctx = {
     head: values.head ?? event.head,
     base: values.base ?? event.base,
     title: values.title ?? event.title,
     headSha: values["head-sha"] ?? event.headSha,
     repo: values.repo ?? event.repo,
+    headRepo,
+    baseRepo,
+    author: values.author ?? event.author,
+    sameRepo: Boolean(headRepo && baseRepo && headRepo === baseRepo),
   };
   const need = (...keys) => {
     for (const key of keys) {
@@ -102,8 +108,19 @@ export default async function ci(argv, deps = {}) {
     switch (verb) {
       case "branch-name":
         if (!need("head")) return 2;
-        if (isBackMerge(ctx)) {
-          console.log("branch-name: ok (back-merge from main into develop)");
+        // A back-merge/* head is automation-only regardless of whether it otherwise
+        // qualifies for the exemption below: the default bot login is the account
+        // that owns the bot token today; it becomes the GitHub App's login
+        // (orrery[bot]) once Phase 2d's identity cut-over lands.
+        if (branchType(ctx.head) === "back-merge") {
+          const bot = env.ORRERY_BOT_LOGIN || "vaoan";
+          if (ctx.author !== bot) {
+            console.error(`branch-name: only the back-merge workflow may open back-merge/* pull requests (author ${ctx.author} is not ${bot})`);
+            return 1;
+          }
+        }
+        if (isBackMerge({ head: ctx.head, base: ctx.base, sameRepo: ctx.sameRepo })) {
+          console.log("branch-name: ok (back-merge into develop)");
           return 0;
         }
         result = checkBranchName(ctx.head);
@@ -126,7 +143,7 @@ export default async function ci(argv, deps = {}) {
         // branch-sync takes no --head/--base of its own; ctx.head/ctx.base only feed
         // isBackMerge here, and checkBranchSync below runs an ordinary sync check
         // when neither is present (or is a normal PR).
-        if (isBackMerge(ctx)) {
+        if (isBackMerge({ head: ctx.head, base: ctx.base, sameRepo: ctx.sameRepo })) {
           console.log("branch-sync: ok (this is the back-merge that closes the gap)");
           return 0;
         }
