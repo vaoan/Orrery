@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { checkBranchSync } from "./git-flow.mjs";
 
 // A whole name: a tag `vYYYY.MM.DD.N` or a branch `release/vYYYY.MM.DD.N`. Anything
 // else, including libra's old `release/GH-000_v2026.05.27.1`, is not a version.
@@ -25,11 +26,14 @@ export function semverFor(version) {
   return `${Number(y)}.${Number(m)}.${Number(d)}-${n}`;
 }
 
-export function planRelease({ run, today = new Date(), versionFile }) {
-  run("git", ["fetch", "--no-tags", "origin", "main", "develop"]);
-  const behind = Number(run("git", ["rev-list", "--count", "origin/develop..origin/main"]).trim());
-  if (behind > 0) {
-    throw new Error(`cannot cut a release: main has ${behind} commit(s) that develop lacks; land the back-merge first`);
+export async function planRelease({ run, today = new Date(), versionFile }) {
+  const sync = await checkBranchSync({ run });
+  if (!sync.ok) {
+    throw new Error(`cannot cut a release: ${sync.reason}`);
+  }
+  const ahead = Number(run("git", ["rev-list", "--count", "origin/main..origin/develop"]).trim());
+  if (ahead === 0) {
+    throw new Error("nothing to release: develop has no commits main lacks");
   }
   const names = run("git", ["ls-remote", "--tags", "--heads", "origin"])
     .split(/\r?\n/)

@@ -213,8 +213,9 @@ in Orrery and are referenced the same way.
    nightly observation runs in report mode and Orrery is kept ready.
 
 **Done when** Orrery runs on the flow with every check required, `repo apply`
-is idempotent against every registered repository, and a fixture body born
-through `init` is protected before its second commit.
+is idempotent against every registered repository, and the fixture repository
+integration test brings a bare repository to policy and finds nothing to
+change on the second run (the `init`-born fixture is Phase 2d's criterion).
 
 Deferred: `init` itself, the registry, and the bump bot remain in 2d; this
 phase gives them the policy file and the commands they call.

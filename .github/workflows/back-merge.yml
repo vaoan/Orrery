@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  # contents: read is for checkout; the PR is opened with the bot PAT, which carries its own scopes.
 
 jobs:
   open:

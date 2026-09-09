@@ -123,6 +123,9 @@ export default async function ci(argv, deps = {}) {
         break;
       }
       case "branch-sync":
+        // branch-sync takes no --head/--base of its own; ctx.head/ctx.base only feed
+        // isBackMerge here, and checkBranchSync below runs an ordinary sync check
+        // when neither is present (or is a normal PR).
         if (isBackMerge(ctx)) {
           console.log("branch-sync: ok (this is the back-merge that closes the gap)");
           return 0;

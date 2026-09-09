@@ -37,6 +37,21 @@ The policy file is the record of the values; this ADR is the record of why.
   Task 4 hit this against the fixture repository, which was made public for
   that reason. A future private body needs GitHub Pro, or to be made public,
   before `orrery repo apply` can protect it.
+- Applying the policy sets required approvals to 0 on both branches; a body
+  that required approvals would lose that requirement. Measured 2026-09-09:
+  all five bodies already require 0.
+- `normaliseProtection` compares a fixed field set; `bypass_pull_request_allowances`,
+  `require_last_push_approval` and `block_creations` are not compared, so
+  drift there is invisible.
+- The two Orrery secrets are one classic PAT with account-wide scope (owner's
+  decision 2026-09-09); the reviewer recommends replacing it with two
+  fine-grained tokens as a cut-over precondition.
+- Bodies calling the reusable `ci.yml` get check-run names prefixed by the
+  caller job (`<job> / test`), so the marker-based `requiredChecks` would name
+  checks that never report; the check-name contract must be designed in
+  Phase 2d before any body enables the shared CI.
+- Tool-authored commits (`orrery release`'s bump) carry no agent trailers, by
+  design.
 
 ## Application log
 
