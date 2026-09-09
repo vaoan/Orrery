@@ -74,6 +74,25 @@ merging libra's 1,854-line and aeleos's 850-line eslint configs is guesswork.
   design doc came from running something against `aeleos` and `libra`, and two of
   the early conclusions were wrong until they were checked.
 
+## Git flow, for every body and for this repository
+
+`develop` is the default branch and takes `type/*` branches by squash. `main`
+is the release line and accepts only two routes: `release/*` (merge commit,
+cut by `orrery release`) and `hotfix/*` (squash, PR title type `fix`). Every
+push to main is followed by an automatic merge-commit back-merge into
+develop, and while main is ahead of develop, every other PR into develop is
+frozen by `branch-sync`. PR titles are `type(scope): subject [GH-n]`, with
+`GH-000` for work with no issue.
+
+### When execution corners you
+
+If executing a plan corners you into a fix you did not plan, stop. Say
+explicitly that you are cornered and why, and ask the developer what to do. A
+fix you need but did not plan means you misunderstood something or the plan
+conflicts with itself, and that is critical for the developer to know. Never
+take the hotfix route on your own judgment: a hotfix is big words, and it is
+the developer's call.
+
 ## Hard-won facts worth not rediscovering
 
 These cost real debugging during Phase 0 and apply to anything that manipulates

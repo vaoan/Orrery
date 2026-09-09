@@ -29,7 +29,7 @@ describe("orrery ci", () => {
     const q = quiet();
     const env = { GITHUB_EVENT_PATH: event({ head: { ref: "feat/x", sha: "h" }, base: { ref: "main" }, title: "feat(x): y [GH-000]" }) };
     expect(await ci(["branch-target"], { env })).toBe(1);
-    expect(q.out()).toContain("only release/* and fix/* may target main");
+    expect(q.out()).toContain("only release/* and hotfix/* may target main");
     q.restore();
   });
 
