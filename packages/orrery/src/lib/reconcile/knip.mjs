@@ -1,6 +1,6 @@
 import { row, union } from "./simple.mjs";
 
-const normaliseEntry = (e) => e.replace("**/*.tsx", "**/*.{ts,tsx}").replace("**/*.test.{ts,tsx}", "**/*.{ts,tsx}");
+const normaliseEntry = (e) => e.replace("**/*.tsx", "**/*.{ts,tsx}").replace("**/*.test.{ts,tsx}", "**/*.{ts,tsx}").replace("**/*.test.ts", "**/*.{ts,tsx}");
 const appWorkspaces = (config) => Object.entries(config?.workspaces ?? {}).filter(([name]) => name.startsWith("apps/"));
 const packageWorkspaces = (config) => Object.entries(config?.workspaces ?? {}).filter(([name]) => name.startsWith("packages/"));
 
@@ -23,7 +23,7 @@ export function reconcileKnip(a, b) {
       const flatA = union(...Object.values(extrasA));
       const flatB = union(...Object.values(extrasB));
       const extraName = { entry: "extraEntries", project: "extraProjects" }[field];
-      if (flatA.length || flatB.length) rows.push(row("knip", `${kind}.${extraName}`, { a: flatA, b: flatB, chosen: { $parameter: `knip.${extraName}` }, test: "parameter", tier: "class", note: "workspace-specific entries are body data" }));
+      if (flatA.length || flatB.length) rows.push(row("knip", `${kind}.${extraName}`, { a: flatA, b: flatB, chosen: { $parameter: `knip.${kind}.${extraName}` }, test: "parameter", tier: "class", note: "workspace-specific entries are body data" }));
     }
   }
   const root = (c) => c?.workspaces?.["."];

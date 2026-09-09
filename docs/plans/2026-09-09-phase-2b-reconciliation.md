@@ -977,6 +977,9 @@ Each tool has its own meaning of "stricter" (spec table). Every reconciler is pu
 
 ```javascript
 // packages/orrery/tests/reconcile-tools.test.mjs
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { describe, it, expect } from "vitest";
 import { reconcileTsconfig } from "../src/lib/reconcile/tsconfig.mjs";
 import { reconcileStylelint } from "../src/lib/reconcile/stylelint.mjs";
@@ -985,6 +988,13 @@ import { reconcileKnip } from "../src/lib/reconcile/knip.mjs";
 import { reconcileSyncpack } from "../src/lib/reconcile/syncpack.mjs";
 
 const by = (rows) => Object.fromEntries(rows.map((r) => [r.key, r]));
+
+// Real donor checkouts, siblings of this repo on disk. Not part of any package; read-only,
+// and absent in CI, where the assertion is skipped rather than faked.
+const here = path.dirname(fileURLToPath(import.meta.url));
+const aeleosStylelintPath = path.resolve(here, "../../../../aeleos/stylelint.config.mjs");
+const libraStylelintPath = path.resolve(here, "../../../../libra/stylelint.config.mjs");
+const hasStylelintDonors = fs.existsSync(aeleosStylelintPath) && fs.existsSync(libraStylelintPath);
 
 describe("tsconfig", () => {
   it("turns strictness flags on, compares enums case-insensitively, and parameterises paths", () => {
@@ -1024,6 +1034,20 @@ describe("stylelint", () => {
   it("leaves two different non-null values as residue", () => {
     const r = by(reconcileStylelint({ rules: { x: "a" } }, { rules: { x: "b" } }));
     expect(r["rules.x"]).toMatchObject({ test: "residue" });
+  });
+  it("treats an explicit null against an absent key as the preset's on, not residue", () => {
+    const r = by(reconcileStylelint({ rules: { "no-duplicate-selectors": null } }, { rules: {} }));
+    expect(r["rules.no-duplicate-selectors"]).toMatchObject({ test: "strictest", chosen: { $inherit: true } });
+  });
+  it("and the mirror with sides swapped", () => {
+    const r = by(reconcileStylelint({ rules: {} }, { rules: { "no-duplicate-selectors": null } }));
+    expect(r["rules.no-duplicate-selectors"]).toMatchObject({ test: "strictest", chosen: { $inherit: true } });
+  });
+  it.skipIf(!hasStylelintDonors)("has no residue against the real donors' stylelint configs", async () => {
+    const aeleosConfig = (await import(pathToFileURL(aeleosStylelintPath).href)).default;
+    const libraConfig = (await import(pathToFileURL(libraStylelintPath).href)).default;
+    const rows = reconcileStylelint(aeleosConfig, libraConfig);
+    expect(rows.some((r) => r.test === "residue")).toBe(false);
   });
 });
 
@@ -1073,8 +1097,14 @@ describe("knip", () => {
     const b = { workspaces: { "apps/store": { entry: ["src/app/**/*.{ts,tsx}", "src/features/*/index.ts", "src/shared/infrastructure/i18n/request.ts", "tests/**/*.{ts,tsx}"] }, "apps/admin": { entry: ["src/app/**/*.{ts,tsx}", "src/features/*/index.ts", "src/shared/infrastructure/i18n/request.ts", "tests/**/*.{ts,tsx}"] } } };
     const r = by(reconcileKnip(a, b));
     expect(r["apps.entry"]).toMatchObject({ test: "benefit", chosen: ["src/app/**/*.{ts,tsx}", "src/features/*/index.ts", "tests/**/*.{ts,tsx}"], tier: "class" });
-    expect(r["apps.extraEntries"]).toMatchObject({ test: "parameter", chosen: { $parameter: "knip.extraEntries" } });
+    expect(r["apps.extraEntries"]).toMatchObject({ test: "parameter", chosen: { $parameter: "knip.apps.extraEntries" } });
     expect(r["apps.extraEntries"].b).toContain("src/shared/infrastructure/i18n/request.ts");
+  });
+  it("folds test-only package entries into the shared pattern", () => {
+    const a = { workspaces: { "packages/identity": { entry: ["tests/**/*.test.ts"] } } };
+    const b = { workspaces: { "packages/shared": { entry: ["tests/**/*.{ts,tsx}"] } } };
+    const r = by(reconcileKnip(a, b));
+    expect(r["packages.entry"]).toMatchObject({ chosen: ["tests/**/*.{ts,tsx}"] });
   });
 });
 
@@ -1255,7 +1285,11 @@ export function reconcileTsconfig(a, b) {
 // packages/orrery/src/lib/reconcile/stylelint.mjs
 import { row, same, union } from "./simple.mjs";
 
-const isOff = (v) => v === null || v === undefined || v === false;
+// "off" is an explicit disable (null or false); "absent" is the key not being written at all,
+// which leaves whatever `extends` set defaults to in force. The two used to be conflated —
+// an explicit disable against an absent key looked identical to "neither side cares" and
+// fell through to residue instead of the inherit ruling below.
+const state = (v) => (v === undefined ? "absent" : v === null || v === false ? "off" : "on");
 
 export function reconcileStylelint(a, b) {
   const rows = [];
@@ -1269,14 +1303,25 @@ export function reconcileStylelint(a, b) {
     const k = `rules.${key}`;
     const base = { a: va === undefined ? null : va, b: vb === undefined ? null : vb, tier: "class" };
     if (same(va, vb)) { rows.push(row("stylelint", k, { ...base, chosen: va, test: "agree" })); continue; }
-    if (isOff(va) && !isOff(vb)) { rows.push(row("stylelint", k, { ...base, chosen: vb, test: va === undefined ? "adopt" : "strictest", note: va === undefined ? "" : "on over off" })); continue; }
-    if (isOff(vb) && !isOff(va)) { rows.push(row("stylelint", k, { ...base, chosen: va, test: vb === undefined ? "adopt" : "strictest", note: vb === undefined ? "" : "on over off" })); continue; }
+    const sa = state(va);
+    const sb = state(vb);
+    // Explicit off against absent: the preset's own default (on) is stricter than the one
+    // side that disabled it, so the bundle omits the key rather than writing `false`/`null`
+    // and lets `extends` supply the rule.
+    if (sa === "off" && sb === "absent") { rows.push(row("stylelint", k, { ...base, chosen: { $inherit: true }, test: "strictest", note: "a disabled a preset rule; the preset's default (on) is stricter, so the bundle omits the key and the preset applies" })); continue; }
+    if (sb === "off" && sa === "absent") { rows.push(row("stylelint", k, { ...base, chosen: { $inherit: true }, test: "strictest", note: "b disabled a preset rule; the preset's default (on) is stricter, so the bundle omits the key and the preset applies" })); continue; }
+    // On against absent: the side that wrote the rule adopts as-is.
+    if (sa === "on" && sb === "absent") { rows.push(row("stylelint", k, { ...base, chosen: va, test: "adopt" })); continue; }
+    if (sb === "on" && sa === "absent") { rows.push(row("stylelint", k, { ...base, chosen: vb, test: "adopt" })); continue; }
+    // On against an explicit off: on wins outright.
+    if (sa === "off" && sb === "on") { rows.push(row("stylelint", k, { ...base, chosen: vb, test: "strictest", note: "on over off" })); continue; }
+    if (sb === "off" && sa === "on") { rows.push(row("stylelint", k, { ...base, chosen: va, test: "strictest", note: "on over off" })); continue; }
     if (key === "at-rule-no-unknown" && Array.isArray(va) && Array.isArray(vb)) {
       const merged = [true, { ...(va[1] ?? {}), ...(vb[1] ?? {}), ignoreAtRules: union(va[1]?.ignoreAtRules ?? [], vb[1]?.ignoreAtRules ?? []) }];
       rows.push(row("stylelint", k, { ...base, chosen: merged, test: "benefit", note: "union of Tailwind at-rules: every one listed exists in the framework and must parse" }));
       continue;
     }
-    rows.push(row("stylelint", k, { ...base, chosen: null, test: "residue", note: "two different non-null values" }));
+    rows.push(row("stylelint", k, { ...base, chosen: null, test: "residue", note: (va === null || vb === null) ? "explicit off versus a non-boolean value" : "two different non-null values" }));
   }
   return rows;
 }
@@ -1286,7 +1331,7 @@ export function reconcileStylelint(a, b) {
 // packages/orrery/src/lib/reconcile/knip.mjs
 import { row, union } from "./simple.mjs";
 
-const normaliseEntry = (e) => e.replace("**/*.tsx", "**/*.{ts,tsx}").replace("**/*.test.{ts,tsx}", "**/*.{ts,tsx}");
+const normaliseEntry = (e) => e.replace("**/*.tsx", "**/*.{ts,tsx}").replace("**/*.test.{ts,tsx}", "**/*.{ts,tsx}").replace("**/*.test.ts", "**/*.{ts,tsx}");
 const appWorkspaces = (config) => Object.entries(config?.workspaces ?? {}).filter(([name]) => name.startsWith("apps/"));
 const packageWorkspaces = (config) => Object.entries(config?.workspaces ?? {}).filter(([name]) => name.startsWith("packages/"));
 
@@ -1309,7 +1354,7 @@ export function reconcileKnip(a, b) {
       const flatA = union(...Object.values(extrasA));
       const flatB = union(...Object.values(extrasB));
       const extraName = { entry: "extraEntries", project: "extraProjects" }[field];
-      if (flatA.length || flatB.length) rows.push(row("knip", `${kind}.${extraName}`, { a: flatA, b: flatB, chosen: { $parameter: `knip.${extraName}` }, test: "parameter", tier: "class", note: "workspace-specific entries are body data" }));
+      if (flatA.length || flatB.length) rows.push(row("knip", `${kind}.${extraName}`, { a: flatA, b: flatB, chosen: { $parameter: `knip.${kind}.${extraName}` }, test: "parameter", tier: "class", note: "workspace-specific entries are body data" }));
     }
   }
   const root = (c) => c?.workspaces?.["."];
@@ -1728,7 +1773,7 @@ export default {
   i18n: { type: "object", fields: { excludedWords: { type: "string[]", default: [] } } },
   spelling: { type: "string[]", default: [] },
   ignore: { type: "object", fields: { duplication: { type: "string[]", default: [] }, secrets: { type: "string[]", default: [] }, spelling: { type: "string[]", default: [] } } },
-  knip: { type: "object", fields: { extraEntries: { type: "string[]", default: [] }, extraProjects: { type: "string[]", default: [] }, root: { type: "object", default: {} } } },
+  knip: { type: "object", fields: { apps: { type: "object", fields: { extraEntries: { type: "string[]", default: [] }, extraProjects: { type: "string[]", default: [] } } }, packages: { type: "object", fields: { extraEntries: { type: "string[]", default: [] }, extraProjects: { type: "string[]", default: [] } } }, root: { type: "object", default: {} } } },
   tsconfig: { type: "object", fields: { types: { type: "string[]", default: [] }, include: { type: "string[]", default: [] }, exclude: { type: "string[]", default: ["node_modules"] }, paths: { type: "object", default: {} } } },
   hooks: { type: "object", fields: { preCommit: { type: "string[]", default: [] } } },
 };
@@ -2064,7 +2109,8 @@ const header = (p, record) => `// GENERATED by orrery reconcile from ${p.a.name}
 const jsonHeader = (p, record) => `GENERATED by orrery reconcile from ${p.a.name} ${p.a.sha} and ${p.b.name} ${p.b.sha} on ${p.date}. Record: docs/decisions/${record}.`;
 
 const setPath = (target, dotted, value) => { const keys = dotted.split("."); let o = target; for (const k of keys.slice(0, -1)) o = o[k] ??= {}; o[keys.at(-1)] = value; };
-const toolRows = (rows, tool) => rows.filter((r) => r.tool === tool && r.chosen !== null && r.test !== "inert");
+// an $inherit ruling means: omit the key so the preset's default applies
+const toolRows = (rows, tool) => rows.filter((r) => r.tool === tool && r.chosen !== null && r.test !== "inert" && !(r.chosen && typeof r.chosen === "object" && "$inherit" in r.chosen));
 
 export function renderTsconfig(rows, provenance) {
   const physics = { $comment: jsonHeader(provenance, "0005-tsconfig.md"), compilerOptions: {} };
@@ -2077,7 +2123,7 @@ export function renderTsconfig(rows, provenance) {
 }
 
 // Body parameters that extend a generated list rather than replace it.
-const EXTENDERS = { "cspell.ignorePaths": "ignore.spelling", "jscpd.ignore": "ignore.duplication", "secretlint.ignore": "ignore.secrets", "knip.apps.entry": "knip.extraEntries", "knip.apps.project": "knip.extraProjects" };
+const EXTENDERS = { "cspell.ignorePaths": "ignore.spelling", "jscpd.ignore": "ignore.duplication", "secretlint.ignore": "ignore.secrets", "knip.apps.entry": "knip.apps.extraEntries", "knip.apps.project": "knip.apps.extraProjects", "knip.packages.entry": "knip.packages.extraEntries", "knip.packages.project": "knip.packages.extraProjects" };
 
 function objectFromRows(tool, rows) {
   const out = {};

@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { describe, it, expect } from "vitest";
 import { reconcileTsconfig } from "../src/lib/reconcile/tsconfig.mjs";
 import { reconcileStylelint } from "../src/lib/reconcile/stylelint.mjs";
@@ -6,6 +9,13 @@ import { reconcileKnip } from "../src/lib/reconcile/knip.mjs";
 import { reconcileSyncpack } from "../src/lib/reconcile/syncpack.mjs";
 
 const by = (rows) => Object.fromEntries(rows.map((r) => [r.key, r]));
+
+// Real donor checkouts, siblings of this repo on disk. Not part of any package; read-only,
+// and absent in CI, where the assertion is skipped rather than faked.
+const here = path.dirname(fileURLToPath(import.meta.url));
+const aeleosStylelintPath = path.resolve(here, "../../../../aeleos/stylelint.config.mjs");
+const libraStylelintPath = path.resolve(here, "../../../../libra/stylelint.config.mjs");
+const hasStylelintDonors = fs.existsSync(aeleosStylelintPath) && fs.existsSync(libraStylelintPath);
 
 describe("tsconfig", () => {
   it("turns strictness flags on, compares enums case-insensitively, and parameterises paths", () => {
@@ -45,6 +55,20 @@ describe("stylelint", () => {
   it("leaves two different non-null values as residue", () => {
     const r = by(reconcileStylelint({ rules: { x: "a" } }, { rules: { x: "b" } }));
     expect(r["rules.x"]).toMatchObject({ test: "residue" });
+  });
+  it("treats an explicit null against an absent key as the preset's on, not residue", () => {
+    const r = by(reconcileStylelint({ rules: { "no-duplicate-selectors": null } }, { rules: {} }));
+    expect(r["rules.no-duplicate-selectors"]).toMatchObject({ test: "strictest", chosen: { $inherit: true } });
+  });
+  it("and the mirror with sides swapped", () => {
+    const r = by(reconcileStylelint({ rules: {} }, { rules: { "no-duplicate-selectors": null } }));
+    expect(r["rules.no-duplicate-selectors"]).toMatchObject({ test: "strictest", chosen: { $inherit: true } });
+  });
+  it.skipIf(!hasStylelintDonors)("has no residue against the real donors' stylelint configs", async () => {
+    const aeleosConfig = (await import(pathToFileURL(aeleosStylelintPath).href)).default;
+    const libraConfig = (await import(pathToFileURL(libraStylelintPath).href)).default;
+    const rows = reconcileStylelint(aeleosConfig, libraConfig);
+    expect(rows.some((r) => r.test === "residue")).toBe(false);
   });
 });
 
@@ -94,8 +118,14 @@ describe("knip", () => {
     const b = { workspaces: { "apps/store": { entry: ["src/app/**/*.{ts,tsx}", "src/features/*/index.ts", "src/shared/infrastructure/i18n/request.ts", "tests/**/*.{ts,tsx}"] }, "apps/admin": { entry: ["src/app/**/*.{ts,tsx}", "src/features/*/index.ts", "src/shared/infrastructure/i18n/request.ts", "tests/**/*.{ts,tsx}"] } } };
     const r = by(reconcileKnip(a, b));
     expect(r["apps.entry"]).toMatchObject({ test: "benefit", chosen: ["src/app/**/*.{ts,tsx}", "src/features/*/index.ts", "tests/**/*.{ts,tsx}"], tier: "class" });
-    expect(r["apps.extraEntries"]).toMatchObject({ test: "parameter", chosen: { $parameter: "knip.extraEntries" } });
+    expect(r["apps.extraEntries"]).toMatchObject({ test: "parameter", chosen: { $parameter: "knip.apps.extraEntries" } });
     expect(r["apps.extraEntries"].b).toContain("src/shared/infrastructure/i18n/request.ts");
+  });
+  it("folds test-only package entries into the shared pattern", () => {
+    const a = { workspaces: { "packages/identity": { entry: ["tests/**/*.test.ts"] } } };
+    const b = { workspaces: { "packages/shared": { entry: ["tests/**/*.{ts,tsx}"] } } };
+    const r = by(reconcileKnip(a, b));
+    expect(r["packages.entry"]).toMatchObject({ chosen: ["tests/**/*.{ts,tsx}"] });
   });
 });
 
