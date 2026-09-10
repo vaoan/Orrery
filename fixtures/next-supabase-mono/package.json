@@ -1,0 +1,1 @@
+{ "name": "fixture-next-supabase-mono", "private": true, "type": "module", "devDependencies": { "@vaoan/orrery": "workspace:*", "eslint": "^9.39.5" }, "prettier": "@vaoan/orrery/prettier" }
