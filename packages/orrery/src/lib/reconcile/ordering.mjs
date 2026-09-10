@@ -6,7 +6,7 @@ const RANK = { off: 0, warn: 1, error: 2 };
 
 export const severityOf = (value) => SEVERITY[Array.isArray(value) ? value[0] : value] ?? "off";
 
-const isEmptyObject = (v) => v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).length === 0;
+export const isEmptyObject = (v) => v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).length === 0;
 
 function stripMessages(value) {
   if (Array.isArray(value)) return value.map(stripMessages);
@@ -83,9 +83,11 @@ export const PRE_RULINGS = {
   "testing-library/no-dom-import": {
     chosen: ["error", "react"],
     test: "benefit",
+    surfaces: ["unit-test"],
     note: "both sides error; the framework argument adds the autofix to @testing-library/react and names the right module in the report, and every body in the class renders React",
   },
   "no-restricted-syntax": {
+    surfaces: ["e2e"],
     chosen: ["error",
       { selector: "CallExpression[callee.property.name=/^(getByRole|getAllByRole|queryByRole|queryAllByRole|findByRole|findAllByRole)$/]", message: "Use getByTestId in E2E tests. Role queries couple the test to the accessible name, which is translated." },
       { selector: "CallExpression[callee.name=/^(getByRole|getAllByRole|queryByRole|queryAllByRole|findByRole|findAllByRole)$/]", message: "Use getByTestId in E2E tests. Role queries couple the test to the accessible name, which is translated." },
@@ -111,6 +113,7 @@ export const PRE_RULINGS = {
   "playwright/expect-expect": {
     chosen: ["error", { assertFunctionNames: { $parameter: "e2e.assertFunctionNames" } }],
     test: "parameter",
+    surfaces: ["e2e"],
     note: "the rule stays error; the names of a body's own assertion helpers are body data, default empty as the rule's own default",
   },
 };
@@ -168,7 +171,10 @@ function parameterise(rule, optionsA, optionsB) {
   return [merged];
 }
 
-export function stricter(rule, a, b) {
+// `surface` is optional: a pre-ruling with no `surfaces` list applies regardless of it; one
+// that names surfaces applies only when `surface` is among them, and otherwise falls through
+// to the ordinary ordering below exactly as if the rule had no pre-ruling at all.
+export function stricter(rule, a, b, surface) {
   const sevA = severityOf(a);
   const sevB = severityOf(b);
   const severity = RANK[sevA] >= RANK[sevB] ? sevA : sevB;
@@ -176,7 +182,8 @@ export function stricter(rule, a, b) {
   const optionsB = optionsOf(b);
   const sameOptions = JSON.stringify(optionsA) === JSON.stringify(optionsB);
 
-  if (PRE_RULINGS[rule]) return { ...PRE_RULINGS[rule] };
+  const preRuling = PRE_RULINGS[rule];
+  if (preRuling && (!preRuling.surfaces || preRuling.surfaces.includes(surface))) return { ...preRuling };
 
   if (sameOptions) {
     return { chosen: [severity, ...optionsA], test: "strictest", note: `severity ${severity} over ${sevA === severity ? sevB : sevA}` };

@@ -53,4 +53,74 @@ describe("reconcileEslint", () => {
     expect(r.chosen).toEqual(["error", { union: ["a", "b"], fromSide: "left", parameter: 1, other: 2 }]);
     expect(r.test).toBe("strictest");
   });
+
+  describe("a pre-ruled key's adopt rows", () => {
+    it("takes the pre-ruling's resolved options from the first conflict surface, keeping its own severity and test", () => {
+      const a = { component: cfg({ "i18next/no-literal-string": [2, { mode: "jsx-text-only", "jsx-attributes": { include: ["alt", "title"] } }] }) };
+      const b = {
+        component: cfg({ "i18next/no-literal-string": [2, { mode: "all", "jsx-attributes": { include: ["alt", "label"] }, ignoreAttribute: ["className"], words: { exclude: ["y"] } }] }),
+        source: cfg({ "i18next/no-literal-string": [2, { mode: "all", ignoreAttribute: ["className"], words: { exclude: ["y"] }, callees: { exclude: ["z"] } }] }),
+      };
+      const rows = reconcileEslint(a, b);
+      const component = rows.find((r) => r.surface === "component" && r.key === "i18next/no-literal-string");
+      const source = rows.find((r) => r.surface === "source" && r.key === "i18next/no-literal-string");
+      expect(component.test).toBe("benefit");
+      expect(source.test).toBe("benefit");
+      expect(source.chosen[0]).toBe("error");
+      expect(source.chosen.slice(1)).toEqual(component.chosen.slice(1));
+      expect(source.chosen[1]).not.toHaveProperty("callees");
+      expect(source.note).toMatch(/one-sided on this surface, options from the class ruling$/);
+    });
+
+    it("stays a plain adopt row outside a surface-restricted pre-ruling's declared surfaces", () => {
+      const a = { source: cfg({ "no-restricted-syntax": [2, { selector: "Foo", message: "bar" }] }) };
+      const b = { source: cfg({}) };
+      const [r] = reconcileEslint(a, b);
+      expect(r.test).toBe("adopt");
+      expect(r.chosen).toEqual([2, { selector: "Foo", message: "bar" }]);
+    });
+
+    it("resolves markers against its own two sides when the rule never conflicts anywhere, unioning against the absent side's empty list", () => {
+      const a = { package: cfg({ "sonarjs/no-duplicate-string": [2, { threshold: 3, ignoreStrings: "abc" }] }) };
+      const b = {};
+      const [r] = reconcileEslint(a, b);
+      expect(r.test).toBe("benefit");
+      expect(r.chosen).toEqual(["error", { threshold: 2, ignoreStrings: "abc" }]);
+    });
+
+    it("falls back to the present side's own value when a fromSide marker points at the absent side", () => {
+      const a = { script: cfg({ "i18next/no-literal-string": [2, { mode: "all", ignoreAttribute: ["className"] }] }) };
+      const b = {};
+      const [r] = reconcileEslint(a, b);
+      expect(r.chosen[1].ignoreAttribute).toEqual(["className"]);
+    });
+
+    it("omits a fromSide key neither side has, rather than emitting null", () => {
+      const a = { package: cfg({ "i18next/no-literal-string": [2, { mode: "all" }] }) };
+      const b = {};
+      const [r] = reconcileEslint(a, b);
+      expect(r.chosen[1]).not.toHaveProperty("ignoreAttribute");
+      expect(r.chosen[1]["jsx-attributes"]).toEqual({ include: [] });
+      expect(r.chosen[1]).not.toHaveProperty("callees");
+    });
+  });
+
+  describe("lost RegExp detection", () => {
+    it("turns a row whose options still hold a RegExp lost by --print-config into residue", () => {
+      const a = { source: cfg({ "unicorn/fake-rule": [2, { exclude: [{}, "x"] }] }) };
+      const b = {};
+      const [r] = reconcileEslint(a, b);
+      expect(r.test).toBe("residue");
+      expect(r.chosen).toBeNull();
+      expect(r.note).toBe("an option holds a RegExp that --print-config serialises as {}; needs a pre-ruling");
+    });
+
+    it("does not flag a bare empty options object", () => {
+      const a = { source: cfg({ "unicorn/fake-rule": [2, {}] }) };
+      const b = {};
+      const [r] = reconcileEslint(a, b);
+      expect(r.test).toBe("adopt");
+      expect(r.chosen).toEqual([2, {}]);
+    });
+  });
 });

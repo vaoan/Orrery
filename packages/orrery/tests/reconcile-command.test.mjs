@@ -2,7 +2,10 @@ import { describe, it, expect, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import reconcile from "../src/commands/reconcile.mjs";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 
 const quiet = () => {
   const log = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -62,5 +65,21 @@ describe("orrery reconcile", () => {
     expect(seen).toEqual({ source: "custom.ts", e2e: "e.spec.ts" });
     fs.rmSync(out, { recursive: true, force: true });
     q.restore();
+  });
+
+  it("guards the committed rulings.json: no eslint row's chosen options hold a RegExp lost by --print-config", () => {
+    const rulings = JSON.parse(fs.readFileSync(path.join(root, "docs/decisions/rulings.json"), "utf8"));
+    const isEmptyObject = (v) => v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).length === 0;
+    const hasLostRegExp = (chosen) => {
+      if (!Array.isArray(chosen)) return false;
+      const scan = (v) => {
+        if (Array.isArray(v)) return v.some(isEmptyObject) || v.some(scan);
+        if (v && typeof v === "object") return Object.values(v).some(scan);
+        return false;
+      };
+      return chosen.slice(1).some(scan);
+    };
+    const offenders = rulings.rows.filter((r) => r.tool === "eslint" && hasLostRegExp(r.chosen)).map((r) => `${r.surface} ${r.key}`);
+    expect(offenders).toEqual([]);
   });
 });
