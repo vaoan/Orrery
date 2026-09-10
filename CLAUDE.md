@@ -88,7 +88,9 @@ develop, and while main is ahead of develop, every other PR into develop is
 frozen by `branch-sync`. PR titles are `type(scope): subject [GH-n]`, with
 `GH-000` for work with no issue. The back-merge travels on a
 `back-merge/<sha>` branch cut from main by the workflow; nobody else creates
-those.
+those. Branch descriptions say what changes, never the plan label:
+`feat/reconcile-records-command`, not `feat/2b-task-5`; `orrery ci branch-name`
+and the pre-push hook enforce it.
 
 ### When execution corners you
 

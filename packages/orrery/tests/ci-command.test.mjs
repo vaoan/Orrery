@@ -57,7 +57,14 @@ describe("orrery ci", () => {
   it("checks the branch name", async () => {
     const q = quiet();
     expect(await ci(["branch-name", "--head", "Feature/X"], { env: {} })).toBe(1);
-    expect(await ci(["branch-name", "--head", "feat/x"], { env: {} })).toBe(0);
+    expect(await ci(["branch-name", "--head", "feat/two-words"], { env: {} })).toBe(0);
+    q.restore();
+  });
+
+  it("rejects a branch description that is a plan label, not a description", async () => {
+    const q = quiet();
+    expect(await ci(["branch-name", "--head", "feat/2b-reconcile"], { env: {} })).toBe(1);
+    expect(q.out()).toMatch(/describe the change/);
     q.restore();
   });
 

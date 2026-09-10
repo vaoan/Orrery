@@ -52,7 +52,7 @@ describe("orrery hook", () => {
 
   it("pre-push checks the branch name through the runner and then runs tests", async () => {
     const calls = [];
-    const run = (c, a) => { calls.push([c, ...a].join(" ")); return c === "git" ? "feat/x\n" : ""; };
+    const run = (c, a) => { calls.push([c, ...a].join(" ")); return c === "git" ? "feat/two-words\n" : ""; };
     expect(await hook(["pre-push"], { run, env: {} })).toBe(0);
     expect(calls).toEqual(["git branch --show-current", "pnpm run --if-present test"]);
   });
@@ -66,9 +66,19 @@ describe("orrery hook", () => {
     e.mockRestore();
   });
 
+  it("pre-push rejects a plan-label branch description through the same function", async () => {
+    const e = vi.spyOn(console, "error").mockImplementation(() => {});
+    const calls = [];
+    const run = (c, a) => { calls.push(c); return "feat/2b-reconcile\n"; };
+    expect(await hook(["pre-push"], { run, env: {} })).toBe(1);
+    expect(calls).toEqual(["git"]);
+    expect(e.mock.calls.flat().join("\n")).toMatch(/describe the change/);
+    e.mockRestore();
+  });
+
   it("pre-push skips tests when ORRERY_HOOK_SKIP_TESTS=1", async () => {
     const calls = [];
-    const run = (c) => { calls.push(c); return "feat/x\n"; };
+    const run = (c) => { calls.push(c); return "feat/two-words\n"; };
     expect(await hook(["pre-push"], { run, env: { ORRERY_HOOK_SKIP_TESTS: "1" } })).toBe(0);
     expect(calls).toEqual(["git"]);
   });
