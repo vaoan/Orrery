@@ -108,22 +108,11 @@ describe(".github/pull_request_template.md", () => {
   });
 });
 
-describe(".github/workflows/observe.yml", () => {
-  const yaml = read(".github/workflows/observe.yml");
-  it("runs nightly and on demand", () => {
-    expect(yaml).toMatch(/  schedule:\n    - cron: /);
-    expect(yaml).toContain("workflow_dispatch:");
-  });
-  it("dry-runs by default and applies only when the repository variable says so", () => {
-    expect(yaml).toContain("vars.ORRERY_APPLY_POLICY == 'apply'");
-    expect(yaml).toContain("--dry-run");
-  });
-  it("iterates the registry and uses the admin token", () => {
-    expect(yaml).toContain("registry.json");
-    expect(yaml).toContain("secrets.ORRERY_ADMIN_TOKEN");
-  });
-  it("fails the job when any body could not be observed", () => {
-    expect(yaml).toContain("failed=1");
-    expect(yaml).toContain("exit 1");
+// ADR 0017: there is no scheduled job in Orrery. `orrery repo apply` and `orrery observe`
+// are on-demand commands; a body's own CI (the reusable ci.yml) is what fails it, not a
+// nightly run from here.
+describe("no scheduled observation workflow", () => {
+  it("does not ship .github/workflows/observe.yml", () => {
+    expect(fs.existsSync(path.join(root, ".github/workflows/observe.yml"))).toBe(false);
   });
 });

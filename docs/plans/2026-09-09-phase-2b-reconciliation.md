@@ -2952,7 +2952,7 @@ The proof. A scratch directory inside the OS temp holds one materialised config 
   - `materialise` writes `eslint.config.mjs` (`import orrery from "<abs class eslint.mjs>"; export default await orrery({ ...config, root: "<bodyDir>" });`), `tsconfig.json` (`extends` the class tsconfig by absolute path, `include` from the body's tsconfig parameter, `compilerOptions.noEmit`), `stylelint.config.mjs`, `jscpd.json`, `cspell.json`, `.ls-lint.yml`, `syncpack.json` by calling each bundle function with the body config and serialising.
   - `effectiveMismatches(effectiveRules, rows, bodyConfig) => string[]` — the honesty comparison from Task 7, reused: every ruled rule present with its resolved value; extras that are not `off`.
   - `violationsByRule(eslintJsonOutput) => { [rule]: count }`.
-  - `compareToPrediction(observed, prediction) => { unexplained: string[], moved: [{ rule, was, now }], newRules: string[] }` — a rule with violations that is not in `prediction.tightened` is `unexplained` (a defect in Orrery or a body that is not clean under its own config); count changes are `moved`, informational.
+  - `compareToPrediction(observed, prediction) => { unexplained: string[], baseline: { [rule]: number }, moved: [{ rule, was, now }], newRules: string[] }` — a rule with violations that is not in `prediction.tightened` is `unexplained` only when it is absent from the prediction's counts or above its predicted count; otherwise it is `baseline` (violated at the baseline, recorded, informational). Count changes on an already-tightened rule are `moved`, informational.
   - `codeDrift(bodyDir, { bundleDir, bodyConfig, rows, prediction, samples, run, exec, scratchDir, tools }) => { eslint: { mismatches, violations, comparison }, tsc: { errors }, stylelint: { count }, jscpd: { clones }, cspell: { issues }, "ls-lint": { errors }, syncpack: { mismatches } }`.
   - `renderObservation(results)` → one markdown per run with a table per body.
 
@@ -3309,34 +3309,57 @@ export function violationsByRule(eslintJson) {
   return Object.fromEntries(Object.entries(counts).sort(([x], [y]) => (x < y ? -1 : 1)));
 }
 
-// A rule with violations that the prediction did not `tighten` is a defect in Orrery or a body
-// that is not clean under its own config — `unexplained`. Count changes on an already-tightened
-// rule are `moved`, informational. A tightened rule the prediction never saw before is `new`. A
-// tightened rule with zero violations now is `resolved`: the body fixed it, or it never fired.
+// A rule with violations that the prediction did not `tighten` is either `baseline` (already
+// known at or below the count `--predict` last recorded — informational, not a failure) or
+// `unexplained` (absent from the prediction entirely, or worse than what was recorded — a defect
+// in Orrery or a body that is not clean under its own config). Count changes on an
+// already-tightened rule are `moved`, informational. A tightened rule the prediction never saw
+// before is `new`. A tightened rule with zero violations now is `resolved`: the body fixed it, or
+// it never fired.
 export function compareToPrediction(observed, prediction) {
   const tightened = new Set(prediction.tightened);
-  const unexplained = Object.keys(observed).filter((r) => r !== "(fatal)" && !tightened.has(r));
+  const baseline = [];
+  const unexplained = [];
+  for (const [rule, n] of Object.entries(observed)) {
+    if (rule === "(fatal)" || tightened.has(rule)) continue;
+    const predicted = prediction.counts[rule];
+    (predicted === undefined || n > predicted ? unexplained : baseline).push(rule);
+  }
   const moved = Object.entries(observed)
     .filter(([r, n]) => prediction.counts[r] !== undefined && prediction.counts[r] !== n)
     .map(([r, n]) => ({ rule: r, was: prediction.counts[r], now: n }));
   const newRules = Object.keys(observed).filter((r) => tightened.has(r) && prediction.counts[r] === undefined);
   const resolved = prediction.tightened.filter((r) => observed[r] === undefined);
-  return { unexplained, moved, newRules, resolved };
+  return { unexplained, baseline, moved, newRules, resolved };
 }
 
 // Which rules the bundle tightens for this body: every ruled rule whose value differs from what
 // the body's own effective config has for that surface (or that the body lacks entirely) — the
 // same `ruledValueMatches` effectiveMismatches uses against a real effective config. A rule
-// eslint-config-prettier always turns off is excluded outright, not compared: its real effective
-// value is always "off" regardless of `chosen` or of the body's own value, so it can never
-// contribute a new violation the bundle didn't already produce — reporting it "tightened" was
-// always spurious, however the body's own pre-bundle value happened to compare.
-export function tightenedFor(rows, bodyEffectiveBySurface, body) {
+// eslint-config-prettier always turns off is excluded outright, not compared:
+// its real effective value is always "off" regardless of `chosen` or of the body's own value, so
+// it can never contribute a new violation the bundle didn't already produce — reporting it
+// "tightened" was always spurious, however the body's own pre-bundle value happened to compare.
+//
+// T4b: a `boundaries/*` rule can carry an identical `chosen` value (severity + options) on both
+// sides and still behave differently, because boundaries rules read `settings["boundaries/elements"]`
+// — not the rule's own options — to know what an "element" is. `classEffectiveBySurface` is the
+// class bundle's own real effective config per surface (the same `readEffectiveConfig` call
+// `codeDrift`'s eslint pass already makes against the materialised scratch config, threaded
+// through here rather than recomputed); a body whose own `boundaries/elements` setting differs
+// from the class's — canonicalised, so key order never matters — is tightened for every
+// `boundaries/*` rule even when the rule value itself already matched.
+export function tightenedFor(rows, bodyEffectiveBySurface, body, classEffectiveBySurface = {}) {
   const out = new Set();
   for (const r of rows) {
     if (r.tool !== "eslint" || r.chosen === null || !r.tier || prettierOffKeys.has(r.key)) continue;
     const own = bodyEffectiveBySurface[r.surface]?.rules?.[r.key];
-    if (!ruledValueMatches(own, r, body)) out.add(r.key);
+    if (!ruledValueMatches(own, r, body)) { out.add(r.key); continue; }
+    if (r.key.startsWith("boundaries/")) {
+      const classElements = JSON.stringify(canonical(classEffectiveBySurface[r.surface]?.settings?.["boundaries/elements"]));
+      const ownElements = JSON.stringify(canonical(bodyEffectiveBySurface[r.surface]?.settings?.["boundaries/elements"]));
+      if (classElements !== ownElements) out.add(r.key);
+    }
   }
   return [...out].sort();
 }
@@ -3480,7 +3503,7 @@ export function renderObservation(results, date) {
       if (r.comparison) {
         lines.push(
           "",
-          `unexplained: ${r.comparison.unexplained.join(", ") || "none"}; moved: ${r.comparison.moved.map((m) => `${m.rule} ${m.was}→${m.now}`).join(", ") || "none"}; new: ${r.comparison.newRules.join(", ") || "none"}; resolved: ${r.comparison.resolved.join(", ") || "none"}`
+          `unexplained: ${r.comparison.unexplained.join(", ") || "none"}; baseline: ${r.comparison.baseline.join(", ") || "none"}; moved: ${r.comparison.moved.map((m) => `${m.rule} ${m.was}→${m.now}`).join(", ") || "none"}; new: ${r.comparison.newRules.join(", ") || "none"}; resolved: ${r.comparison.resolved.join(", ") || "none"}`
         );
       }
     }
@@ -3702,12 +3725,24 @@ T1/T2/T4 amendment (this round — `fix/observe-streams-surfaces-and-baseline`, 
 
 ### Task 10: Predictions for aeleos and libra, the observation report, CI wiring
 
+Re-scoped 2026-09-10 by the owner (see ADR 0017): *"i kinda dont want a tool
+that monitors the others. i want the others to get the information from this
+one and they take care of themselves. i do want the option to trigger from
+here to know whats up but we dont need to be a nightly thing"* … *"remove the
+2e nightly too."* There is no nightly `tooling` job (Step 2, below, is
+withdrawn) and no 2e nightly repository-policy job either — `.github/workflows/observe.yml`
+is deleted outright. `orrery observe` and `orrery repo apply` stay on-demand
+commands, run from Orrery; a body's own CI (Phase 2d's `orrery check`, wired
+by `init`) is what enforces drift against a body going forward.
+
 **Files:**
 - Create by running: `docs/predictions/aeleos.json`, `docs/predictions/libra.json`, `docs/observations/<date>-tooling.md` and `.json`
-- Modify: `.github/workflows/observe.yml` — a second job `tooling` that clones every registered body at its default branch, installs it, and runs `orrery observe` in report mode
+- Delete: `.github/workflows/observe.yml` — no scheduled job of any kind ships from Orrery (ADR 0017)
 - Modify: `.github/workflows/ci.yml` — nothing new: the `test` job already runs the bundle-honesty and fixture tests
-- Modify: `docs/decisions/0003-repository-policy.md`? No. Create `docs/decisions/0016-observation-baseline.md`: the first observation of both donors, counts per tool, and the sentence that these are predictions, not rulings
-- Test: `packages/orrery/tests/workflows.test.mjs` — assertions for the `tooling` job
+- Create: `docs/decisions/0016-observation-baseline.md` — the first observation of both donors, counts per tool, and the sentence that these are predictions, not rulings
+- Create: `docs/decisions/0017-no-scheduled-observation.md` — the owner's decision that Orrery runs no scheduled job; a body's own CI enforces drift against itself instead
+- Modify: `docs/specs/2026-09-08-phase-2b-reconciliation-design.md`, `docs/specs/2026-09-08-phase-2e-repository-policy-design.md`, `docs/decisions/0003-repository-policy.md` — a one-line "Amended by ADR 0017" pointer under each nightly-observation paragraph; the historical text otherwise unchanged
+- Test: `packages/orrery/tests/workflows.test.mjs` — replace the `observe.yml` `tooling`/`repository-policy` assertions with one assertion that the file does not exist
 
 **Interfaces:** consumes everything above; produces the committed predictions the spec calls for.
 
@@ -3729,50 +3764,20 @@ Expected: exit 0, zero effective-config mismatches on every surface for both don
 
 Known expectations from the spec: libra shows `unicorn/filename-case` violations in the hundreds (Phase 0's codemod was never run); aeleos shows stylelint findings in `globals.css`; both show sonarjs threshold violations.
 
-- [ ] **Step 2: Extend the nightly**
+- [ ] **Step 2: Remove the 2e nightly**
 
-Add to `.github/workflows/observe.yml` a job `tooling` after `repository-policy`:
+Withdrawn by the owner (ADR 0017): no nightly `tooling` job is added, and the
+existing 2e nightly repository-policy job goes with it. Delete
+`.github/workflows/observe.yml` outright — there is no job left in it to keep.
+`registry.json` gets no `observe` field; it stays the plain constellation map
+(`repo`, `role`, `class` per body), nothing gating which bodies a scheduled
+job would clone, because there is no scheduled job.
 
-```yaml
-  tooling:
-    name: tooling observation
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: develop
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Clone and install every registered body
-        run: |
-          mkdir -p bodies
-          for repo in $(node -e 'const r=require("./registry.json");console.log(Object.values(r.bodies).filter(b=>b.class).map(b=>b.repo).join(" "))'); do
-            name=$(basename "$repo" | tr '[:upper:]' '[:lower:]')
-            git clone --depth 1 "https://github.com/$repo.git" "bodies/$name"
-            (cd "bodies/$name" && pnpm install --frozen-lockfile --ignore-scripts) || echo "::warning::install failed for $repo"
-          done
-      - name: Observe
-        run: |
-          set +e
-          pnpm -s orrery observe $(ls -d bodies/*/) --report docs/observations
-          echo "status=$?" >> "$GITHUB_OUTPUT"
-        id: observe
-      - name: Publish the report
-        run: cat docs/observations/$(date -u +%F)-tooling.md
-      - name: Fail on a bundle defect
-        if: steps.observe.outputs.status != '0'
-        run: exit 1
-```
-
-Read-only towards the bodies: the clones are the runner's, never pushed. `--ignore-scripts` keeps a body's `prepare` (husky) from running in the clone. A body with no prediction file fails the step by design; the predictions for Puck, eclipse-con and Janus are recorded in the cut-over, so until then those three are excluded by adding `"observe": false` to their registry entries and filtering on it in the `node -e` (add that field and the filter; document it in the registry's `$comment`).
-
-Extend `workflows.test.mjs` with: "the tooling job clones bodies read-only and never pushes them" expecting `git clone --depth 1`, `--ignore-scripts`, `orrery observe`, and NOT `git push` within the `tooling` job text.
+Replace `workflows.test.mjs`'s `.github/workflows/observe.yml` describe block
+(both its `tooling`-job assertions from the withdrawn Step 2 above and the 2e
+`repository-policy` assertions that shipped in Phase 2e) with one assertion:
+the file does not exist. Every other assertion in the file (ci.yml,
+back-merge.yml, release.yml, the PR template) is unchanged.
 
 - [ ] **Step 3: The baseline record**
 
@@ -3781,10 +3786,11 @@ Extend `workflows.test.mjs` with: "the tooling job clones bodies read-only and n
 - [ ] **Step 4: Commit and land**
 
 ```bash
-git checkout -b feat/2b-predictions origin/develop
-git add docs/predictions docs/observations docs/decisions/0016-observation-baseline.md .github/workflows/observe.yml registry.json packages/orrery/tests/workflows.test.mjs
-git commit -m "feat(observe): predictions for aeleos and libra, baseline record, nightly tooling observation [GH-000]"
-git push -u origin HEAD && gh pr create --base develop --title "feat(observe): donor predictions, baseline record, nightly tooling observation [GH-000]" --body "Task 10 of the 2b plan." && gh pr merge --squash --auto
+git checkout -b feat/donor-predictions-and-nightly-observation origin/develop
+git add docs/predictions docs/observations docs/decisions/0016-observation-baseline.md docs/decisions/0017-no-scheduled-observation.md docs/specs/2026-09-08-phase-2b-reconciliation-design.md docs/specs/2026-09-08-phase-2e-repository-policy-design.md docs/decisions/0003-repository-policy.md packages/orrery/tests/workflows.test.mjs docs/plans/2026-09-09-phase-2b-reconciliation.md
+git rm .github/workflows/observe.yml
+git commit -m "feat(observe): donor predictions, baseline record, and the end of scheduled observation [GH-000]"
+git push -u origin HEAD && gh pr create --base develop --title "feat(observe): donor predictions, baseline record, and the end of scheduled observation [GH-000]" --body "Task 10 of the 2b plan, re-scoped 2026-09-10 (ADR 0017): no nightly job." && gh pr merge --squash --auto
 ```
 
 ---
@@ -3794,8 +3800,9 @@ git push -u origin HEAD && gh pr create --base develop --title "feat(observe): d
 - `pnpm test` passes: the 214 tests of Phase 2e plus this plan's. Verified 2026-09-09 by extracting every code block into a scratch copy of the package and running it: 85 new unit-level tests pass (299 total with 2e's) before the three environment-bound files (bundle-honesty, fixture-pointers, workflows additions), which run only once the fixture, the bundle and the workflow exist. Report the observed count.
 - `orrery reconcile Z:/Github/aeleos Z:/Github/libra` exits 0 with no residue; twelve records and `rulings.json` are committed; every ruling has a row.
 - `orrery bundle` regenerates `physics/` and `classes/next-supabase-mono/` byte-identically from the committed rulings (a test runs it into a temp dir and diffs against the committed files).
-- `orrery observe Z:/Github/aeleos Z:/Github/libra` exits 0: effective config equals the rulings on every surface for both donors, and every violation comes from a rule the rulings tightened for that body. The predictions are committed.
+- `orrery observe Z:/Github/aeleos Z:/Github/libra` exits 0: effective config equals the rulings on every surface for both donors, and every violation comes from a rule the rulings tightened for that body, or is recorded `baseline`. The predictions are committed, alongside ADR 0016 (the baseline record) and ADR 0017 (no scheduled job; see below).
 - No body was modified: `git -C Z:/Github/aeleos status --short` and the same for libra are empty at the end, and both HEADs are the SHAs recorded in the predictions.
+- No scheduled workflow ships from Orrery: `.github/workflows/observe.yml` does not exist. `orrery observe` and `orrery repo apply` remain on-demand commands.
 
 ## Rulings made while planning, for the controller to confirm or overturn
 
@@ -3806,5 +3813,5 @@ git push -u origin HEAD && gh pr create --base develop --title "feat(observe): d
 5. The class's surface globs are fixed conventions (`apps/*/src/**/*.ts`, `**/*.test.{ts,tsx}`, …), not derived from the donors' 61 override blocks; the six measured surfaces are what those blocks reduce to.
 6. tsconfig per-app data (`types`, `include`, `paths`) stays in each app's own tsconfig under the class `extends`; the bundle carries only compiler flags.
 7. The fixture body is a pnpm workspace package so its pointer files resolve `@vaoan/orrery` the way a body will.
-8. The nightly tooling observation clones only bodies flagged `observe: true` in the registry until the cut-over records predictions for the other three.
+8. ~~The nightly tooling observation clones only bodies flagged `observe: true` in the registry until the cut-over records predictions for the other three.~~ Overturned 2026-09-10 (ADR 0017): there is no nightly tooling observation, so nothing needs a registry flag to gate it. `registry.json` carries no `observe` field.
 9. A `residue` row at reconcile time stops the executor: pre-rulings are added only after the owner has seen the row, per the stop-when-cornered rule.

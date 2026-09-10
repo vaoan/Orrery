@@ -1,0 +1,309 @@
+{
+  "body": "libra",
+  "sha": "1c79de72",
+  "generatedAt": "2026-09-10",
+  "bodyConfig": {
+    "class": "next-supabase-mono",
+    "workspacePackages": [],
+    "floatingPeers": [],
+    "tailwind": {
+      "entryPoint": "apps/store/src/app/globals.css"
+    },
+    "boundaries": {
+      "elements": [],
+      "allow": []
+    },
+    "imports": {
+      "restrictedPatterns": []
+    },
+    "i18n": {
+      "excludedWords": []
+    },
+    "e2e": {
+      "restrictedSyntax": [
+        {
+          "selector": "Literal[value=54321]",
+          "message": "Do not hardcode Supabase port 54321 in e2e files. Read NEXT_PUBLIC_SUPABASE_URL from process.env."
+        },
+        {
+          "selector": "Literal[value=64321]",
+          "message": "Do not hardcode Supabase port 64321 in e2e files. Read NEXT_PUBLIC_SUPABASE_URL from process.env."
+        },
+        {
+          "selector": "Literal[value=/127\\.0\\.0\\.1:(54321|64321)/]",
+          "message": "Do not hardcode Supabase fallback URLs in e2e files. Read NEXT_PUBLIC_SUPABASE_URL from process.env."
+        },
+        {
+          "selector": "CallExpression[callee.name='getLocalSupabaseEnv'], CallExpression[callee.object.name='getLocalSupabaseEnv']",
+          "message": "getLocalSupabaseEnv() is banned in e2e files. Read credentials directly from process.env."
+        }
+      ],
+      "assertFunctionNames": [
+        "expectVisible",
+        "expectHidden",
+        "expectAuthenticatedAcrossApps",
+        "createProduct",
+        "createPaymentMethod",
+        "setPermissions"
+      ]
+    },
+    "spelling": [],
+    "ignore": {
+      "duplication": [],
+      "secrets": [],
+      "spelling": []
+    },
+    "knip": {
+      "apps": {
+        "extraEntries": [],
+        "extraProjects": []
+      },
+      "packages": {
+        "extraEntries": [],
+        "extraProjects": []
+      },
+      "root": {}
+    },
+    "tsconfig": {
+      "types": [],
+      "include": [],
+      "exclude": [
+        "node_modules"
+      ],
+      "paths": {}
+    },
+    "hooks": {
+      "preCommit": []
+    }
+  },
+  "tightened": [
+    "@next/next/no-html-link-for-pages",
+    "@next/next/no-location-assign-relative-destination",
+    "@typescript-eslint/no-deprecated",
+    "@typescript-eslint/no-unused-expressions",
+    "@typescript-eslint/no-unused-vars",
+    "better-tailwindcss/enforce-consistent-class-order",
+    "better-tailwindcss/no-concatenated-classes",
+    "better-tailwindcss/no-unknown-classes",
+    "boundaries/dependencies",
+    "boundaries/no-unknown",
+    "boundaries/no-unknown-files",
+    "constructor-super",
+    "for-direction",
+    "getter-return",
+    "i18next/no-literal-string",
+    "jsdoc/check-param-names",
+    "jsdoc/no-types",
+    "jsdoc/require-description",
+    "jsdoc/require-jsdoc",
+    "jsdoc/require-param",
+    "jsdoc/require-param-description",
+    "jsdoc/require-returns-description",
+    "jsx-a11y/anchor-is-valid",
+    "jsx-a11y/no-autofocus",
+    "no-async-promise-executor",
+    "no-case-declarations",
+    "no-class-assign",
+    "no-compare-neg-zero",
+    "no-cond-assign",
+    "no-const-assign",
+    "no-constant-binary-expression",
+    "no-constant-condition",
+    "no-control-regex",
+    "no-debugger",
+    "no-delete-var",
+    "no-dupe-args",
+    "no-dupe-class-members",
+    "no-dupe-else-if",
+    "no-dupe-keys",
+    "no-duplicate-case",
+    "no-empty",
+    "no-empty-character-class",
+    "no-empty-pattern",
+    "no-empty-static-block",
+    "no-ex-assign",
+    "no-extra-boolean-cast",
+    "no-fallthrough",
+    "no-func-assign",
+    "no-global-assign",
+    "no-import-assign",
+    "no-invalid-regexp",
+    "no-irregular-whitespace",
+    "no-loss-of-precision",
+    "no-misleading-character-class",
+    "no-new-native-nonconstructor",
+    "no-nonoctal-decimal-escape",
+    "no-obj-calls",
+    "no-octal",
+    "no-prototype-builtins",
+    "no-redeclare",
+    "no-regex-spaces",
+    "no-restricted-imports",
+    "no-restricted-syntax",
+    "no-self-assign",
+    "no-setter-return",
+    "no-shadow-restricted-names",
+    "no-sparse-arrays",
+    "no-this-before-super",
+    "no-undef",
+    "no-unreachable",
+    "no-unsafe-finally",
+    "no-unsafe-negation",
+    "no-unsafe-optional-chaining",
+    "no-unused-labels",
+    "no-unused-private-class-members",
+    "no-useless-backreference",
+    "no-useless-catch",
+    "no-useless-escape",
+    "no-with",
+    "react-hooks/refs",
+    "react-hooks/rules-of-hooks",
+    "react-hooks/set-state-in-effect",
+    "require-yield",
+    "security/detect-eval-with-expression",
+    "security/detect-unsafe-regex",
+    "sonarjs/assertions-in-test-cases",
+    "sonarjs/async-test-assertions",
+    "sonarjs/cyclomatic-complexity",
+    "sonarjs/explicit-test-skip",
+    "sonarjs/expression-complexity",
+    "sonarjs/fixme-tag",
+    "sonarjs/hooks-before-test-cases",
+    "sonarjs/memoize-cache-key",
+    "sonarjs/nested-control-flow",
+    "sonarjs/no-debug-commands-in-ui-tests",
+    "sonarjs/no-default-utility-imports",
+    "sonarjs/no-duplicate-string",
+    "sonarjs/no-duplicate-test-title",
+    "sonarjs/no-empty-test-title",
+    "sonarjs/no-fixed-wait-in-tests",
+    "sonarjs/no-floating-point-equality",
+    "sonarjs/no-forced-browser-interaction",
+    "sonarjs/no-incompatible-assertion-types",
+    "sonarjs/no-interpolation-in-inline-snapshots",
+    "sonarjs/no-mixed-completion-style",
+    "sonarjs/no-trivial-assertions",
+    "sonarjs/parameterized-tests",
+    "sonarjs/prefer-native-lodash-alternative",
+    "sonarjs/prefer-specific-assertions",
+    "sonarjs/super-linear-regex",
+    "sonarjs/synchronous-suite-callback",
+    "sonarjs/todo-tag",
+    "testing-library/prefer-screen-queries",
+    "tsdoc/syntax",
+    "unicorn/consistent-function-scoping",
+    "unicorn/filename-case",
+    "unicorn/no-array-reduce",
+    "unicorn/no-array-sort",
+    "unicorn/no-await-expression-member",
+    "unicorn/prefer-module",
+    "unicorn/prefer-query-selector",
+    "unicorn/prefer-single-call",
+    "unicorn/prefer-top-level-await",
+    "use-isnan",
+    "valid-typeof",
+    "vitest/expect-expect",
+    "vitest/no-commented-out-tests",
+    "vitest/no-conditional-expect",
+    "vitest/no-disabled-tests",
+    "vitest/no-focused-tests",
+    "vitest/no-identical-title",
+    "vitest/no-standalone-expect",
+    "vitest/valid-describe-callback",
+    "vitest/valid-expect"
+  ],
+  "counts": {
+    "(fatal)": 101,
+    "@typescript-eslint/no-deprecated": 3,
+    "@typescript-eslint/no-magic-numbers": 34,
+    "@typescript-eslint/no-unused-vars": 1,
+    "better-tailwindcss/enforce-consistent-class-order": 923,
+    "better-tailwindcss/no-unknown-classes": 1886,
+    "boundaries/no-unknown": 355,
+    "boundaries/no-unknown-files": 18,
+    "i18next/no-literal-string": 1426,
+    "jsdoc/require-jsdoc": 580,
+    "jsdoc/require-param": 278,
+    "jsx-a11y/no-autofocus": 2,
+    "no-empty": 1,
+    "no-restricted-imports": 15,
+    "no-restricted-syntax": 1,
+    "playwright/expect-expect": 2,
+    "playwright/no-conditional-in-test": 8,
+    "react-hooks/refs": 78,
+    "react-hooks/set-state-in-effect": 4,
+    "react/no-danger": 1,
+    "security/detect-unsafe-regex": 1,
+    "sonarjs/cyclomatic-complexity": 20,
+    "sonarjs/deprecation": 3,
+    "sonarjs/different-types-comparison": 23,
+    "sonarjs/expression-complexity": 3,
+    "sonarjs/function-return-type": 1,
+    "sonarjs/max-lines": 1,
+    "sonarjs/no-alphabetical-sort": 5,
+    "sonarjs/no-duplicate-string": 36,
+    "sonarjs/no-selector-parameter": 1,
+    "sonarjs/prefer-read-only-props": 244,
+    "sonarjs/prefer-regexp-exec": 3,
+    "tsdoc/syntax": 62,
+    "unicorn/consistent-function-scoping": 5,
+    "unicorn/filename-case": 396,
+    "unicorn/no-array-reduce": 2,
+    "unicorn/no-array-sort": 11,
+    "unicorn/no-await-expression-member": 2,
+    "unicorn/prefer-query-selector": 1,
+    "vitest/expect-expect": 3,
+    "vitest/no-conditional-expect": 11
+  },
+  "baseline": {
+    "@typescript-eslint/no-magic-numbers": 34,
+    "playwright/expect-expect": 2,
+    "playwright/no-conditional-in-test": 8,
+    "react/no-danger": 1,
+    "sonarjs/deprecation": 3,
+    "sonarjs/different-types-comparison": 23,
+    "sonarjs/function-return-type": 1,
+    "sonarjs/max-lines": 1,
+    "sonarjs/no-alphabetical-sort": 5,
+    "sonarjs/no-selector-parameter": 1,
+    "sonarjs/prefer-read-only-props": 244,
+    "sonarjs/prefer-regexp-exec": 3
+  },
+  "tools": {
+    "tsc": {
+      "errors": {
+        "TS2307": 1283,
+        "TS7006": 122,
+        "TS2345": 1,
+        "TS2304": 2,
+        "TS2339": 50,
+        "TS18047": 1,
+        "TS2722": 1,
+        "TS2604": 1,
+        "TS2786": 1,
+        "TS2322": 4,
+        "TS7031": 5,
+        "TS7053": 1,
+        "TS2638": 1,
+        "TS2578": 1,
+        "TS2540": 11,
+        "TS18048": 7
+      }
+    },
+    "stylelint": {
+      "count": 274
+    },
+    "jscpd": {
+      "clones": 91
+    },
+    "cspell": {
+      "issues": 0
+    },
+    "ls-lint": {
+      "errors": 401
+    },
+    "syncpack": {
+      "mismatches": 0
+    }
+  }
+}
