@@ -80,17 +80,17 @@ describe("stricter: pre-rulings and residue", () => {
     expect(r.test).toBe("residue");
   });
   it("rules on testing-library/no-dom-import: react's autofix is the benefit", () => {
-    const r = stricter("testing-library/no-dom-import", [2], [2, "react"]);
+    const r = stricter("testing-library/no-dom-import", [2], [2, "react"], "unit-test");
     expect(r.chosen).toEqual(["error", "react"]);
     expect(r.test).toBe("benefit");
   });
   it("rules on playwright/expect-expect: assertFunctionNames becomes the e2e parameter", () => {
-    const r = stricter("playwright/expect-expect", [2], [2, { assertFunctionNames: ["x"] }]);
+    const r = stricter("playwright/expect-expect", [2], [2, { assertFunctionNames: ["x"] }], "e2e");
     expect(r.chosen).toEqual(["error", { assertFunctionNames: { $parameter: "e2e.assertFunctionNames" } }]);
     expect(r.test).toBe("parameter");
   });
   it("rules on no-restricted-syntax: the union of both sides minus body-data selectors, ending in the e2e parameter", () => {
-    const r = stricter("no-restricted-syntax", [2], [2]);
+    const r = stricter("no-restricted-syntax", [2], [2], "e2e");
     expect(r.test).toBe("benefit");
     const entries = r.chosen.slice(1, -1);
     const selectors = entries.map((o) => o.selector);
@@ -130,6 +130,11 @@ describe("stricter: pre-rulings and residue", () => {
     expect(messages.some((m) => m.includes("tid("))).toBe(false);
     // the shared list ends with the e2e parameter marker
     expect(r.chosen.at(-1)).toEqual({ $parameter: "e2e.restrictedSyntax" });
+  });
+  it("falls through to the ordinary ordering when a surface-restricted pre-ruling's surface does not match", () => {
+    const r = stricter("no-restricted-syntax", ["error", { selector: "a" }], ["error", { selector: "b" }], "source");
+    expect(r.test).toBe("residue");
+    expect(r.chosen).toBeNull();
   });
   it("every pre-ruling names its test", () => {
     for (const [rule, ruling] of Object.entries(PRE_RULINGS)) {
