@@ -7,7 +7,18 @@ import { materialise } from "../src/lib/observe/scratch.mjs";
 import { effectiveMismatches, violationsByRule, compareToPrediction, binField, codeDrift } from "../src/lib/observe/code.mjs";
 import { resolveEslintBin } from "../src/lib/effective-config.mjs";
 
+// Every path used in these tests is derived from the test file's own location (never a literal
+// drive path): CI runs on Linux, where a hard-coded "Z:/..." string is not absolute at all —
+// `path.resolve` silently prepends the runner's cwd to it instead of erroring, producing a
+// plausible-looking but wrong path that only fails once something tries to load a module there.
 const PACKAGE_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const PACKAGE_DIR_POSIX = PACKAGE_DIR.split(path.sep).join("/");
+// A body directory that need not exist: every test below either fully overrides the tool
+// functions materialise would otherwise import (so it never touches bodyDir on disk) or mocks
+// `run`/`codeDrift`'s subprocess calls outright. `path.resolve("fake-body")` is absolute and
+// cross-platform on both Windows and Linux, unlike a literal drive path.
+const FAKE_BODY = path.resolve("fake-body");
+const FAKE_BODY_POSIX = FAKE_BODY.split(path.sep).join("/");
 
 describe("materialise", () => {
   let scratch;
@@ -15,13 +26,18 @@ describe("materialise", () => {
   afterEach(() => fs.rmSync(scratch, { recursive: true, force: true }));
 
   it("writes one config per tool that imports the bundle by absolute path and passes the body config", async () => {
-    const bundleDir = "Z:/Github/Orrery/packages/orrery";
-    const files = await materialise("Z:/Github/x", { class: "next-supabase-mono", tailwind: { entryPoint: "g.css" } }, scratch, { bundleDir, functions: { stylelint: () => ({ rules: {} }), jscpd: () => ({ threshold: 4 }), cspell: () => ({ words: [] }), lsLint: () => "ls:\n", syncpack: () => ({ versionGroups: [] }), tsconfigInclude: ["apps/*/src"] } });
+    const bundleDir = PACKAGE_DIR;
+    const files = await materialise(FAKE_BODY, { class: "next-supabase-mono", tailwind: { entryPoint: "g.css" } }, scratch, { bundleDir, functions: { stylelint: () => ({ rules: {} }), jscpd: () => ({ threshold: 4 }), cspell: () => ({ words: [] }), lsLint: () => "ls:\n", syncpack: () => ({ versionGroups: [] }), tsconfigInclude: ["apps/*/src"] } });
     const eslint = fs.readFileSync(files.eslint, "utf8");
-    expect(eslint).toContain('import orrery from "file:///Z:/Github/Orrery/packages/orrery/classes/next-supabase-mono/eslint.mjs"');
-    expect(eslint).toContain('"root": "Z:/Github/x"');
+    const eslintEntryUrl = pathToFileURL(`${PACKAGE_DIR_POSIX}/classes/next-supabase-mono/eslint.mjs`).href;
+    expect(eslint).toContain(`import orrery from ${JSON.stringify(eslintEntryUrl)}`);
+    expect(eslint).toContain(`"root": ${JSON.stringify(FAKE_BODY_POSIX)}`);
     expect(eslint).toContain('"entryPoint": "g.css"');
-    expect(JSON.parse(fs.readFileSync(files.tsconfig, "utf8"))).toEqual({ extends: "Z:/Github/Orrery/packages/orrery/classes/next-supabase-mono/tsconfig.json", include: ["Z:/Github/x/apps/*/src"], compilerOptions: { noEmit: true } });
+    expect(JSON.parse(fs.readFileSync(files.tsconfig, "utf8"))).toEqual({
+      extends: `${PACKAGE_DIR_POSIX}/classes/next-supabase-mono/tsconfig.json`,
+      include: [`${FAKE_BODY_POSIX}/apps/*/src`],
+      compilerOptions: { noEmit: true },
+    });
     expect(JSON.parse(fs.readFileSync(files.jscpd, "utf8")).threshold).toBe(4);
     expect(fs.readFileSync(files.lsLint, "utf8")).toBe("ls:\n");
   });
@@ -32,8 +48,8 @@ describe("materialise", () => {
   // omitting this OOM-crashed the eslint child process parsing `.next`'s generated webpack
   // chunks (see task-9-report.md "Real runs").
   it("ignores generated/build directories in the materialised eslint config", async () => {
-    const bundleDir = "Z:/Github/Orrery/packages/orrery";
-    const files = await materialise("Z:/Github/x", { class: "next-supabase-mono", tailwind: { entryPoint: "g.css" } }, scratch, { bundleDir, functions: { stylelint: () => ({}), jscpd: () => ({}), cspell: () => ({}), lsLint: () => "ls:\n", syncpack: () => ({}), tsconfigInclude: [] } });
+    const bundleDir = PACKAGE_DIR;
+    const files = await materialise(FAKE_BODY, { class: "next-supabase-mono", tailwind: { entryPoint: "g.css" } }, scratch, { bundleDir, functions: { stylelint: () => ({}), jscpd: () => ({}), cspell: () => ({}), lsLint: () => "ls:\n", syncpack: () => ({}), tsconfigInclude: [] } });
     const eslint = fs.readFileSync(files.eslint, "utf8");
     for (const pattern of ["**/.next/**", "**/.turbo/**", "**/dist/**", "**/build/**", "**/coverage/**", "**/node_modules/**"]) {
       expect(eslint).toContain(JSON.stringify(pattern));
@@ -48,8 +64,8 @@ describe("materialise", () => {
   // relative, it silently fails to associate any file with a TS project (a parse-level "fatal"
   // message per file, not a config error — see task-9-report.md's "Why this is blocked" #1).
   it("resolves a relative bodyDir to absolute before writing it as root / into tsconfig include", async () => {
-    const bundleDir = "Z:/Github/Orrery/packages/orrery";
-    const absoluteBody = path.resolve("Z:/Github/Orrery/fixtures/next-supabase-mono");
+    const bundleDir = PACKAGE_DIR;
+    const absoluteBody = FAKE_BODY;
     const relativeBody = path.relative(process.cwd(), absoluteBody);
     const files = await materialise(relativeBody, { class: "next-supabase-mono", tailwind: { entryPoint: "g.css" } }, scratch, {
       bundleDir,
@@ -67,10 +83,10 @@ describe("materialise", () => {
 
   // Minor: exercise the YAML emitter against the real physics/ls-lint.mjs object, not a stub.
   it("serialises the real physics ls-lint config to nested YAML", async () => {
-    const bundleDir = "Z:/Github/Orrery/packages/orrery";
+    const bundleDir = PACKAGE_DIR;
     const lsLintModule = await import(pathToFileURL(path.join(bundleDir, "physics/ls-lint.mjs")).href);
     const real = lsLintModule.default();
-    const files = await materialise("Z:/Github/x", { class: "next-supabase-mono", tailwind: { entryPoint: "g.css" } }, scratch, { bundleDir });
+    const files = await materialise(FAKE_BODY, { class: "next-supabase-mono", tailwind: { entryPoint: "g.css" } }, scratch, { bundleDir });
     const yaml = fs.readFileSync(files.lsLint, "utf8");
     expect(yaml.startsWith("ls:\n")).toBe(true);
     for (const [pattern, rules] of Object.entries(real.ls)) {
@@ -141,7 +157,7 @@ describe("codeDrift", () => {
     const run = (command, args) => { calls.push(args); return "[]"; };
     const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-test-"));
     try {
-      await codeDrift("Z:/Github/x", { rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: ["eslint"], run, scratchDir: scratch });
+      await codeDrift(FAKE_BODY, { rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: ["eslint"], run, scratchDir: scratch });
     } finally {
       fs.rmSync(scratch, { recursive: true, force: true });
     }
@@ -162,7 +178,7 @@ describe("codeDrift", () => {
         }
         return "[]";
       };
-      const result = await codeDrift("Z:/Github/x", { rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: ["stylelint", "cspell"], run, scratchDir: scratch });
+      const result = await codeDrift(FAKE_BODY, { rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: ["stylelint", "cspell"], run, scratchDir: scratch });
       expect(result.stylelint).toEqual({ crashed: true, message: "boom" });
       expect(result.cspell).toEqual({ issues: 0 });
     } finally {
@@ -175,13 +191,13 @@ describe("codeDrift", () => {
   it("removes a scratch directory it creates itself, but not one the caller passed", async () => {
     const calls = [];
     const run = (command, args) => { calls.push(args); return "[]"; };
-    await codeDrift("Z:/Github/x", { rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: ["eslint"], run });
+    await codeDrift(FAKE_BODY, { rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: ["eslint"], run });
     const ownScratchDir = path.dirname(calls[0][calls[0].indexOf("-c") + 1]);
     expect(fs.existsSync(ownScratchDir)).toBe(false);
 
     const passedScratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-owned-"));
     try {
-      await codeDrift("Z:/Github/x", { rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: ["eslint"], run, scratchDir: passedScratch });
+      await codeDrift(FAKE_BODY, { rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: ["eslint"], run, scratchDir: passedScratch });
       expect(fs.existsSync(passedScratch)).toBe(true);
     } finally {
       fs.rmSync(passedScratch, { recursive: true, force: true });

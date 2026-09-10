@@ -4,6 +4,11 @@ import os from "node:os";
 import path from "node:path";
 import observe from "../src/commands/observe.mjs";
 
+// Cross-platform, and its basename is literally "x" (what every assertion below expects the
+// command to derive) — a hard-coded "Z:/..." string is not absolute on the Linux CI runner, and
+// path.basename on it there would not give "x" the way it does on Windows.
+const FAKE_BODY = path.resolve("x");
+
 const quiet = () => { const log = vi.spyOn(console, "log").mockImplementation(() => {}); const error = vi.spyOn(console, "error").mockImplementation(() => {}); return { out: () => [...log.mock.calls, ...error.mock.calls].flat().join("\n"), restore: () => { log.mockRestore(); error.mockRestore(); } }; };
 
 const fakeDeps = (overrides = {}) => ({
@@ -29,7 +34,7 @@ describe("orrery observe", () => {
   it("writes a report and exits 0 when nothing is unexplained", async () => {
     const q = quiet();
     const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
-    const code = await observe(["Z:/Github/x", "--report", report], fakeDeps());
+    const code = await observe([FAKE_BODY, "--report", report], fakeDeps());
     expect(code).toBe(0);
     const files = fs.readdirSync(report);
     expect(files.some((f) => f.endsWith("-tooling.md"))).toBe(true);
@@ -43,7 +48,7 @@ describe("orrery observe", () => {
     const q = quiet();
     const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
     // The command computes the comparison itself from the violations: react/x is not in the prediction's tightened set.
-    const code = await observe(["Z:/Github/x", "--report", report], fakeDeps({ codeDrift: async () => ({ eslint: { mismatches: ["no-var: missing"], violations: { "react/x": 3 } } }) }));
+    const code = await observe([FAKE_BODY, "--report", report], fakeDeps({ codeDrift: async () => ({ eslint: { mismatches: ["no-var: missing"], violations: { "react/x": 3 } } }) }));
     expect(code).toBe(1);
     expect(q.out()).toMatch(/mismatch.*no-var: missing/s);
     expect(q.out()).toMatch(/unexplained.*react\/x/s);
@@ -55,7 +60,7 @@ describe("orrery observe", () => {
     const q = quiet();
     const deps = fakeDeps({ loadPrediction: () => null });
     const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
-    expect(await observe(["Z:/Github/x", "--predict", "--report", report], deps)).toBe(0);
+    expect(await observe([FAKE_BODY, "--predict", "--report", report], deps)).toBe(0);
     expect(deps.writePrediction).toHaveBeenCalledWith("x", expect.objectContaining({ tightened: expect.any(Array), counts: { "no-var": 2 } }));
     fs.rmSync(report, { recursive: true, force: true });
     q.restore();
@@ -64,7 +69,7 @@ describe("orrery observe", () => {
   it("without a prediction and without --predict exits 1 saying so", async () => {
     const q = quiet();
     const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
-    expect(await observe(["Z:/Github/x", "--report", report], fakeDeps({ loadPrediction: () => null }))).toBe(1);
+    expect(await observe([FAKE_BODY, "--report", report], fakeDeps({ loadPrediction: () => null }))).toBe(1);
     expect(q.out()).toMatch(/no prediction for x; run with --predict/);
     fs.rmSync(report, { recursive: true, force: true });
     q.restore();
@@ -77,7 +82,7 @@ describe("orrery observe", () => {
     const q = quiet();
     const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
     const code = await observe(
-      ["Z:/Github/x", "--report", report],
+      [FAKE_BODY, "--report", report],
       fakeDeps({ codeDrift: async () => ({ eslint: { crashed: true, message: "boom" }, stylelint: { count: 0 } }) })
     );
     expect(code).toBe(1);
