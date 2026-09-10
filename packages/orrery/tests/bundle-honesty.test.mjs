@@ -4,12 +4,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { readEffectiveConfig } from "../src/lib/effective-config.mjs";
-import { optionsOf, severityOf } from "../src/lib/reconcile/ordering.mjs";
+import { severityOf } from "../src/lib/reconcile/ordering.mjs";
+import { effectiveMismatches } from "../src/lib/observe/code.mjs";
 import { PLUGIN_SOURCES } from "../src/lib/bundle/plugins.mjs";
 import { withDefaults } from "../src/lib/body-config.mjs";
 import schema from "../classes/next-supabase-mono/schema.mjs";
 import { builtinRules } from "eslint/use-at-your-own-risk";
-import prettierConfig from "eslint-config-prettier";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const fixture = path.join(root, "fixtures/next-supabase-mono");
@@ -31,70 +31,20 @@ const rawBody = (await import(path.join(fixture, "orrery.config.mjs").replace(/^
 // reflect what the generator actually renders.
 const body = withDefaults(rawBody, schema);
 
-const resolveParameters = (value) => {
-  if (Array.isArray(value)) return value.flatMap((v) => (v && typeof v === "object" && "$parameter" in v ? (read(v.$parameter) ?? []) : [resolveParameters(v)]));
-  if (value && typeof value === "object") return "$parameter" in value ? read(value.$parameter) : Object.fromEntries(Object.entries(value).map(([k, v]) => [k, resolveParameters(v)]));
-  return value;
-};
-const read = (dotted) => dotted.split(".").reduce((o, k) => o?.[k], body);
-
-// Canonical (key-order-independent) JSON, for readable miss messages only: ESLint's own effective
-// config and the ruling's `chosen` value are semantically the same object with the keys inserted
-// in different orders (the generator's `literal()` alphabetizes; rulings.json keeps reconciliation
-// order) — plain JSON.stringify would treat that as a mismatch it is not.
-function canonical(value) {
-  if (Array.isArray(value)) return value.map(canonical);
-  if (value && typeof value === "object") {
-    return Object.fromEntries(Object.entries(value).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([k, v]) => [k, canonical(v)]));
-  }
-  return value;
-}
-const norm = (v) => JSON.stringify(canonical([severityOf(v), ...optionsOf(v)]));
-
-// `want` matches `actual` when every key/value `want` names is present in `actual` (recursively),
-// order-independent; `actual` may carry additional keys `want` does not mention. That slack is
-// real, not a loophole: a rule's own JSON-schema can fill in a default the ruling never had to
-// spell out (e.g. better-tailwindcss/enforce-canonical-classes's `ignore: []`) once ESLint
-// validates the option object, so the fully-resolved `actual` is a superset of the minimal
-// `chosen` literal by construction, not by the bundle mis-rendering the ruling.
-function matches(actual, want) {
-  if (Array.isArray(want)) return Array.isArray(actual) && actual.length === want.length && want.every((w, i) => matches(actual[i], w));
-  if (want && typeof want === "object") return !!actual && typeof actual === "object" && !Array.isArray(actual) && Object.entries(want).every(([k, v]) => matches(actual[k], v));
-  return Object.is(actual, want);
-}
-
-// eslint-config-prettier's own rules are appended last, unconditionally (no `files` filter), by
-// design — it is meant to win over any earlier config for the formatting rules it lists,
-// regardless of tier. A rule the rulings named as active but that also appears in this list can
-// never actually fire; the second test below already carves out this exact exemption for
-// "extras". This carves out the symmetric case: such a rule's *ruled* value is unreachable, and
-// the only honest expectation left for it is that it really is "off" in the effective config.
-const prettierOffKeys = new Set(Object.keys(prettierConfig.rules));
-
+// The honesty comparison itself (canonical key-order-independent matching, the subset "actual can
+// carry a schema-filled default `want` never spelled out" slack, the eslint-config-prettier
+// exemption) lives in src/lib/observe/code.mjs's effectiveMismatches — this is the same function
+// `orrery observe` runs against a real body, so there is one comparison, not two.
 describe.each(Object.entries(SAMPLES))("surface %s", (surface, file) => {
   const effective = readEffectiveConfig(fixture, file);
-  const expected = rulings.rows.filter((r) => r.tool === "eslint" && r.surface === surface && r.chosen !== null && r.tier);
+  const mismatches = effectiveMismatches(effective.rules, rulings.rows, surface, body);
 
   it("carries every ruled rule with the ruled value", () => {
-    const misses = [];
-    for (const r of expected) {
-      const actual = effective.rules[r.key];
-      if (actual === undefined) { misses.push(`${r.key}: missing`); continue; }
-      if (prettierOffKeys.has(r.key)) {
-        if (severityOf(actual) !== "off") misses.push(`${r.key}: got ${norm(actual)} want ["off"] (eslint-config-prettier always wins this rule)`);
-        continue;
-      }
-      const want = resolveParameters(r.chosen);
-      const ok = severityOf(actual) === severityOf(want) && matches(optionsOf(actual), optionsOf(want));
-      if (!ok) misses.push(`${r.key}: got ${norm(actual)} want ${norm(want)}`);
-    }
-    expect(misses).toEqual([]);
+    expect(mismatches.filter((m) => !m.endsWith("not in the rulings and not off"))).toEqual([]);
   }, 120_000);
 
   it("carries no rule the rulings do not name, except eslint-config-prettier's offs", () => {
-    const named = new Set(expected.map((r) => r.key));
-    const extras = Object.entries(effective.rules).filter(([k, v]) => !named.has(k) && severityOf(v) !== "off").map(([k]) => k);
-    expect(extras).toEqual([]);
+    expect(mismatches.filter((m) => m.endsWith("not in the rulings and not off"))).toEqual([]);
   }, 120_000);
 });
 
