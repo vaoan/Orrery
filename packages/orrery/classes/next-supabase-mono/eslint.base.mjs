@@ -14,17 +14,16 @@ const STANDARD_ELEMENTS = [
 ];
 
 // Both donors turn `no-undef` off on source/component/package (rulings.json: agree, chosen
-// [0, ...]) — the TypeScript compiler catches undefined identifiers there, not eslint. It stays
-// on only for `script`, adopted from aeleos. Globals go on every surface regardless: type-aware
-// parsing still needs `window`/`process`/etc. resolvable as known identifiers rather than
-// implicit `any`-flavoured globals, and `script` needs them because `no-undef` is on there.
+// [0, ...]) — the TypeScript compiler catches undefined identifiers there, not eslint, and
+// type-aware parsing resolves `window`/`process`/etc. through TypeScript's own lib types, not
+// through eslint's `no-undef`/globals machinery. Declaring globals for those three surfaces was
+// dead weight with no rule left to consume it, so S1 (PR #31 review) drops it there. `script`
+// keeps `no-undef` on (adopted from aeleos) and so still needs `globals.node`; `unit-test`/`e2e`
+// keep both node and browser for the test-runner and DOM globals their assertions reference.
 const SURFACE_GLOBALS = {
   script: { ...globals.node },
   "unit-test": { ...globals.node, ...globals.browser },
   e2e: { ...globals.node, ...globals.browser },
-  source: { ...globals.browser, ...globals.node },
-  component: { ...globals.browser, ...globals.node },
-  package: { ...globals.browser, ...globals.node },
 };
 
 export default function base(surface, body, root) {
@@ -34,7 +33,9 @@ export default function base(surface, body, root) {
       ...(typescript ? { parser: tseslint.parser, parserOptions: { projectService: true, tsconfigRootDir: root } } : {}),
       ecmaVersion: 2023,
       sourceType: "module",
-      globals: SURFACE_GLOBALS[surface],
+      // ESLint's own flat-config validator requires an object here, not undefined — `?? {}` for
+      // the three surfaces S1 dropped from SURFACE_GLOBALS above, not an omitted key.
+      globals: SURFACE_GLOBALS[surface] ?? {},
     },
     settings: {
       react: { version: "detect" },

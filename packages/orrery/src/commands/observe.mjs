@@ -113,13 +113,21 @@ export default async function observe(argv, deps = {}) {
     }
 
     if (values.predict) {
+      const tightened = code.eslint?.tightened ?? [];
+      const counts = code.eslint?.violations ?? {};
+      // T4a: everything violated but not tightened is recorded as this run's baseline —
+      // informational, not a failure — so a later, non-predict run can tell "already known, no
+      // worse than this" (baseline) from "new, or got worse" (unexplained).
+      const tightenedSet = new Set(tightened);
+      const baseline = Object.fromEntries(Object.entries(counts).filter(([r]) => r !== "(fatal)" && !tightenedSet.has(r)));
       d.writePrediction(name, {
         body: name,
         sha,
         generatedAt: d.today(),
         bodyConfig,
-        tightened: code.eslint?.tightened ?? [],
-        counts: code.eslint?.violations ?? {},
+        tightened,
+        counts,
+        baseline,
         tools: Object.fromEntries(Object.entries(code).filter(([t]) => t !== "eslint")),
       });
       console.log(`${name}: prediction written`);

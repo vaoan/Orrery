@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import prettierConfig from "eslint-config-prettier";
 import { optionsOf, severityOf } from "../reconcile/ordering.mjs";
@@ -81,8 +81,8 @@ function matches(actual, want) {
 // does, so only severity is checked for these keys, never options. Every comparison against
 // "what the bundle produces" — the honesty check against a real effective config, and observe's
 // own "did the bundle tighten this rule" check against a body's own pre-bundle effective
-// config — must agree on that carve-out, or they drift apart. (They did: see
-// `ruledValueMatches` below.)
+// config — must agree on that carve-out, or they drift apart. (They did: see `tightenedFor`
+// below — S4.)
 function ruledValueMatches(actualValue, row, body) {
   if (actualValue === undefined) return false;
   if (prettierOffKeys.has(row.key)) return severityOf(actualValue) === "off";
@@ -117,19 +117,28 @@ export function violationsByRule(eslintJson) {
   return Object.fromEntries(Object.entries(counts).sort(([x], [y]) => (x < y ? -1 : 1)));
 }
 
-// A rule with violations that the prediction did not `tighten` is a defect in Orrery or a body
-// that is not clean under its own config — `unexplained`. Count changes on an already-tightened
-// rule are `moved`, informational. A tightened rule the prediction never saw before is `new`. A
-// tightened rule with zero violations now is `resolved`: the body fixed it, or it never fired.
+// A rule with violations that the prediction did not `tighten` is either `baseline` (already
+// known at or below the count `--predict` last recorded — informational, not a failure) or
+// `unexplained` (absent from the prediction entirely, or worse than what was recorded — a defect
+// in Orrery or a body that is not clean under its own config). Count changes on an
+// already-tightened rule are `moved`, informational. A tightened rule the prediction never saw
+// before is `new`. A tightened rule with zero violations now is `resolved`: the body fixed it, or
+// it never fired.
 export function compareToPrediction(observed, prediction) {
   const tightened = new Set(prediction.tightened);
-  const unexplained = Object.keys(observed).filter((r) => r !== "(fatal)" && !tightened.has(r));
+  const baseline = [];
+  const unexplained = [];
+  for (const [rule, n] of Object.entries(observed)) {
+    if (rule === "(fatal)" || tightened.has(rule)) continue;
+    const predicted = prediction.counts[rule];
+    (predicted === undefined || n > predicted ? unexplained : baseline).push(rule);
+  }
   const moved = Object.entries(observed)
     .filter(([r, n]) => prediction.counts[r] !== undefined && prediction.counts[r] !== n)
     .map(([r, n]) => ({ rule: r, was: prediction.counts[r], now: n }));
   const newRules = Object.keys(observed).filter((r) => tightened.has(r) && prediction.counts[r] === undefined);
   const resolved = prediction.tightened.filter((r) => observed[r] === undefined);
-  return { unexplained, moved, newRules, resolved };
+  return { unexplained, baseline, moved, newRules, resolved };
 }
 
 // Which rules the bundle tightens for this body: every ruled rule whose value differs from what
@@ -139,30 +148,56 @@ export function compareToPrediction(observed, prediction) {
 // its real effective value is always "off" regardless of `chosen` or of the body's own value, so
 // it can never contribute a new violation the bundle didn't already produce — reporting it
 // "tightened" was always spurious, however the body's own pre-bundle value happened to compare.
-export function tightenedFor(rows, bodyEffectiveBySurface, body) {
+//
+// T4b: a `boundaries/*` rule can carry an identical `chosen` value (severity + options) on both
+// sides and still behave differently, because boundaries rules read `settings["boundaries/elements"]`
+// — not the rule's own options — to know what an "element" is. `classEffectiveBySurface` is the
+// class bundle's own real effective config per surface (the same `readEffectiveConfig` call
+// `codeDrift`'s eslint pass already makes against the materialised scratch config, threaded
+// through here rather than recomputed); a body whose own `boundaries/elements` setting differs
+// from the class's — canonicalised, so key order never matters — is tightened for every
+// `boundaries/*` rule even when the rule value itself already matched.
+export function tightenedFor(rows, bodyEffectiveBySurface, body, classEffectiveBySurface = {}) {
   const out = new Set();
   for (const r of rows) {
     if (r.tool !== "eslint" || r.chosen === null || !r.tier || prettierOffKeys.has(r.key)) continue;
     const own = bodyEffectiveBySurface[r.surface]?.rules?.[r.key];
-    if (!ruledValueMatches(own, r, body)) out.add(r.key);
+    if (!ruledValueMatches(own, r, body)) { out.add(r.key); continue; }
+    if (r.key.startsWith("boundaries/")) {
+      const classElements = JSON.stringify(canonical(classEffectiveBySurface[r.surface]?.settings?.["boundaries/elements"]));
+      const ownElements = JSON.stringify(canonical(bodyEffectiveBySurface[r.surface]?.settings?.["boundaries/elements"]));
+      if (classElements !== ownElements) out.add(r.key);
+    }
   }
   return [...out].sort();
 }
 
+// T1: every tool here exits non-zero on findings (not just on a real crash), and which stream
+// carries the report is a per-tool fact, not a universal one — measured against the installed
+// binaries (see code.mjs's callers below and the report this fix shipped with): eslint, tsc,
+// jscpd and cspell write to stdout; stylelint, ls-lint and syncpack write to stderr, even on a
+// clean, zero-exit run. `defaultRun` no longer picks a stream itself (execFileSync's old
+// stdout-only catch silently dropped every stylelint/ls-lint finding into a "crashed" report,
+// since neither ever had anything on stdout to fall back to) — it hands the caller both streams
+// plus the exit status and lets each tool's own attempt block read the one that is actually its
+// report. `spawnSync` never throws on a non-zero exit (only on a real spawn failure, e.g. a
+// missing binary), so a genuine crash is: `result.error` (thrown here), or a tool's own parser
+// failing to make sense of the stream it reads (JSON.parse throwing on a panic trace, for
+// instance) — `attempt` below still catches either as `{ crashed: true, message }`.
 function defaultRun(command, args, cwd) {
-  try {
-    return execFileSync(command, args, { cwd, encoding: "utf8", maxBuffer: 256 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] });
-  } catch (error) {
-    // Linters exit non-zero on findings; their report is still on stdout.
-    if (typeof error.stdout === "string" && error.stdout.length) return error.stdout;
-    throw error;
-  }
+  const result = spawnSync(command, args, { cwd, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+  if (result.error) throw result.error;
+  return { stdout: result.stdout ?? "", stderr: result.stderr ?? "", status: result.status };
 }
 
 // Runs Orrery's own tool binaries — never the body's — against the body, read-only: `cwd` is the
 // body directory, every `--config`/`-c` points into `scratchDir`. The ruling made in planning is
 // that this proves the bundle against the plugins it actually ships, which is exactly a body's
 // situation after adoption (the plugins live in Orrery's devDependencies, not the body's).
+// syncpack is the one exception (T2): its installed binary panics on `--config` whenever there is
+// real work to do, on every version tried, so it runs against whatever config the body's own root
+// discovers (its own `.syncpackrc*` if it has one, syncpack's built-in defaults if it does not) —
+// the same invocation both donors' own `package.json` scripts use, not the class-rendered one.
 //
 // Every tool runs inside its own try/catch: observe's job is to report drift across every tool
 // and every body, and a single tool crashing (a bad rule config, a missing binary, a body file
@@ -194,10 +229,14 @@ export async function codeDrift(bodyDir, { rows, bodyConfig, samples, bodyEffect
         // measured against, so it is resolved the mandated way (resolveEslintBin), not through
         // the generic binField used for the other tools below.
         const eslintBin = resolveEslintBin(packageDir);
-        const execWithScratch = exec ?? ((execDir, file) => run(node, [eslintBin, "-c", files.eslint, "--no-config-lookup", "--print-config", file], execDir));
+        // eslint's own report — --print-config here, -f json below — is on stdout (measured
+        // against the installed binary; see this fix's report).
+        const execWithScratch = exec ?? ((execDir, file) => run(node, [eslintBin, "-c", files.eslint, "--no-config-lookup", "--print-config", file], execDir).stdout);
         const mismatches = [];
+        const classEffective = {};
         for (const [surface, file] of Object.entries(samples)) {
           const effective = readEffectiveConfig(bodyDir, file, execWithScratch);
+          classEffective[surface] = effective;
           mismatches.push(...effectiveMismatches(effective.rules ?? {}, rows, surface, bodyConfig).map((m) => `${surface} ${m}`));
         }
         // Type-aware linting loads the body's whole TypeScript program into memory; a real
@@ -205,29 +244,35 @@ export async function codeDrift(bodyDir, { rows, bodyConfig, samples, bodyEffect
         // during this one full-tree sweep (found running this against libra: an OOM crash, not
         // a lint finding). The per-surface --print-config calls above are single small files
         // and do not need it.
-        const json = run(node, ["--max-old-space-size=6144", eslintBin, "-c", files.eslint, "--no-config-lookup", "-f", "json", "apps", "packages", "scripts"], bodyDir);
-        return { mismatches, violations: violationsByRule(json), tightened: tightenedFor(rows, bodyEffective ?? {}, bodyConfig) };
+        const result = run(node, ["--max-old-space-size=6144", eslintBin, "-c", files.eslint, "--no-config-lookup", "-f", "json", "apps", "packages", "scripts"], bodyDir);
+        return { mismatches, violations: violationsByRule(result.stdout), tightened: tightenedFor(rows, bodyEffective ?? {}, bodyConfig, classEffective) };
       });
     }
 
     if (tools.includes("tsc")) {
       attempt(results, "tsc", () => {
-        const out = run(node, [binField("typescript", "tsc"), "-p", files.tsconfig, "--pretty", "false"], bodyDir);
+        // tsc's own report is on stdout.
+        const result = run(node, [binField("typescript", "tsc"), "-p", files.tsconfig, "--pretty", "false"], bodyDir);
         const counts = {};
-        for (const m of out.matchAll(/error (TS\d+):/g)) counts[m[1]] = (counts[m[1]] ?? 0) + 1;
+        for (const m of result.stdout.matchAll(/error (TS\d+):/g)) counts[m[1]] = (counts[m[1]] ?? 0) + 1;
         return { errors: counts };
       });
     }
 
     if (tools.includes("stylelint")) {
       attempt(results, "stylelint", () => {
-        const out = run(node, [binField("stylelint"), "--config", files.stylelint, "-f", "json", "**/*.css"], bodyDir);
-        return { count: JSON.parse(out || "[]").reduce((n, f) => n + f.warnings.length, 0) };
+        // The installed stylelint (packages/orrery/node_modules/stylelint) writes its `-f json`
+        // report to stderr, even on a clean, zero-exit run — never stdout. The old stdout-only
+        // read silently turned every real stylelint finding into a false "crashed".
+        const result = run(node, [binField("stylelint"), "--config", files.stylelint, "-f", "json", "**/*.css"], bodyDir);
+        return { count: JSON.parse(result.stderr || "[]").reduce((n, f) => n + f.warnings.length, 0) };
       });
     }
 
     if (tools.includes("jscpd")) {
       attempt(results, "jscpd", () => {
+        // jscpd's own report is the file it writes via -o; the console text run() returns is
+        // only ever used to prove the process itself didn't crash.
         run(node, [binField("jscpd"), "-c", files.jscpd, "-r", "json", "-o", dir, "."], bodyDir);
         const reportFile = path.join(dir, "jscpd-report.json");
         return { clones: fs.existsSync(reportFile) ? (JSON.parse(fs.readFileSync(reportFile, "utf8")).statistics?.total?.clones ?? 0) : 0 };
@@ -236,22 +281,38 @@ export async function codeDrift(bodyDir, { rows, bodyConfig, samples, bodyEffect
 
     if (tools.includes("cspell")) {
       attempt(results, "cspell", () => {
-        const out = run(node, [binField("cspell"), "lint", "-c", files.cspell, "--no-progress", "--no-summary", "**/*.{ts,tsx,md}"], bodyDir);
-        return { issues: out.split(/\r?\n/).filter((l) => /:\d+:\d+ - /.test(l)).length };
+        // cspell's own report is on stdout.
+        const result = run(node, [binField("cspell"), "lint", "-c", files.cspell, "--no-progress", "--no-summary", "**/*.{ts,tsx,md}"], bodyDir);
+        return { issues: result.stdout.split(/\r?\n/).filter((l) => /:\d+:\d+ - /.test(l)).length };
       });
     }
 
     if (tools.includes("ls-lint")) {
       attempt(results, "ls-lint", () => {
-        const out = run(node, [binField("@ls-lint/ls-lint", "ls-lint"), "-config", files.lsLint], bodyDir);
-        return { errors: out.split(/\r?\n/).filter((l) => l.includes("kebab-case")).length };
+        // The installed @ls-lint/ls-lint writes its findings to stderr ("<path> failed for
+        // `<ext>` rules: <rule>", one per line — no hyphen in the rule name despite the rule
+        // being configured as "kebab-case"), not stdout; matched against "failed for" rather
+        // than a specific rule name so any rule this config ever turns on is counted, not just
+        // kebab-case.
+        const result = run(node, [binField("@ls-lint/ls-lint", "ls-lint"), "-config", files.lsLint], bodyDir);
+        return { errors: result.stderr.split(/\r?\n/).filter((l) => l.includes("failed for")).length };
       });
     }
 
     if (tools.includes("syncpack")) {
       attempt(results, "syncpack", () => {
-        const out = run(node, [binField("syncpack"), "lint", "--config", files.syncpack], bodyDir);
-        return { mismatches: (out.match(/✘/g) ?? []).length };
+        // T2: the installed syncpack (a Rust binary wrapped by a thin Node launcher — packages/
+        // orrery/node_modules/syncpack) panics with a clap arg-definition mismatch ("Mismatch
+        // between definition and access of `config`") whenever --config is combined with any
+        // invocation that actually has a package.json to process — reproduced on both the
+        // installed 14.3.1 and a from-npm 15.3.3, with a trivial config and with the real
+        // rendered one, so no --config shape works and no version fixes it (see this fix's
+        // report). Both donors' own package.json scripts invoke it the same way this now does:
+        // plain `syncpack lint`, cwd at the body's own root, config found by cosmiconfig-style
+        // discovery from there. The report — real findings and the clean "no issues" banner
+        // alike — is on stderr.
+        const result = run(node, [binField("syncpack"), "lint"], bodyDir);
+        return { mismatches: (result.stderr.match(/✘/g) ?? []).length };
       });
     }
 

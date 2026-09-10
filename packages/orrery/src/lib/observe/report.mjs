@@ -16,7 +16,7 @@ export function renderObservation(results, date) {
       if (r.comparison) {
         lines.push(
           "",
-          `unexplained: ${r.comparison.unexplained.join(", ") || "none"}; moved: ${r.comparison.moved.map((m) => `${m.rule} ${m.was}→${m.now}`).join(", ") || "none"}; new: ${r.comparison.newRules.join(", ") || "none"}; resolved: ${r.comparison.resolved.join(", ") || "none"}`
+          `unexplained: ${r.comparison.unexplained.join(", ") || "none"}; baseline: ${r.comparison.baseline.join(", ") || "none"}; moved: ${r.comparison.moved.map((m) => `${m.rule} ${m.was}→${m.now}`).join(", ") || "none"}; new: ${r.comparison.newRules.join(", ") || "none"}; resolved: ${r.comparison.resolved.join(", ") || "none"}`
         );
       }
     }
