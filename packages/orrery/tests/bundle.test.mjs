@@ -113,6 +113,35 @@ describe("renderFunction — EXTENDERS collision regression", () => {
   });
 });
 
+describe("renderFunction — EXTENDER-target rows are not also emitted as fields", () => {
+  // knip's reconciler emits a parameter row for the exact path an EXTENDERS entry targets — e.g.
+  // "apps.extraEntries" with `chosen: { $parameter: "knip.apps.extraEntries" }` — because that
+  // parameter is meaningful in its own right. In the generated bundle it is not: the parameter
+  // belongs only in the spread `applyExtenders` already adds to `entry`/`project`. Rendering it
+  // again as a field of its own is redundant data with no place in the class's knip shape.
+  it("omits extraEntries/extraProjects as fields while keeping the entry/project spreads", () => {
+    const rows = [
+      { tool: "knip", surface: "*", key: "apps.entry", chosen: ["src/app/**/*.ts"], tier: "class", test: "benefit" },
+      { tool: "knip", surface: "*", key: "apps.extraEntries", chosen: { $parameter: "knip.apps.extraEntries" }, tier: "class", test: "parameter" },
+      { tool: "knip", surface: "*", key: "apps.project", chosen: ["src/**/*.ts"], tier: "class", test: "benefit" },
+      { tool: "knip", surface: "*", key: "apps.extraProjects", chosen: { $parameter: "knip.apps.extraProjects" }, tier: "class", test: "parameter" },
+      { tool: "knip", surface: "*", key: "packages.entry", chosen: ["tests/**/*.ts"], tier: "class", test: "benefit" },
+      { tool: "knip", surface: "*", key: "packages.extraEntries", chosen: { $parameter: "knip.packages.extraEntries" }, tier: "class", test: "parameter" },
+      { tool: "knip", surface: "*", key: "packages.project", chosen: [], tier: "class", test: "benefit" },
+      { tool: "knip", surface: "*", key: "packages.extraProjects", chosen: { $parameter: "knip.packages.extraProjects" }, tier: "class", test: "parameter" },
+    ];
+    const src = renderFunction("knip", rows, provenance);
+    // "extraEntries"/"extraProjects" legitimately appear inside the spread reads
+    // (body.knip?.apps?.extraEntries); what must never appear is either as a JSON field key.
+    expect(src).not.toContain('"extraEntries":');
+    expect(src).not.toContain('"extraProjects":');
+    expect(src).toContain('"entry": ["src/app/**/*.ts", ...(body.knip?.apps?.extraEntries ?? [])]');
+    expect(src).toContain('"project": ["src/**/*.ts", ...(body.knip?.apps?.extraProjects ?? [])]');
+    expect(src).toContain('"entry": ["tests/**/*.ts", ...(body.knip?.packages?.extraEntries ?? [])]');
+    expect(src).toContain('"project": [...(body.knip?.packages?.extraProjects ?? [])]');
+  });
+});
+
 describe("generated tool functions satisfy (body?) => object", () => {
   // Real-data regression for the same contract: build the actual bundle from the committed
   // rulings.json and prove every generated physics/class tool function tolerates a missing
@@ -136,6 +165,12 @@ describe("generated tool functions satisfy (body?) => object", () => {
       const result = mod.default();
       expect(result, `${file} default()`).toBeTypeOf("object");
       expect(result, `${file} default()`).not.toBeNull();
+      if (file === "classes/next-supabase-mono/knip.mjs") {
+        // extraEntries/extraProjects are EXTENDERS targets, consumed by the entry/project
+        // spreads — they must never surface as fields of their own on apps/packages.
+        expect(Object.keys(result.apps).sort()).toEqual(["entry", "project"]);
+        expect(Object.keys(result.packages).sort()).toEqual(["entry", "project"]);
+      }
     }
     fs.rmSync(dir, { recursive: true, force: true });
   });

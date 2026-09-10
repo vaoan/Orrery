@@ -2216,10 +2216,20 @@ export function renderTsconfig(rows, provenance) {
 
 // Body parameters that extend a generated list rather than replace it.
 const EXTENDERS = { "cspell.ignorePaths": "ignore.spelling", "jscpd.ignore": "ignore.duplication", "secretlint.ignore": "ignore.secrets", "knip.apps.entry": "knip.apps.extraEntries", "knip.apps.project": "knip.apps.extraProjects", "knip.packages.entry": "knip.packages.extraEntries", "knip.packages.project": "knip.packages.extraProjects" };
+// A ruling row can name an EXTENDERS target directly (knip's reconciler emits `apps.extraEntries`
+// etc. as their own parameter rows). That parameter is consumed by `applyExtenders`'s splice —
+// rendering it again as a field of its own would be both redundant and not part of the class's
+// shape for that tool. `objectFromRows` skips exactly those rows; every other `$parameter` row
+// (knip.root, cspell's `words` via `spelling`, syncpack's `workspacePackages`) is untouched.
+const EXTENDER_TARGETS = new Set(Object.values(EXTENDERS));
+const isExtenderTargetRow = (r) => r.chosen && typeof r.chosen === "object" && "$parameter" in r.chosen && EXTENDER_TARGETS.has(r.chosen.$parameter);
 
 function objectFromRows(tool, rows) {
   const out = {};
-  for (const r of toolRows(rows, tool)) setPath(out, r.key, r.chosen);
+  for (const r of toolRows(rows, tool)) {
+    if (isExtenderTargetRow(r)) continue;
+    setPath(out, r.key, r.chosen);
+  }
   return out;
 }
 
@@ -2256,18 +2266,24 @@ export function renderFunction(tool, rows, provenance, defaults = DEFAULT_BODY) 
 }
 ```
 
-(Shipped as of Task 6 fix round 1. Two corrections from the design above, both found by measuring
-the real repos rather than by re-reading the code: the original `EXTENDERS` splice matched a
-leaf key name textually — `"apps.entry"` and `"packages.entry"` both end in `entry`, so the second
-substitution re-matched the first's already-rewritten text and nested `packages`'s extension
-inside `apps`'s fallback instead of extending its own field; and every `$parameter` read (not
-just the array-extending ones) must satisfy the exported functions' documented `(body?) => object`
-contract — calling `hooks()` or `knip()` with no argument threw on an intermediate `undefined` key
-(`body.hooks.preCommit`) rather than returning the schema's default. `applyExtenders` now
-addresses each field by its full nested path, and `literal`'s `defaults` argument renders every
+(Shipped as of Task 6 fix round 2. Three corrections from the design above, all found by
+measuring the real repos rather than by re-reading the code: the original `EXTENDERS` splice
+matched a leaf key name textually — `"apps.entry"` and `"packages.entry"` both end in `entry`, so
+the second substitution re-matched the first's already-rewritten text and nested `packages`'s
+extension inside `apps`'s fallback instead of extending its own field; every `$parameter` read
+(not just the array-extending ones) must satisfy the exported functions' documented `(body?) =>
+object` contract — calling `hooks()` or `knip()` with no argument threw on an intermediate
+`undefined` key (`body.hooks.preCommit`) rather than returning the schema's default; and a
+ruling row can name an EXTENDERS target directly (knip's reconciler emits `apps.extraEntries` as
+its own parameter row, alongside the `apps.entry` row `applyExtenders` already extends from that
+same parameter) — `objectFromRows` rendered that row as a field of its own too, which is not part
+of the class's knip shape and duplicates data already in the spread. `applyExtenders` now
+addresses each field by its full nested path; `literal`'s `defaults` argument renders every
 `$parameter` — plain field or array-extending spread alike — as an optional chain with its schema
-default embedded, for any caller that supplies one. `renderObject` from the design above was
-dead code once the splice moved and was dropped.)
+default embedded, for any caller that supplies one; and `objectFromRows` skips any row whose
+`$parameter` names an EXTENDERS target, since that parameter's only place in the generated output
+is the spread. `renderObject` from the design above was dead code once the splice moved and was
+dropped.)
 
 ```javascript
 // packages/orrery/src/lib/bundle/write.mjs

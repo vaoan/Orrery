@@ -26,10 +26,20 @@ export function renderTsconfig(rows, provenance) {
 
 // Body parameters that extend a generated list rather than replace it.
 const EXTENDERS = { "cspell.ignorePaths": "ignore.spelling", "jscpd.ignore": "ignore.duplication", "secretlint.ignore": "ignore.secrets", "knip.apps.entry": "knip.apps.extraEntries", "knip.apps.project": "knip.apps.extraProjects", "knip.packages.entry": "knip.packages.extraEntries", "knip.packages.project": "knip.packages.extraProjects" };
+// A ruling row can name an EXTENDERS target directly (knip's reconciler emits `apps.extraEntries`
+// etc. as their own parameter rows). That parameter is consumed by `applyExtenders`'s splice —
+// rendering it again as a field of its own would be both redundant and not part of the class's
+// shape for that tool. `objectFromRows` skips exactly those rows; every other `$parameter` row
+// (knip.root, cspell's `words` via `spelling`, syncpack's `workspacePackages`) is untouched.
+const EXTENDER_TARGETS = new Set(Object.values(EXTENDERS));
+const isExtenderTargetRow = (r) => r.chosen && typeof r.chosen === "object" && "$parameter" in r.chosen && EXTENDER_TARGETS.has(r.chosen.$parameter);
 
 function objectFromRows(tool, rows) {
   const out = {};
-  for (const r of toolRows(rows, tool)) setPath(out, r.key, r.chosen);
+  for (const r of toolRows(rows, tool)) {
+    if (isExtenderTargetRow(r)) continue;
+    setPath(out, r.key, r.chosen);
+  }
   return out;
 }
 
