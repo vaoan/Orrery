@@ -48,6 +48,34 @@ describe.each(Object.entries(SAMPLES))("surface %s", (surface, file) => {
   }, 120_000);
 });
 
+// T3: aeleos's own e2e layout nests under apps/*/tests/e2e/, not apps/*/e2e/ — and the
+// unit-test surface's own globs (**/*.test.{ts,tsx}, **/tests/**/*.{ts,tsx}) match that path too.
+// A flat-config block with overlapping "files" still applies regardless of "ignores" on another
+// block, so without the unit-test block's own "ignores": ["**/e2e/**"] (SURFACE_FILES /
+// renderClassEslint in src/lib/bundle/eslint.mjs) this file would carry both the e2e surface's
+// rules and the unit-test surface's testing-library/vitest ones. Checked as its own surface
+// sample, separately from SAMPLES.e2e above, specifically because it is the layout that broke.
+describe("surface e2e (aeleos's nested apps/*/tests/e2e/ layout)", () => {
+  const file = "apps/web/tests/e2e/smoke.spec.ts";
+  const effective = readEffectiveConfig(fixture, file);
+  const mismatches = effectiveMismatches(effective.rules, rulings.rows, "e2e", body);
+
+  it("carries every ruled rule with the ruled value", () => {
+    expect(mismatches.filter((m) => !m.endsWith("not in the rulings and not off"))).toEqual([]);
+  }, 120_000);
+
+  it("carries no rule the rulings do not name, except eslint-config-prettier's offs", () => {
+    expect(mismatches.filter((m) => m.endsWith("not in the rulings and not off"))).toEqual([]);
+  }, 120_000);
+
+  it("carries no testing-library/* or vitest/* rule that is on", () => {
+    const on = Object.entries(effective.rules)
+      .filter(([key, value]) => (key.startsWith("testing-library/") || key.startsWith("vitest/")) && severityOf(value) !== "off")
+      .map(([key]) => key);
+    expect(on).toEqual([]);
+  }, 120_000);
+});
+
 // Regression pre-check: a ruling can name a rule that does not exist in the plugin version the
 // bundle actually ships (this is exactly how "@next/next/no-location-assign-relative-destination"
 // broke every real ESLint run before packages/orrery/package.json caught up to the version the

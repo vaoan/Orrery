@@ -118,6 +118,12 @@ export default async function eslintConfig(explicitBody) {
   const blocks = ORDER.map((surface) => ({
     name: \`orrery/next-supabase-mono/\${surface}\`,
     files: SURFACE_FILES[surface],
+    // The unit-test globs (**/*.test.{ts,tsx}, **/tests/**/*.{ts,tsx}) also match aeleos's
+    // apps/*/tests/e2e/*.spec.ts layout — a flat-config block with overlapping "files" still
+    // applies, so without this the e2e surface would additionally pick up unit-test's
+    // testing-library/vitest rules. The e2e block below (ORDER runs after unit-test) still
+    // applies its own rules to that path; this block just steps aside for it.
+    ...(surface === "unit-test" ? { ignores: ["**/e2e/**"] } : {}),
     ...base(surface, body, root),
     plugins: PLUGINS,
     rules: { ...physics.rules[surface](body), ...classRules[surface](body) },

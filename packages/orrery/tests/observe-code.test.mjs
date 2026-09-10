@@ -154,6 +154,35 @@ describe("tightenedFor", () => {
   });
 });
 
+// T4b: a boundaries/* rule reads settings["boundaries/elements"] to know what an "element" is —
+// not its own rule options — so two sides can carry an identical `chosen` value and still behave
+// differently. `classEffectiveBySurface` (the class bundle's own real effective config, the same
+// object codeDrift's eslint pass already computes per surface via readEffectiveConfig) lets
+// tightenedFor catch that case too.
+describe("tightenedFor / boundaries settings-awareness (T4b)", () => {
+  const body = {};
+  const rows = [{ tool: "eslint", surface: "source", key: "boundaries/no-unknown", chosen: ["error"], tier: "class", test: "agree" }];
+
+  it("reports a boundaries/* rule tightened when the class's settings differ from the body's own, even though the rule value already matches", () => {
+    const bodyEffective = { source: { rules: { "boundaries/no-unknown": ["error"] }, settings: { "boundaries/elements": [{ type: "app" }] } } };
+    const classEffective = { source: { settings: { "boundaries/elements": [{ type: "app" }, { type: "package" }] } } };
+    expect(tightenedFor(rows, bodyEffective, body, classEffective)).toEqual(["boundaries/no-unknown"]);
+  });
+
+  it("does not report a boundaries/* rule tightened when the settings are the same modulo key order (canonicalised)", () => {
+    const bodyEffective = { source: { rules: { "boundaries/no-unknown": ["error"] }, settings: { "boundaries/elements": [{ type: "app", capture: ["x"] }] } } };
+    const classEffective = { source: { settings: { "boundaries/elements": [{ capture: ["x"], type: "app" }] } } };
+    expect(tightenedFor(rows, bodyEffective, body, classEffective)).toEqual([]);
+  });
+
+  it("ignores settings entirely for a non-boundaries rule", () => {
+    const nonBoundaryRows = [{ tool: "eslint", surface: "source", key: "no-var", chosen: ["error"], tier: "physics", test: "agree" }];
+    const bodyEffective = { source: { rules: { "no-var": ["error"] }, settings: { "boundaries/elements": [{ type: "app" }] } } };
+    const classEffective = { source: { settings: { "boundaries/elements": [{ type: "package" }] } } };
+    expect(tightenedFor(nonBoundaryRows, bodyEffective, body, classEffective)).toEqual([]);
+  });
+});
+
 describe("violationsByRule / compareToPrediction", () => {
   const output = JSON.stringify([{ filePath: "a.ts", messages: [{ ruleId: "no-var" }, { ruleId: "no-var" }, { ruleId: "sonarjs/max-lines" }] }, { filePath: "b.ts", messages: [{ ruleId: null, fatal: true, message: "parse" }] }]);
   it("counts violations per rule and parse errors separately", () => {
@@ -166,6 +195,47 @@ describe("violationsByRule / compareToPrediction", () => {
     expect(r.moved).toEqual([{ rule: "no-var", was: 5, now: 2 }]);
     expect(r.newRules).toEqual([]);
     expect(r.resolved).toEqual(["unicorn/x"]);
+  });
+
+  // T4a: baseline semantics. A rule with violations that the prediction did not tighten is only
+  // "unexplained" when it is new (absent from prediction.counts) or worse (more violations now
+  // than predicted); at or below its predicted count, it is "baseline" — known, informational,
+  // not a failure.
+  describe("baseline semantics (T4a)", () => {
+    it("a baseline rule (violated, not tightened) at its predicted count is baseline, not unexplained", () => {
+      const prediction = { tightened: [], counts: { "sonarjs/prefer-read-only-props": 10 } };
+      const r = compareToPrediction({ "sonarjs/prefer-read-only-props": 10 }, prediction);
+      expect(r.unexplained).toEqual([]);
+      expect(r.baseline).toEqual(["sonarjs/prefer-read-only-props"]);
+    });
+
+    it("a baseline rule below its predicted count is baseline, not unexplained", () => {
+      const prediction = { tightened: [], counts: { "sonarjs/prefer-read-only-props": 10 } };
+      const r = compareToPrediction({ "sonarjs/prefer-read-only-props": 4 }, prediction);
+      expect(r.unexplained).toEqual([]);
+      expect(r.baseline).toEqual(["sonarjs/prefer-read-only-props"]);
+    });
+
+    it("a baseline rule above its predicted count is unexplained, not baseline", () => {
+      const prediction = { tightened: [], counts: { "sonarjs/prefer-read-only-props": 10 } };
+      const r = compareToPrediction({ "sonarjs/prefer-read-only-props": 11 }, prediction);
+      expect(r.unexplained).toEqual(["sonarjs/prefer-read-only-props"]);
+      expect(r.baseline).toEqual([]);
+    });
+
+    it("a rule with no predicted count at all is unexplained", () => {
+      const prediction = { tightened: [], counts: {} };
+      const r = compareToPrediction({ "boundaries/no-unknown": 1 }, prediction);
+      expect(r.unexplained).toEqual(["boundaries/no-unknown"]);
+      expect(r.baseline).toEqual([]);
+    });
+
+    it("a tightened rule is neither baseline nor unexplained, no matter its count", () => {
+      const prediction = { tightened: ["no-var"], counts: { "no-var": 2 } };
+      const r = compareToPrediction({ "no-var": 50 }, prediction);
+      expect(r.unexplained).toEqual([]);
+      expect(r.baseline).toEqual([]);
+    });
   });
 });
 
@@ -193,7 +263,7 @@ describe("codeDrift", () => {
   // the generic binField used for the other six tools.
   it("resolves eslint via resolveEslintBin from packages/orrery, not binField", async () => {
     const calls = [];
-    const run = (command, args) => { calls.push(args); return "[]"; };
+    const run = (command, args) => { calls.push(args); return { stdout: "[]", stderr: "", status: 0 }; };
     const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-test-"));
     try {
       await codeDrift(FAKE_BODY, { rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: ["eslint"], run, scratchDir: scratch });
@@ -205,17 +275,15 @@ describe("codeDrift", () => {
   });
 
   // F2: a tool crashing must never take the whole observation down. Inject a `run` that throws
-  // (as a subprocess failure with empty stdout would) for one tool only.
+  // (as a subprocess spawn failure would) for one tool only.
   it("catches a tool crash as { crashed: true, message }, and the other tools still run", async () => {
     const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-test-"));
     try {
       const run = (command, args) => {
         if (args.some((a) => typeof a === "string" && a.endsWith("stylelint.config.mjs"))) {
-          const error = new Error("boom");
-          error.stdout = "";
-          throw error;
+          throw new Error("boom");
         }
-        return "[]";
+        return { stdout: "[]", stderr: "", status: 0 };
       };
       const result = await codeDrift(FAKE_BODY, { rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: ["stylelint", "cspell"], run, scratchDir: scratch });
       expect(result.stylelint).toEqual({ crashed: true, message: "boom" });
@@ -225,11 +293,53 @@ describe("codeDrift", () => {
     }
   });
 
+  // T1 regression: the installed stylelint and @ls-lint/ls-lint write their real report to
+  // stderr, not stdout, even on a non-zero exit with real findings — the old stdout-only read
+  // (`defaultRun`'s execFileSync catch) turned every one of those findings into a false
+  // "crashed". A `run` stub standing in for that real shape (status 1, the report on stderr,
+  // nothing on stdout) must still produce counts.
+  it("reads stylelint's report from stderr, not stdout, even at a non-zero exit", async () => {
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-test-"));
+    try {
+      const run = () => ({ stdout: "", stderr: JSON.stringify([{ warnings: [{}, {}] }, { warnings: [{}] }]), status: 2 });
+      const result = await codeDrift(FAKE_BODY, { rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: ["stylelint"], run, scratchDir: scratch });
+      expect(result.stylelint).toEqual({ count: 3 });
+    } finally {
+      fs.rmSync(scratch, { recursive: true, force: true });
+    }
+  });
+
+  it("reads ls-lint's report from stderr, not stdout, even at a non-zero exit", async () => {
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-test-"));
+    try {
+      const stderr = "apps/web/src/BadName.ts failed for `.ts` rules: kebabcase\napps/web/src/Other.ts failed for `.ts` rules: kebabcase\n";
+      const run = () => ({ stdout: "", stderr, status: 1 });
+      const result = await codeDrift(FAKE_BODY, { rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: ["ls-lint"], run, scratchDir: scratch });
+      expect(result["ls-lint"]).toEqual({ errors: 2 });
+    } finally {
+      fs.rmSync(scratch, { recursive: true, force: true });
+    }
+  });
+
+  // T1 regression, the other direction: eslint's report stays on stdout, as before — this must
+  // not regress when the other tools move to stderr.
+  it("still reads eslint's violations report from stdout", async () => {
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-test-"));
+    try {
+      const eslintJson = JSON.stringify([{ filePath: "a.ts", messages: [{ ruleId: "no-var" }] }]);
+      const run = () => ({ stdout: eslintJson, stderr: "some unrelated plugin warning\n", status: 1 });
+      const result = await codeDrift(FAKE_BODY, { rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: ["eslint"], run, scratchDir: scratch });
+      expect(result.eslint.violations).toEqual({ "no-var": 1 });
+    } finally {
+      fs.rmSync(scratch, { recursive: true, force: true });
+    }
+  });
+
   // Minor: a scratch directory codeDrift creates itself (no scratchDir passed) is its own to
   // clean up; one the caller passed in is the caller's to keep (tests read its files).
   it("removes a scratch directory it creates itself, but not one the caller passed", async () => {
     const calls = [];
-    const run = (command, args) => { calls.push(args); return "[]"; };
+    const run = (command, args) => { calls.push(args); return { stdout: "[]", stderr: "", status: 0 }; };
     await codeDrift(FAKE_BODY, { rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: ["eslint"], run });
     const ownScratchDir = path.dirname(calls[0][calls[0].indexOf("-c") + 1]);
     expect(fs.existsSync(ownScratchDir)).toBe(false);
@@ -242,4 +352,31 @@ describe("codeDrift", () => {
       fs.rmSync(passedScratch, { recursive: true, force: true });
     }
   });
+
+  // T2: the installed syncpack (packages/orrery/node_modules/syncpack, a Rust binary) panics on
+  // every `--config` invocation that has real work to do — reproduced directly against the
+  // binary, not just through this code path (see this fix's report). The adopted shape drops
+  // --config and relies on cosmiconfig-style discovery from the body's own root, exactly how
+  // both donors' own package.json scripts invoke it. This is the one real (non-stubbed) run in
+  // this file: it proves the fixture gets a parseable result through codeDrift's actual
+  // invocation, not a mocked stand-in for one.
+  it("runs the real syncpack against the fixture through codeDrift's own invocation and gets a parseable result, not crashed", async () => {
+    const fixture = path.resolve(PACKAGE_DIR, "../../fixtures/next-supabase-mono");
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-test-"));
+    try {
+      const result = await codeDrift(fixture, {
+        rows: [],
+        bodyConfig: { class: "next-supabase-mono", tailwind: { entryPoint: "apps/web/src/app/globals.css" } },
+        samples: {},
+        bodyEffective: {},
+        tools: ["syncpack"],
+        scratchDir: scratch,
+      });
+      expect(result.syncpack).toBeTruthy();
+      expect(result.syncpack.crashed).toBeFalsy();
+      expect(typeof result.syncpack.mismatches).toBe("number");
+    } finally {
+      fs.rmSync(scratch, { recursive: true, force: true });
+    }
+  }, 30_000);
 });

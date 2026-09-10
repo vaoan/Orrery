@@ -20,11 +20,14 @@ describe("eslint.base.mjs globals", () => {
     expect(languageOptions.globals).toHaveProperty("document");
   });
 
-  it.each(["source", "component", "package"])("gives the type-aware surface %s both node and browser globals too", (surface) => {
+  // S1 (PR #31 review): no-undef is off on these three TS surfaces for both donors (rulings.json:
+  // agree, chosen [0, ...]) — TypeScript's own type-checking catches undefined identifiers there,
+  // not eslint, so there is no rule left on these surfaces to consume a globals declaration.
+  it.each(["source", "component", "package"])("gives the type-aware surface %s no declared globals", (surface) => {
     const { languageOptions } = base(surface, body, root);
-    expect(languageOptions.globals).toHaveProperty("process");
-    expect(languageOptions.globals).toHaveProperty("window");
-    expect(languageOptions.globals).toHaveProperty("document");
+    expect(languageOptions.globals).not.toHaveProperty("process");
+    expect(languageOptions.globals).not.toHaveProperty("window");
+    expect(languageOptions.globals).not.toHaveProperty("document");
   });
 
   it("keeps the type-aware parser configuration for typescript surfaces", () => {
