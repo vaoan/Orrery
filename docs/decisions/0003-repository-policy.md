@@ -84,3 +84,8 @@ The flow was exercised end to end on Orrery before any body: release v2026.09.09
   and strict stays on both branches; `back-merge/*` is automation-only,
   enforced by an author check now and by a GitHub App identity plus a
   creation ruleset in Phase 2d.
+- **2026-09-10:** see ADR 0017 — the nightly repository-policy observation
+  (point 6/7 above, and the "deferred... nightly observe stays in report
+  mode" rows in the Application log) is removed. `repo apply` stays an
+  on-demand command from Orrery; a body's own CI is what enforces policy
+  drift against it now.

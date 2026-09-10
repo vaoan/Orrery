@@ -14,6 +14,9 @@ protection, merge methods, naming, titles, and the checks that enforce them
 are the same everywhere, from a project's first commit onward. Drift in any of
 them is observed nightly from Orrery and corrected.
 
+*Amended by ADR 0017 (2026-09-10): no nightly run; `repo apply` stays an
+on-demand command from Orrery.*
+
 Orrery is a template for new projects. A project born through `orrery init`
 is on the flow and protected before its second commit exists.
 

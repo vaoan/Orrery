@@ -229,6 +229,10 @@ Run from Orrery against checkouts of the bodies: locally the directories under
 It never blocks a release. It writes `docs/observations/<date>.md` and a JSON
 alongside. Three drifts, each its own script:
 
+*Amended by ADR 0017 (2026-09-10): no nightly run of `orrery observe`; it stays
+an on-demand command from Orrery, and a body's own CI enforces the same three
+drifts against itself.*
+
 - **Version drift.** The commit of `@vaoan/orrery` recorded in the body's
   lockfile against the head of Orrery's `main`, read with `git ls-remote`.
 - **Pointer drift.** Pointer files byte-identical to what `init` writes;
