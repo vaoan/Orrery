@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
 
 // Ranked by how likely the file is to sit under the repo's main rule set rather
@@ -44,13 +43,28 @@ export function pickSampleFile(repoDirectory, preferred) {
 // without a shell), and a shell would concatenate the arguments unescaped.
 // Resolving the target repo's own ESLint and running it with this process's
 // Node avoids both, and works under hoisted and isolated node_modules alike.
-export function resolveEslintBin(repoDirectory) {
-  const require = createRequire(path.join(repoDirectory, "package.json"));
+//
+// This walks `node_modules/eslint` up from repoDirectory by hand instead of
+// asking Node's own resolver (createRequire/require.resolve): that resolver
+// also consults NODE_PATH and the global folders, and those are never the
+// repo's eslint. A hoisted `node_modules/.pnpm/node_modules` sitting on
+// NODE_PATH (vitest's workers set it) would otherwise be found before this
+// function ever gets to say the repo has none installed.
+function findEslintManifest(repoDirectory) {
+  let dir = path.resolve(repoDirectory);
+  while (true) {
+    const candidate = path.join(dir, "node_modules/eslint/package.json");
+    if (fs.existsSync(candidate)) return candidate;
 
-  let manifestPath;
-  try {
-    manifestPath = require.resolve("eslint/package.json");
-  } catch {
+    const parent = path.dirname(dir);
+    if (parent === dir) return undefined;
+    dir = parent;
+  }
+}
+
+export function resolveEslintBin(repoDirectory) {
+  const manifestPath = findEslintManifest(repoDirectory);
+  if (!manifestPath) {
     throw new Error(`eslint is not installed in ${repoDirectory}; run pnpm install there first`);
   }
 

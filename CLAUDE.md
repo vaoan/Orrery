@@ -120,3 +120,10 @@ these repositories:
   LF; checkout rewrites working files to CRLF, so a test that regex-matches `\n`
   fails here and passes on Linux CI. `.gitattributes` forces LF; tests that read
   files normalise line endings anyway.
+- **vitest injects `NODE_PATH` pointing at `node_modules/.pnpm/node_modules`
+  into its workers**, so `createRequire` or `require.resolve` from ANY
+  directory — a temp dir included — resolves any package in the workspace's
+  transitive tree. A test asserting "not installed" passes only while the
+  package is absent from the workspace, and code that must find a
+  repository's own package resolves it by filesystem lookup, never through
+  Node's resolver.
