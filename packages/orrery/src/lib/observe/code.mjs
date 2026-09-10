@@ -5,7 +5,7 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import prettierConfig from "eslint-config-prettier";
 import { optionsOf, severityOf } from "../reconcile/ordering.mjs";
-import { readEffectiveConfig } from "../effective-config.mjs";
+import { readEffectiveConfig, resolveEslintBin } from "../effective-config.mjs";
 import { materialise } from "./scratch.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -145,55 +145,100 @@ function defaultRun(command, args, cwd) {
 // body directory, every `--config`/`-c` points into `scratchDir`. The ruling made in planning is
 // that this proves the bundle against the plugins it actually ships, which is exactly a body's
 // situation after adoption (the plugins live in Orrery's devDependencies, not the body's).
-export async function codeDrift(bodyDir, { rows, bodyConfig, samples, bodyEffective, tools = ["eslint", "tsc", "stylelint", "jscpd", "cspell", "ls-lint", "syncpack"], run = defaultRun, exec, scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-")) }) {
-  const files = await materialise(bodyDir, bodyConfig, scratchDir, { bundleDir: packageDir });
-  const results = {};
-  const node = process.execPath;
+//
+// Every tool runs inside its own try/catch: observe's job is to report drift across every tool
+// and every body, and a single tool crashing (a bad rule config, a missing binary, a body file
+// eslint chokes on) must not take the rest of the run down with it. A caught failure becomes
+// `{ crashed: true, message }` for that tool's entry — the caller (the observe command) is the
+// one that prints it and fails the run, since it is the one that knows which body this was.
+function attempt(results, tool, fn) {
+  try {
+    results[tool] = fn();
+  } catch (error) {
+    results[tool] = { crashed: true, message: error.message };
+  }
+}
 
-  if (tools.includes("eslint")) {
-    const eslintBin = binField("eslint");
-    const execWithScratch = exec ?? ((dir, file) => run(node, [eslintBin, "-c", files.eslint, "--no-config-lookup", "--print-config", file], dir));
-    const mismatches = [];
-    for (const [surface, file] of Object.entries(samples)) {
-      const effective = readEffectiveConfig(bodyDir, file, execWithScratch);
-      mismatches.push(...effectiveMismatches(effective.rules ?? {}, rows, surface, bodyConfig).map((m) => `${surface} ${m}`));
+export async function codeDrift(bodyDir, { rows, bodyConfig, samples, bodyEffective, tools = ["eslint", "tsc", "stylelint", "jscpd", "cspell", "ls-lint", "syncpack"], run = defaultRun, exec, scratchDir }) {
+  // Only clean up a scratch directory this call created itself: a caller that passed its own
+  // scratchDir may still want it afterward (tests inspect its files).
+  const ownScratch = scratchDir === undefined;
+  const dir = scratchDir ?? fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-"));
+  try {
+    const files = await materialise(bodyDir, bodyConfig, dir, { bundleDir: packageDir });
+    const results = {};
+    const node = process.execPath;
+
+    if (tools.includes("eslint")) {
+      attempt(results, "eslint", () => {
+        // Orrery's own eslint, resolved from packages/orrery — never the body's — per the
+        // planning ruling: this is the one binary the rulings and the honesty comparison are
+        // measured against, so it is resolved the mandated way (resolveEslintBin), not through
+        // the generic binField used for the other tools below.
+        const eslintBin = resolveEslintBin(packageDir);
+        const execWithScratch = exec ?? ((execDir, file) => run(node, [eslintBin, "-c", files.eslint, "--no-config-lookup", "--print-config", file], execDir));
+        const mismatches = [];
+        for (const [surface, file] of Object.entries(samples)) {
+          const effective = readEffectiveConfig(bodyDir, file, execWithScratch);
+          mismatches.push(...effectiveMismatches(effective.rules ?? {}, rows, surface, bodyConfig).map((m) => `${surface} ${m}`));
+        }
+        // Type-aware linting loads the body's whole TypeScript program into memory; a real
+        // monorepo (libra: ~1,100 source files) can exceed Node's default old-space ceiling
+        // during this one full-tree sweep (found running this against libra: an OOM crash, not
+        // a lint finding). The per-surface --print-config calls above are single small files
+        // and do not need it.
+        const json = run(node, ["--max-old-space-size=6144", eslintBin, "-c", files.eslint, "--no-config-lookup", "-f", "json", "apps", "packages", "scripts"], bodyDir);
+        return { mismatches, violations: violationsByRule(json), tightened: tightenedFor(rows, bodyEffective ?? {}, bodyConfig) };
+      });
     }
-    const json = run(node, [eslintBin, "-c", files.eslint, "--no-config-lookup", "-f", "json", "apps", "packages", "scripts"], bodyDir);
-    results.eslint = { mismatches, violations: violationsByRule(json), tightened: tightenedFor(rows, bodyEffective ?? {}, bodyConfig) };
-  }
 
-  if (tools.includes("tsc")) {
-    const out = run(node, [binField("typescript", "tsc"), "-p", files.tsconfig, "--pretty", "false"], bodyDir);
-    const counts = {};
-    for (const m of out.matchAll(/error (TS\d+):/g)) counts[m[1]] = (counts[m[1]] ?? 0) + 1;
-    results.tsc = { errors: counts };
-  }
+    if (tools.includes("tsc")) {
+      attempt(results, "tsc", () => {
+        const out = run(node, [binField("typescript", "tsc"), "-p", files.tsconfig, "--pretty", "false"], bodyDir);
+        const counts = {};
+        for (const m of out.matchAll(/error (TS\d+):/g)) counts[m[1]] = (counts[m[1]] ?? 0) + 1;
+        return { errors: counts };
+      });
+    }
 
-  if (tools.includes("stylelint")) {
-    const out = run(node, [binField("stylelint"), "--config", files.stylelint, "-f", "json", "**/*.css"], bodyDir);
-    results.stylelint = { count: JSON.parse(out || "[]").reduce((n, f) => n + f.warnings.length, 0) };
-  }
+    if (tools.includes("stylelint")) {
+      attempt(results, "stylelint", () => {
+        const out = run(node, [binField("stylelint"), "--config", files.stylelint, "-f", "json", "**/*.css"], bodyDir);
+        return { count: JSON.parse(out || "[]").reduce((n, f) => n + f.warnings.length, 0) };
+      });
+    }
 
-  if (tools.includes("jscpd")) {
-    run(node, [binField("jscpd"), "-c", files.jscpd, "-r", "json", "-o", scratchDir, "."], bodyDir);
-    const reportFile = path.join(scratchDir, "jscpd-report.json");
-    results.jscpd = { clones: fs.existsSync(reportFile) ? (JSON.parse(fs.readFileSync(reportFile, "utf8")).statistics?.total?.clones ?? 0) : 0 };
-  }
+    if (tools.includes("jscpd")) {
+      attempt(results, "jscpd", () => {
+        run(node, [binField("jscpd"), "-c", files.jscpd, "-r", "json", "-o", dir, "."], bodyDir);
+        const reportFile = path.join(dir, "jscpd-report.json");
+        return { clones: fs.existsSync(reportFile) ? (JSON.parse(fs.readFileSync(reportFile, "utf8")).statistics?.total?.clones ?? 0) : 0 };
+      });
+    }
 
-  if (tools.includes("cspell")) {
-    const out = run(node, [binField("cspell"), "lint", "-c", files.cspell, "--no-progress", "--no-summary", "**/*.{ts,tsx,md}"], bodyDir);
-    results.cspell = { issues: out.split(/\r?\n/).filter((l) => /:\d+:\d+ - /.test(l)).length };
-  }
+    if (tools.includes("cspell")) {
+      attempt(results, "cspell", () => {
+        const out = run(node, [binField("cspell"), "lint", "-c", files.cspell, "--no-progress", "--no-summary", "**/*.{ts,tsx,md}"], bodyDir);
+        return { issues: out.split(/\r?\n/).filter((l) => /:\d+:\d+ - /.test(l)).length };
+      });
+    }
 
-  if (tools.includes("ls-lint")) {
-    const out = run(node, [binField("@ls-lint/ls-lint", "ls-lint"), "-config", files.lsLint], bodyDir);
-    results["ls-lint"] = { errors: out.split(/\r?\n/).filter((l) => l.includes("kebab-case")).length };
-  }
+    if (tools.includes("ls-lint")) {
+      attempt(results, "ls-lint", () => {
+        const out = run(node, [binField("@ls-lint/ls-lint", "ls-lint"), "-config", files.lsLint], bodyDir);
+        return { errors: out.split(/\r?\n/).filter((l) => l.includes("kebab-case")).length };
+      });
+    }
 
-  if (tools.includes("syncpack")) {
-    const out = run(node, [binField("syncpack"), "lint", "--config", files.syncpack], bodyDir);
-    results.syncpack = { mismatches: (out.match(/✘/g) ?? []).length };
-  }
+    if (tools.includes("syncpack")) {
+      attempt(results, "syncpack", () => {
+        const out = run(node, [binField("syncpack"), "lint", "--config", files.syncpack], bodyDir);
+        return { mismatches: (out.match(/✘/g) ?? []).length };
+      });
+    }
 
-  return results;
+    return results;
+  } finally {
+    if (ownScratch) fs.rmSync(dir, { recursive: true, force: true });
+  }
 }

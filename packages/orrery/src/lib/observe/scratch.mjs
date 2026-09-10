@@ -4,6 +4,15 @@ import { pathToFileURL } from "node:url";
 
 const posix = (p) => p.replaceAll("\\", "/");
 
+// A real body's tree carries generated/build output the bundle itself never excludes (it is
+// normally only ever run through lint-staged, against staged files — a bulk sweep never
+// happens in real usage). observe's own violations pass is the one caller that walks the
+// whole tree (`apps packages scripts`), and without this it tries to parse libra's `.next`
+// webpack chunks — megabyte-sized generated JS — and OOMs the eslint child process. This is a
+// scratch-invocation concern, not a rulings/bundle one: it never touches the generated bundle
+// or rulings.json, only what observe's own materialised config additionally ignores.
+const GLOBAL_IGNORES = ["**/.next/**", "**/.turbo/**", "**/dist/**", "**/build/**", "**/coverage/**", "**/out/**", "**/.vercel/**", "**/node_modules/**"];
+
 // Emits a small subset of YAML: nested plain objects and arrays of strings, no quoting or
 // folding. That is all any of the physics/class tool functions ever return (ls-lint's `{ ls: {
 // pattern: { ext: rule } } }` shape), so a dependency for the full spec would be unused weight.
@@ -46,7 +55,9 @@ export async function materialise(bodyDir, bodyConfig, scratchDir, { bundleDir, 
   return {
     eslint: write(
       "eslint.config.mjs",
-      `import orrery from ${JSON.stringify(pathToFileURL(`${klass}/eslint.mjs`).href)};\nexport default await orrery(${JSON.stringify(body, null, 2)});\n`
+      `import orrery from ${JSON.stringify(pathToFileURL(`${klass}/eslint.mjs`).href)};\n` +
+        `const config = await orrery(${JSON.stringify(body, null, 2)});\n` +
+        `export default [{ ignores: ${JSON.stringify(GLOBAL_IGNORES)} }, ...config];\n`
     ),
     tsconfig: write(
       "tsconfig.json",

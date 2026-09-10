@@ -69,4 +69,28 @@ describe("orrery observe", () => {
     fs.rmSync(report, { recursive: true, force: true });
     q.restore();
   });
+
+  // F2: codeDrift catches a tool crash per tool (tested directly in observe-code.test.mjs); the
+  // command must still surface it — fail the exit code, print which tool crashed and why, and
+  // write the report regardless, with the other tools' results intact.
+  it("exits 1 and still writes the report when a tool crashed, with the other tools' results present", async () => {
+    const q = quiet();
+    const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
+    const code = await observe(
+      ["Z:/Github/x", "--report", report],
+      fakeDeps({ codeDrift: async () => ({ eslint: { crashed: true, message: "boom" }, stylelint: { count: 0 } }) })
+    );
+    expect(code).toBe(1);
+    expect(q.out()).toMatch(/x: eslint crashed: boom/);
+    const files = fs.readdirSync(report);
+    const reportFile = files.find((f) => f.endsWith("-tooling.json"));
+    expect(reportFile).toBeTruthy();
+    const written = JSON.parse(fs.readFileSync(path.join(report, reportFile), "utf8"));
+    expect(written[0].code.eslint).toEqual({ crashed: true, message: "boom" });
+    expect(written[0].code.stylelint).toEqual({ count: 0 });
+    const md = fs.readFileSync(path.join(report, files.find((f) => f.endsWith("-tooling.md"))), "utf8");
+    expect(md).toContain("eslint: crashed — boom");
+    fs.rmSync(report, { recursive: true, force: true });
+    q.restore();
+  });
 });

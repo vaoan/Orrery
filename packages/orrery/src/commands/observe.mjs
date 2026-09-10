@@ -103,6 +103,15 @@ export default async function observe(argv, deps = {}) {
     const code = await d.codeDrift(bodyDir, { rows: rulings.rows, bodyConfig, samples, bodyEffective, tools: values.tools?.split(",") });
     const entry = { name, dir: bodyDir, sha, version, pointers, code };
 
+    // A tool crashing (codeDrift catches per tool) never aborts the run: report it, fail the
+    // exit code, and keep going — the report below is written regardless, crash included.
+    for (const [tool, result] of Object.entries(code)) {
+      if (result?.crashed) {
+        failed = true;
+        console.error(`${name}: ${tool} crashed: ${result.message}`);
+      }
+    }
+
     if (values.predict) {
       d.writePrediction(name, {
         body: name,
@@ -117,7 +126,7 @@ export default async function observe(argv, deps = {}) {
     } else if (!prediction) {
       console.error(`${name}: no prediction for ${name}; run with --predict to record one`);
       failed = true;
-    } else if (code.eslint) {
+    } else if (code.eslint && !code.eslint.crashed) {
       entry.comparison = compareToPrediction(code.eslint.violations, prediction);
       if (code.eslint.mismatches.length) {
         failed = true;

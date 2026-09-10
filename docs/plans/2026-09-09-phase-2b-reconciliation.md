@@ -3076,33 +3076,64 @@ import { pathToFileURL } from "node:url";
 
 const posix = (p) => p.replaceAll("\\", "/");
 
+// Emits a small subset of YAML: nested plain objects and arrays of strings, no quoting or
+// folding. That is all any of the physics/class tool functions ever return (ls-lint's `{ ls: {
+// pattern: { ext: rule } } }` shape), so a dependency for the full spec would be unused weight.
+function toYaml(value, indent = "") {
+  if (Array.isArray(value)) return value.map((v) => `${indent}- ${v}`).join("\n") + "\n";
+  if (value && typeof value === "object") {
+    return Object.entries(value)
+      .map(([k, v]) => (v && typeof v === "object" ? `${indent}${k}:\n${toYaml(v, indent + "  ")}` : `${indent}${k}: ${v}`))
+      .join("\n") + "\n";
+  }
+  return `${indent}${value}\n`;
+}
+
+// One materialised config per tool, in a scratch directory, importing the bundle by absolute
+// `file://` URL and passing the body config plus the resolved `root`. Nothing is written into
+// the body: every path here is under `scratchDir`.
 export async function materialise(bodyDir, bodyConfig, scratchDir, { bundleDir, functions } = {}) {
   const bundle = posix(path.resolve(bundleDir));
   const klass = `${bundle}/classes/next-supabase-mono`;
+  // Resolved to absolute, like bundleDir above: this becomes `tsconfigRootDir` in the
+  // materialised eslint config's parserOptions, which typescript-eslint's project service needs
+  // absolute to find the body's tsconfig — a relative root here silently fails to associate any
+  // file with a TS project, which ESLint reports as a parse-level fatal error on every file that
+  // needs type information, not as a config problem.
+  const bodyRoot = posix(path.resolve(bodyDir));
   const fns = functions ?? {
     stylelint: (await import(pathToFileURL(`${klass}/stylelint.mjs`).href)).default,
     jscpd: (await import(pathToFileURL(`${klass}/jscpd.mjs`).href)).default,
     cspell: (await import(pathToFileURL(`${klass}/cspell.mjs`).href)).default,
     lsLint: (await import(pathToFileURL(`${bundle}/physics/ls-lint.mjs`).href)).default,
     syncpack: (await import(pathToFileURL(`${bundle}/physics/syncpack.mjs`).href)).default,
-    tsconfigInclude: bodyConfig.tsconfig?.include ?? ["apps/*/src", "packages/*/src"],
+    tsconfigInclude: bodyConfig.tsconfig?.include?.length ? bodyConfig.tsconfig.include : ["apps/*/src", "packages/*/src"],
   };
-  const body = { ...bodyConfig, root: posix(bodyDir) };
-  const write = (name, text) => { const f = path.join(scratchDir, name); fs.writeFileSync(f, text); return f; };
+  const body = { ...bodyConfig, root: bodyRoot };
+  const write = (name, text) => {
+    const f = path.join(scratchDir, name);
+    fs.writeFileSync(f, text);
+    return f;
+  };
   return {
-    eslint: write("eslint.config.mjs", `import orrery from ${JSON.stringify(pathToFileURL(`${klass}/eslint.mjs`).href)};\nexport default await orrery(${JSON.stringify(body, null, 2)});\n`),
-    tsconfig: write("tsconfig.json", JSON.stringify({ extends: `${klass}/tsconfig.json`, include: fns.tsconfigInclude.map((i) => `${posix(bodyDir)}/${i}`), compilerOptions: { noEmit: true } }, null, 2)),
+    eslint: write(
+      "eslint.config.mjs",
+      `import orrery from ${JSON.stringify(pathToFileURL(`${klass}/eslint.mjs`).href)};\nexport default await orrery(${JSON.stringify(body, null, 2)});\n`
+    ),
+    tsconfig: write(
+      "tsconfig.json",
+      JSON.stringify(
+        { extends: `${klass}/tsconfig.json`, include: fns.tsconfigInclude.map((i) => `${bodyRoot}/${i}`), compilerOptions: { noEmit: true } },
+        null,
+        2
+      )
+    ),
     stylelint: write("stylelint.config.mjs", `export default ${JSON.stringify(fns.stylelint(body), null, 2)};\n`),
     jscpd: write("jscpd.json", JSON.stringify(fns.jscpd(body), null, 2)),
     cspell: write("cspell.json", JSON.stringify(fns.cspell(body), null, 2)),
     lsLint: write(".ls-lint.yml", typeof fns.lsLint(body) === "string" ? fns.lsLint(body) : toYaml(fns.lsLint(body))),
     syncpack: write("syncpack.json", JSON.stringify(fns.syncpack(body), null, 2)),
   };
-}
-
-function toYaml(value, indent = "") {
-  if (typeof value !== "object" || value === null) return String(value);
-  return Object.entries(value).map(([k, v]) => (typeof v === "object" ? `${indent}${k}:\n${toYaml(v, indent + "  ")}` : `${indent}${k}: ${v}`)).join("\n") + "\n";
 }
 ```
 
@@ -3112,25 +3143,82 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
+import prettierConfig from "eslint-config-prettier";
 import { optionsOf, severityOf } from "../reconcile/ordering.mjs";
-import { readEffectiveConfig } from "../effective-config.mjs";
+import { readEffectiveConfig, resolveEslintBin } from "../effective-config.mjs";
 import { materialise } from "./scratch.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const packageDir = path.resolve(here, "../../..");
-const requireFromOrrery = createRequire(path.join(packageDir, "package.json"));
-const binOf = (pkg, rel) => path.join(path.dirname(requireFromOrrery.resolve(`${pkg}/package.json`)), rel);
 
-const norm = (v) => JSON.stringify([severityOf(v), ...optionsOf(v)]);
+// Reads the executable a package's own package.json advertises, rather than hard-coding a
+// relative path: those paths are not consistent across packages (stylelint's is
+// "bin/stylelint.mjs", syncpack's is "./index.cjs", @ls-lint/ls-lint's bin key is the short
+// "ls-lint", not its scoped package name) and drift with every dependency bump. Found directly
+// under packages/orrery/node_modules — Orrery's own tools, per the observe ruling — rather than
+// through Node's resolver: some of these packages' "exports" maps do not expose "./package.json"
+// as a subpath at all, which createRequire(...).resolve refuses outright.
+export function binField(pkg, binName = pkg) {
+  const manifestPath = path.join(packageDir, "node_modules", pkg, "package.json");
+  if (!fs.existsSync(manifestPath)) throw new Error(`${pkg} is not installed in ${packageDir}; run pnpm install there first`);
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  const short = pkg.includes("/") ? pkg.slice(pkg.lastIndexOf("/") + 1) : pkg;
+  const rel =
+    typeof manifest.bin === "string"
+      ? manifest.bin
+      : (manifest.bin?.[binName] ?? manifest.bin?.[short] ?? manifest.bin?.[manifest.name] ?? Object.values(manifest.bin ?? {})[0]);
+  if (!rel) throw new Error(`${pkg} has no bin entry in ${manifestPath}`);
+  return path.join(path.dirname(manifestPath), rel);
+}
+
+// eslint-config-prettier's own rules are appended last, unconditionally (no `files` filter), by
+// design — it is meant to win over any earlier config for the formatting rules it lists,
+// regardless of tier. A rule the rulings named as active but that also appears in this list can
+// never actually fire; the only honest expectation for it is that it really is "off" in the
+// effective config.
+const prettierOffKeys = new Set(Object.keys(prettierConfig.rules));
+
 const read = (body, dotted) => dotted.split(".").reduce((o, k) => o?.[k], body);
-const resolveParameters = (value, body) => {
-  if (Array.isArray(value)) return value.flatMap((v) => (v && typeof v === "object" && !Array.isArray(v) && "$parameter" in v ? read(body, v.$parameter) ?? [] : [resolveParameters(v, body)]));
-  if (value && typeof value === "object") return "$parameter" in value ? read(body, value.$parameter) : Object.fromEntries(Object.entries(value).map(([k, v]) => [k, resolveParameters(v, body)]));
-  return value;
-};
 
+function resolveParameters(value, body) {
+  if (Array.isArray(value)) {
+    return value.flatMap((v) => (v && typeof v === "object" && !Array.isArray(v) && "$parameter" in v ? (read(body, v.$parameter) ?? []) : [resolveParameters(v, body)]));
+  }
+  if (value && typeof value === "object") {
+    return "$parameter" in value ? read(body, value.$parameter) : Object.fromEntries(Object.entries(value).map(([k, v]) => [k, resolveParameters(v, body)]));
+  }
+  return value;
+}
+
+// Canonical (key-order-independent) JSON, for readable mismatch messages only: ESLint's own
+// effective config and the ruling's `chosen` value are semantically the same object with the
+// keys inserted in different orders.
+function canonical(value) {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([k, v]) => [k, canonical(v)]));
+  }
+  return value;
+}
+const norm = (v) => JSON.stringify(canonical([severityOf(v), ...optionsOf(v)]));
+
+// `want` matches `actual` when every key/value `want` names is present in `actual`
+// (recursively), order-independent; `actual` may carry additional keys `want` does not mention.
+// That slack is real, not a loophole: a rule's own JSON-schema can fill in a default the ruling
+// never had to spell out once ESLint validates the option object, so the fully-resolved `actual`
+// is a superset of the minimal `chosen` literal by construction, not by the bundle misrendering
+// the ruling.
+function matches(actual, want) {
+  if (Array.isArray(want)) return Array.isArray(actual) && actual.length === want.length && want.every((w, i) => matches(actual[i], w));
+  if (want && typeof want === "object") return !!actual && typeof actual === "object" && !Array.isArray(actual) && Object.entries(want).every(([k, v]) => matches(actual[k], v));
+  return Object.is(actual, want);
+}
+
+// The honesty comparison (originally in tests/bundle-honesty.test.mjs): every rule the rulings
+// name for this surface must be present in the effective config with the ruled value (or, for a
+// rule eslint-config-prettier always turns off, must actually be off); every other rule the
+// effective config carries must be off, or it is an undisclosed extra.
 export function effectiveMismatches(effectiveRules, rows, surface, body) {
   const out = [];
   const expected = rows.filter((r) => r.tool === "eslint" && r.surface === surface && r.chosen !== null && r.tier);
@@ -3139,8 +3227,13 @@ export function effectiveMismatches(effectiveRules, rows, surface, body) {
     named.add(r.key);
     const actual = effectiveRules[r.key];
     if (actual === undefined) { out.push(`${r.key}: missing`); continue; }
+    if (prettierOffKeys.has(r.key)) {
+      if (severityOf(actual) !== "off") out.push(`${r.key}: got ${norm(actual)} want ["off"] (eslint-config-prettier always wins this rule)`);
+      continue;
+    }
     const want = resolveParameters(r.chosen, body);
-    if (norm(actual) !== norm(want)) out.push(`${r.key}: got ${norm(actual)} want ${norm(want)}`);
+    const ok = severityOf(actual) === severityOf(want) && matches(optionsOf(actual), optionsOf(want));
+    if (!ok) out.push(`${r.key}: got ${norm(actual)} want ${norm(want)}`);
   }
   for (const [key, value] of Object.entries(effectiveRules)) if (!named.has(key) && severityOf(value) !== "off") out.push(`${key}: not in the rulings and not off`);
   return out;
@@ -3152,18 +3245,23 @@ export function violationsByRule(eslintJson) {
   return Object.fromEntries(Object.entries(counts).sort(([x], [y]) => (x < y ? -1 : 1)));
 }
 
+// A rule with violations that the prediction did not `tighten` is a defect in Orrery or a body
+// that is not clean under its own config — `unexplained`. Count changes on an already-tightened
+// rule are `moved`, informational. A tightened rule the prediction never saw before is `new`. A
+// tightened rule with zero violations now is `resolved`: the body fixed it, or it never fired.
 export function compareToPrediction(observed, prediction) {
   const tightened = new Set(prediction.tightened);
   const unexplained = Object.keys(observed).filter((r) => r !== "(fatal)" && !tightened.has(r));
-  const moved = Object.entries(observed).filter(([r, n]) => prediction.counts[r] !== undefined && prediction.counts[r] !== n).map(([r, n]) => ({ rule: r, was: prediction.counts[r], now: n }));
+  const moved = Object.entries(observed)
+    .filter(([r, n]) => prediction.counts[r] !== undefined && prediction.counts[r] !== n)
+    .map(([r, n]) => ({ rule: r, was: prediction.counts[r], now: n }));
   const newRules = Object.keys(observed).filter((r) => tightened.has(r) && prediction.counts[r] === undefined);
-  // Tightened rules with no violations now: either the body fixed them or they never fired.
   const resolved = prediction.tightened.filter((r) => observed[r] === undefined);
   return { unexplained, moved, newRules, resolved };
 }
 
 // Which rules the bundle tightens for this body: every ruled rule whose value differs from what
-// the body's own effective config has for that surface (or that the body lacks).
+// the body's own effective config has for that surface (or that the body lacks entirely).
 export function tightenedFor(rows, bodyEffectiveBySurface, body) {
   const out = new Set();
   for (const r of rows) {
@@ -3175,76 +3273,147 @@ export function tightenedFor(rows, bodyEffectiveBySurface, body) {
 }
 
 function defaultRun(command, args, cwd) {
-  try { return execFileSync(command, args, { cwd, encoding: "utf8", maxBuffer: 256 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] }); }
-  catch (error) { if (typeof error.stdout === "string" && error.stdout.length) return error.stdout; throw error; } // linters exit 1 with findings
+  try {
+    return execFileSync(command, args, { cwd, encoding: "utf8", maxBuffer: 256 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] });
+  } catch (error) {
+    // Linters exit non-zero on findings; their report is still on stdout.
+    if (typeof error.stdout === "string" && error.stdout.length) return error.stdout;
+    throw error;
+  }
 }
 
-export async function codeDrift(bodyDir, { rows, bodyConfig, samples, bodyEffective, tools = ["eslint", "tsc", "stylelint", "jscpd", "cspell", "ls-lint", "syncpack"], run = defaultRun, exec, scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-")) }) {
-  const files = await materialise(bodyDir, bodyConfig, scratchDir, { bundleDir: packageDir });
-  const results = {};
-  const node = process.execPath;
-  if (tools.includes("eslint")) {
-    const eslintBin = binOf("eslint", "bin/eslint.js");
-    const execWithScratch = exec ?? ((dir, file) => run(node, [eslintBin, "-c", files.eslint, "--no-config-lookup", "--print-config", file], dir));
-    const mismatches = [];
-    for (const [surface, file] of Object.entries(samples)) {
-      const effective = readEffectiveConfig(bodyDir, file, execWithScratch);
-      mismatches.push(...effectiveMismatches(effective.rules ?? {}, rows, surface, bodyConfig).map((m) => `${surface} ${m}`));
+// Runs Orrery's own tool binaries — never the body's — against the body, read-only: `cwd` is the
+// body directory, every `--config`/`-c` points into `scratchDir`. The ruling made in planning is
+// that this proves the bundle against the plugins it actually ships, which is exactly a body's
+// situation after adoption (the plugins live in Orrery's devDependencies, not the body's).
+//
+// Every tool runs inside its own try/catch: observe's job is to report drift across every tool
+// and every body, and a single tool crashing (a bad rule config, a missing binary, a body file
+// eslint chokes on) must not take the rest of the run down with it. A caught failure becomes
+// `{ crashed: true, message }` for that tool's entry — the caller (the observe command) is the
+// one that prints it and fails the run, since it is the one that knows which body this was.
+function attempt(results, tool, fn) {
+  try {
+    results[tool] = fn();
+  } catch (error) {
+    results[tool] = { crashed: true, message: error.message };
+  }
+}
+
+export async function codeDrift(bodyDir, { rows, bodyConfig, samples, bodyEffective, tools = ["eslint", "tsc", "stylelint", "jscpd", "cspell", "ls-lint", "syncpack"], run = defaultRun, exec, scratchDir }) {
+  // Only clean up a scratch directory this call created itself: a caller that passed its own
+  // scratchDir may still want it afterward (tests inspect its files).
+  const ownScratch = scratchDir === undefined;
+  const dir = scratchDir ?? fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-"));
+  try {
+    const files = await materialise(bodyDir, bodyConfig, dir, { bundleDir: packageDir });
+    const results = {};
+    const node = process.execPath;
+
+    if (tools.includes("eslint")) {
+      attempt(results, "eslint", () => {
+        // Orrery's own eslint, resolved from packages/orrery — never the body's — per the
+        // planning ruling: this is the one binary the rulings and the honesty comparison are
+        // measured against, so it is resolved the mandated way (resolveEslintBin), not through
+        // the generic binField used for the other tools below.
+        const eslintBin = resolveEslintBin(packageDir);
+        const execWithScratch = exec ?? ((execDir, file) => run(node, [eslintBin, "-c", files.eslint, "--no-config-lookup", "--print-config", file], execDir));
+        const mismatches = [];
+        for (const [surface, file] of Object.entries(samples)) {
+          const effective = readEffectiveConfig(bodyDir, file, execWithScratch);
+          mismatches.push(...effectiveMismatches(effective.rules ?? {}, rows, surface, bodyConfig).map((m) => `${surface} ${m}`));
+        }
+        const json = run(node, [eslintBin, "-c", files.eslint, "--no-config-lookup", "-f", "json", "apps", "packages", "scripts"], bodyDir);
+        return { mismatches, violations: violationsByRule(json), tightened: tightenedFor(rows, bodyEffective ?? {}, bodyConfig) };
+      });
     }
-    const json = run(node, [eslintBin, "-c", files.eslint, "--no-config-lookup", "-f", "json", "apps", "packages", "scripts"], bodyDir);
-    results.eslint = { mismatches, violations: violationsByRule(json), tightened: tightenedFor(rows, bodyEffective ?? {}, bodyConfig) };
+
+    if (tools.includes("tsc")) {
+      attempt(results, "tsc", () => {
+        const out = run(node, [binField("typescript", "tsc"), "-p", files.tsconfig, "--pretty", "false"], bodyDir);
+        const counts = {};
+        for (const m of out.matchAll(/error (TS\d+):/g)) counts[m[1]] = (counts[m[1]] ?? 0) + 1;
+        return { errors: counts };
+      });
+    }
+
+    if (tools.includes("stylelint")) {
+      attempt(results, "stylelint", () => {
+        const out = run(node, [binField("stylelint"), "--config", files.stylelint, "-f", "json", "**/*.css"], bodyDir);
+        return { count: JSON.parse(out || "[]").reduce((n, f) => n + f.warnings.length, 0) };
+      });
+    }
+
+    if (tools.includes("jscpd")) {
+      attempt(results, "jscpd", () => {
+        run(node, [binField("jscpd"), "-c", files.jscpd, "-r", "json", "-o", dir, "."], bodyDir);
+        const reportFile = path.join(dir, "jscpd-report.json");
+        return { clones: fs.existsSync(reportFile) ? (JSON.parse(fs.readFileSync(reportFile, "utf8")).statistics?.total?.clones ?? 0) : 0 };
+      });
+    }
+
+    if (tools.includes("cspell")) {
+      attempt(results, "cspell", () => {
+        const out = run(node, [binField("cspell"), "lint", "-c", files.cspell, "--no-progress", "--no-summary", "**/*.{ts,tsx,md}"], bodyDir);
+        return { issues: out.split(/\r?\n/).filter((l) => /:\d+:\d+ - /.test(l)).length };
+      });
+    }
+
+    if (tools.includes("ls-lint")) {
+      attempt(results, "ls-lint", () => {
+        const out = run(node, [binField("@ls-lint/ls-lint", "ls-lint"), "-config", files.lsLint], bodyDir);
+        return { errors: out.split(/\r?\n/).filter((l) => l.includes("kebab-case")).length };
+      });
+    }
+
+    if (tools.includes("syncpack")) {
+      attempt(results, "syncpack", () => {
+        const out = run(node, [binField("syncpack"), "lint", "--config", files.syncpack], bodyDir);
+        return { mismatches: (out.match(/✘/g) ?? []).length };
+      });
+    }
+
+    return results;
+  } finally {
+    if (ownScratch) fs.rmSync(dir, { recursive: true, force: true });
   }
-  if (tools.includes("tsc")) {
-    const out = run(node, [binOf("typescript", "bin/tsc"), "-p", files.tsconfig, "--pretty", "false"], bodyDir);
-    const counts = {};
-    for (const m of out.matchAll(/error (TS\d+):/g)) counts[m[1]] = (counts[m[1]] ?? 0) + 1;
-    results.tsc = { errors: counts };
-  }
-  if (tools.includes("stylelint")) {
-    const out = run(node, [binOf("stylelint", "bin/stylelint.mjs"), "--config", files.stylelint, "-f", "json", "**/*.css"], bodyDir);
-    results.stylelint = { count: JSON.parse(out || "[]").reduce((n, f) => n + f.warnings.length, 0) };
-  }
-  if (tools.includes("jscpd")) {
-    const out = run(node, [binOf("jscpd", "bin/jscpd"), "-c", files.jscpd, "-r", "json", "-o", scratchDir, "."], bodyDir);
-    const reportFile = path.join(scratchDir, "jscpd-report.json");
-    results.jscpd = { clones: fs.existsSync(reportFile) ? JSON.parse(fs.readFileSync(reportFile, "utf8")).statistics?.total?.clones ?? 0 : 0 };
-  }
-  if (tools.includes("cspell")) {
-    const out = run(node, [binOf("cspell", "bin.mjs"), "lint", "-c", files.cspell, "--no-progress", "--no-summary", "**/*.{ts,tsx,md}"], bodyDir);
-    results.cspell = { issues: out.split(/\r?\n/).filter((l) => /:\d+:\d+ - /.test(l)).length };
-  }
-  if (tools.includes("ls-lint")) {
-    const out = run(binOf("@ls-lint/ls-lint", "bin/ls-lint" + (process.platform === "win32" ? ".exe" : "")), ["-config", files.lsLint], bodyDir);
-    results["ls-lint"] = { errors: out.split(/\r?\n/).filter((l) => l.includes("kebab-case")).length };
-  }
-  if (tools.includes("syncpack")) {
-    const out = run(node, [binOf("syncpack", "dist/bin.js"), "lint", "--config", files.syncpack], bodyDir);
-    results.syncpack = { mismatches: (out.match(/✘/g) ?? []).length };
-  }
-  return results;
 }
 ```
 
-The `binOf` relative paths (`bin/stylelint.mjs`, `bin/jscpd`, `bin.mjs` for cspell, `bin/ls-lint`, `dist/bin.js` for syncpack) are read from each package's `bin` field in `package.json`; the implementer replaces the literal with `binField(pkg)` that reads it, and adds a test that each resolves to an existing file after `pnpm install`.
+`binField(pkg, binName)` (in `code.mjs`) reads each package's real `bin` field from its `package.json` under `packages/orrery/node_modules/<pkg>/` — not `createRequire(...).resolve`, which `jscpd` and `cspell` both refuse for `./package.json` (their `exports` maps don't expose it) — used for every tool except eslint. eslint itself is resolved via `resolveEslintBin` (`../effective-config.mjs`), from the `packages/orrery` directory: it is the one binary the rulings and the honesty comparison are measured against, so it gets the mandated resolver, not the generic one. Every tool block in `codeDrift` runs inside its own try/catch (`attempt`): a crash becomes `{ crashed: true, message }` for that tool's entry instead of aborting the run; `observe.mjs` prints `<body>: <tool> crashed: <message>`, fails the exit code, and still writes the report (`report.mjs` renders a crashed entry as `- <tool>: crashed — <message>`). A `scratchDir` `codeDrift` creates for itself (none passed in) is removed in a `finally`; one the caller passed stays, since the caller may still want to inspect it.
 
 ```javascript
 // packages/orrery/src/lib/observe/report.mjs
+// One markdown document per observation run, with a section per body.
 export function renderObservation(results, date) {
   const lines = [`# Tooling observation — ${date}`, ""];
   for (const r of results) {
     lines.push(`## ${r.name} (${r.dir}${r.sha ? ` @ ${r.sha}` : ""})`, "");
     lines.push(`- version: ${r.version.note}`);
-    lines.push(`- pointers: ${r.pointers.files.filter((f) => f.state === "identical").length} identical, ${r.pointers.files.filter((f) => f.state === "differs").length} differ, ${r.pointers.files.filter((f) => f.state === "missing").length} missing; local ${r.pointers.local.length} violation(s); config ${r.pointers.config.join(", ") || "valid"}`);
-    if (r.code?.eslint) {
-      lines.push(`- eslint effective config: ${r.code.eslint.mismatches.length === 0 ? "matches the rulings on every surface" : r.code.eslint.mismatches.length + " mismatch(es)"}`);
+    lines.push(
+      `- pointers: ${r.pointers.files.filter((f) => f.state === "identical").length} identical, ${r.pointers.files.filter((f) => f.state === "differs").length} differ, ${r.pointers.files.filter((f) => f.state === "missing").length} missing; local ${r.pointers.local.length} violation(s); config ${r.pointers.config.join(", ") || "valid"}`
+    );
+    if (r.code?.eslint?.crashed) {
+      lines.push(`- eslint: crashed — ${r.code.eslint.message}`);
+    } else if (r.code?.eslint) {
+      lines.push(`- eslint effective config: ${r.code.eslint.mismatches.length === 0 ? "matches the rulings on every surface" : `${r.code.eslint.mismatches.length} mismatch(es)`}`);
       lines.push("", "| rule | violations |", "|---|---|");
       for (const [rule, n] of Object.entries(r.code.eslint.violations)) lines.push(`| ${rule} | ${n} |`);
       if (r.comparison) {
-        lines.push("", `unexplained: ${r.comparison.unexplained.join(", ") || "none"}; moved: ${r.comparison.moved.map((m) => `${m.rule} ${m.was}→${m.now}`).join(", ") || "none"}; new: ${r.comparison.newRules.join(", ") || "none"}; resolved: ${r.comparison.resolved.join(", ") || "none"}`);
+        lines.push(
+          "",
+          `unexplained: ${r.comparison.unexplained.join(", ") || "none"}; moved: ${r.comparison.moved.map((m) => `${m.rule} ${m.was}→${m.now}`).join(", ") || "none"}; new: ${r.comparison.newRules.join(", ") || "none"}; resolved: ${r.comparison.resolved.join(", ") || "none"}`
+        );
       }
     }
-    for (const tool of ["tsc", "stylelint", "jscpd", "cspell", "ls-lint", "syncpack"]) if (r.code?.[tool]) lines.push(`- ${tool}: ${JSON.stringify(r.code[tool])}`);
-    if (r.code?.eslint?.mismatches?.length) { lines.push("", "### eslint mismatches", ""); for (const m of r.code.eslint.mismatches) lines.push(`- ${m}`); }
+    for (const tool of ["tsc", "stylelint", "jscpd", "cspell", "ls-lint", "syncpack"]) {
+      if (!r.code?.[tool]) continue;
+      lines.push(r.code[tool].crashed ? `- ${tool}: crashed — ${r.code[tool].message}` : `- ${tool}: ${JSON.stringify(r.code[tool])}`);
+    }
+    if (r.code?.eslint?.mismatches?.length) {
+      lines.push("", "### eslint mismatches", "");
+      for (const m of r.code.eslint.mismatches) lines.push(`- ${m}`);
+    }
     lines.push("");
   }
   return lines.join("\n");
@@ -3278,56 +3447,130 @@ const defaults = {
   pointerDrift: realPointerDrift,
   codeDrift: realCodeDrift,
   loadRulings: () => JSON.parse(fs.readFileSync(path.join(repoRoot, "docs/decisions/rulings.json"), "utf8")),
-  loadPrediction: (name) => { const f = path.join(repoRoot, "docs/predictions", `${name}.json`); return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, "utf8")) : null; },
-  writePrediction: (name, prediction) => { const dir = path.join(repoRoot, "docs/predictions"); fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, `${name}.json`), JSON.stringify(prediction, null, 2) + "\n"); },
+  loadPrediction: (name) => {
+    const f = path.join(repoRoot, "docs/predictions", `${name}.json`);
+    return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, "utf8")) : null;
+  },
+  writePrediction: (name, prediction) => {
+    const dir = path.join(repoRoot, "docs/predictions");
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, `${name}.json`), JSON.stringify(prediction, null, 2) + "\n");
+  },
   today: () => new Date().toISOString().slice(0, 10),
 };
+
+// Before adoption a body has no orrery.config.mjs of its own: observe falls back to the body's
+// parameters recorded in docs/predictions/<name>.json when a prediction already exists, else the
+// schema defaults with a placeholder tailwind entry point good enough to run the bundle against.
+function fallbackBodyConfig(bodyDir) {
+  const configFile = path.join(bodyDir, "orrery.config.mjs");
+  if (fs.existsSync(configFile)) return loadBodyConfig(bodyDir).then((c) => c.config);
+  return Promise.resolve({ class: "next-supabase-mono", tailwind: { entryPoint: "apps/*/src/app/globals.css" } });
+}
 
 export default async function observe(argv, deps = {}) {
   const d = { ...defaults, ...deps };
   let values, positionals;
   try {
-    ({ values, positionals } = parseArgs({ args: argv, options: { predict: { type: "boolean", default: false }, report: { type: "string", default: path.join(repoRoot, "docs/observations") }, tools: { type: "string" }, surface: { type: "string" } }, allowPositionals: true }));
-  } catch (error) { console.error(`${error.message}\n${USAGE}`); return 2; }
-  if (positionals.length === 0) { console.error(USAGE); return 2; }
+    ({ values, positionals } = parseArgs({
+      args: argv,
+      options: {
+        predict: { type: "boolean", default: false },
+        report: { type: "string", default: path.join(repoRoot, "docs/observations") },
+        tools: { type: "string" },
+        surface: { type: "string" },
+      },
+      allowPositionals: true,
+    }));
+  } catch (error) {
+    console.error(`${error.message}\n${USAGE}`);
+    return 2;
+  }
+  if (positionals.length === 0) {
+    console.error(USAGE);
+    return 2;
+  }
 
   const rulings = d.loadRulings();
   const templates = path.join(repoRoot, "packages/orrery/templates/next-supabase-mono");
   const results = [];
   let failed = false;
+
   for (const bodyDir of positionals) {
     const name = path.basename(bodyDir).toLowerCase();
     let sha = null;
-    try { sha = execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: bodyDir, encoding: "utf8" }).trim(); } catch {}
+    try {
+      sha = execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: bodyDir, encoding: "utf8" }).trim();
+    } catch {
+      // Not a git checkout (e.g. a test fixture path) — sha stays null.
+    }
+
     const version = d.versionDrift(bodyDir);
     const pointers = await d.pointerDrift(bodyDir, templates, schema);
-    // Before adoption a body has no orrery.config.mjs: observe uses the body's parameters from
-    // docs/predictions/<name>.json when present, else the schema defaults with a placeholder entry point.
+
     const prediction = d.loadPrediction(name);
-    const bodyConfig = withDefaults(prediction?.bodyConfig ?? (fs.existsSync(path.join(bodyDir, "orrery.config.mjs")) ? (await loadBodyConfig(bodyDir)).config : { class: "next-supabase-mono", tailwind: { entryPoint: "apps/*/src/app/globals.css" } }), schema);
-    const samples = values.surface ? Object.fromEntries(Object.entries(d.findSurfaceSamples(bodyDir)).filter(([s]) => s === values.surface)) : d.findSurfaceSamples(bodyDir);
+    const bodyConfig = withDefaults(prediction?.bodyConfig ?? (await fallbackBodyConfig(bodyDir)), schema);
+
+    const samples = values.surface
+      ? Object.fromEntries(Object.entries(d.findSurfaceSamples(bodyDir)).filter(([s]) => s === values.surface))
+      : d.findSurfaceSamples(bodyDir);
+
     const bodyEffective = {};
-    for (const [surface, file] of Object.entries(samples)) { try { bodyEffective[surface] = d.readEffectiveConfig(bodyDir, file); } catch { bodyEffective[surface] = { rules: {} }; } }
+    for (const [surface, file] of Object.entries(samples)) {
+      try {
+        bodyEffective[surface] = d.readEffectiveConfig(bodyDir, file);
+      } catch {
+        bodyEffective[surface] = { rules: {} };
+      }
+    }
+
     const code = await d.codeDrift(bodyDir, { rows: rulings.rows, bodyConfig, samples, bodyEffective, tools: values.tools?.split(",") });
     const entry = { name, dir: bodyDir, sha, version, pointers, code };
+
+    // A tool crashing (codeDrift catches per tool) never aborts the run: report it, fail the
+    // exit code, and keep going — the report below is written regardless, crash included.
+    for (const [tool, result] of Object.entries(code)) {
+      if (result?.crashed) {
+        failed = true;
+        console.error(`${name}: ${tool} crashed: ${result.message}`);
+      }
+    }
+
     if (values.predict) {
-      d.writePrediction(name, { body: name, sha, generatedAt: d.today(), bodyConfig, tightened: code.eslint?.tightened ?? [], counts: code.eslint?.violations ?? {}, tools: Object.fromEntries(Object.entries(code).filter(([t]) => t !== "eslint")) });
+      d.writePrediction(name, {
+        body: name,
+        sha,
+        generatedAt: d.today(),
+        bodyConfig,
+        tightened: code.eslint?.tightened ?? [],
+        counts: code.eslint?.violations ?? {},
+        tools: Object.fromEntries(Object.entries(code).filter(([t]) => t !== "eslint")),
+      });
       console.log(`${name}: prediction written`);
     } else if (!prediction) {
       console.error(`${name}: no prediction for ${name}; run with --predict to record one`);
       failed = true;
-    } else if (code.eslint) {
+    } else if (code.eslint && !code.eslint.crashed) {
       entry.comparison = compareToPrediction(code.eslint.violations, prediction);
-      if (code.eslint.mismatches.length) { failed = true; console.error(`${name}: eslint effective config mismatch(es):\n  ${code.eslint.mismatches.join("\n  ")}`); }
-      if (entry.comparison.unexplained.length) { failed = true; console.error(`${name}: unexplained violations from rules the rulings did not tighten: ${entry.comparison.unexplained.join(", ")}`); }
+      if (code.eslint.mismatches.length) {
+        failed = true;
+        console.error(`${name}: eslint effective config mismatch(es):\n  ${code.eslint.mismatches.join("\n  ")}`);
+      }
+      if (entry.comparison.unexplained.length) {
+        failed = true;
+        console.error(`${name}: unexplained violations from rules the rulings did not tighten: ${entry.comparison.unexplained.join(", ")}`);
+      }
     }
+
     results.push(entry);
   }
+
   fs.mkdirSync(values.report, { recursive: true });
   const stem = path.join(values.report, `${d.today()}-tooling`);
   fs.writeFileSync(`${stem}.md`, renderObservation(results, d.today()) + "\n");
   fs.writeFileSync(`${stem}.json`, JSON.stringify(results, null, 2) + "\n");
   console.log(`report: ${stem}.md`);
+
   return failed ? 1 : 0;
 }
 ```
@@ -3337,7 +3580,12 @@ Register `observe` in `cli.mjs` with usage `  orrery observe <bodyDir>... [--pre
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `pnpm vitest run packages/orrery/tests/observe-code.test.mjs packages/orrery/tests/observe-command.test.mjs`
-Expected: PASS — 5 + 5 tests
+Expected: PASS — 5 + 5 tests. As implemented, `observe-code.test.mjs` grew a `codeDrift`
+describe block (F1/F2/the scratch-dir-cleanup minor) and two more `materialise` cases (F4's
+relative-`bodyDir` regression, and the real-`physics/ls-lint.mjs` YAML minor) — 17 tests total
+— and `observe-command.test.mjs` grew a crash-surfacing case — 6 total. `tests/bundle-honesty.test.mjs`
+(Task 7) is amended in the same commit to call `effectiveMismatches` from `code.mjs` instead of
+duplicating the comparison — one comparison, not two — with no change in its own case count (650).
 
 - [ ] **Step 5: First real observation, eslint only, one surface, on the fixture then on libra**
 

@@ -7,7 +7,9 @@ export function renderObservation(results, date) {
     lines.push(
       `- pointers: ${r.pointers.files.filter((f) => f.state === "identical").length} identical, ${r.pointers.files.filter((f) => f.state === "differs").length} differ, ${r.pointers.files.filter((f) => f.state === "missing").length} missing; local ${r.pointers.local.length} violation(s); config ${r.pointers.config.join(", ") || "valid"}`
     );
-    if (r.code?.eslint) {
+    if (r.code?.eslint?.crashed) {
+      lines.push(`- eslint: crashed — ${r.code.eslint.message}`);
+    } else if (r.code?.eslint) {
       lines.push(`- eslint effective config: ${r.code.eslint.mismatches.length === 0 ? "matches the rulings on every surface" : `${r.code.eslint.mismatches.length} mismatch(es)`}`);
       lines.push("", "| rule | violations |", "|---|---|");
       for (const [rule, n] of Object.entries(r.code.eslint.violations)) lines.push(`| ${rule} | ${n} |`);
@@ -18,7 +20,10 @@ export function renderObservation(results, date) {
         );
       }
     }
-    for (const tool of ["tsc", "stylelint", "jscpd", "cspell", "ls-lint", "syncpack"]) if (r.code?.[tool]) lines.push(`- ${tool}: ${JSON.stringify(r.code[tool])}`);
+    for (const tool of ["tsc", "stylelint", "jscpd", "cspell", "ls-lint", "syncpack"]) {
+      if (!r.code?.[tool]) continue;
+      lines.push(r.code[tool].crashed ? `- ${tool}: crashed — ${r.code[tool].message}` : `- ${tool}: ${JSON.stringify(r.code[tool])}`);
+    }
     if (r.code?.eslint?.mismatches?.length) {
       lines.push("", "### eslint mismatches", "");
       for (const m of r.code.eslint.mismatches) lines.push(`- ${m}`);
