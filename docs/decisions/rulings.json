@@ -5121,7 +5121,7 @@
           }
         }
       ],
-      "note": "mode all and the union of checked attributes are strictest; ignoreAttribute keeps libra's list because attribute names such as className are not user-facing text; excluded words are body data; one-sided on this surface, options from the class ruling",
+      "note": "mode all and the union of checked attributes are strictest; ignoreAttribute keeps libra's list because attribute names such as className are not user-facing text; excluded words are body data; restricted to the TS surfaces that render user-facing text — on script, mode all flagged every string literal a script contains (e.g. \"--version\"); one-sided on this surface, options from the class ruling",
       "chosen": [
         "error",
         {
@@ -22724,7 +22724,7 @@
           }
         }
       ],
-      "note": "mode all and the union of checked attributes are strictest; ignoreAttribute keeps libra's list because attribute names such as className are not user-facing text; excluded words are body data",
+      "note": "mode all and the union of checked attributes are strictest; ignoreAttribute keeps libra's list because attribute names such as className are not user-facing text; excluded words are body data; restricted to the TS surfaces that render user-facing text — on script, mode all flagged every string literal a script contains (e.g. \"--version\")",
       "chosen": [
         "error",
         {
@@ -55886,132 +55886,11 @@
       "b": [
         2
       ],
-      "note": "mode all and the union of checked attributes are strictest; ignoreAttribute keeps libra's list because attribute names such as className are not user-facing text; excluded words are body data; one-sided on this surface, options from the class ruling",
+      "note": "",
       "chosen": [
-        "error",
-        {
-          "mode": "all",
-          "should-validate-template": true,
-          "jsx-attributes": {
-            "include": [
-              "alt",
-              "aria-description",
-              "aria-label",
-              "aria-labelledby",
-              "aria-placeholder",
-              "aria-valuetext",
-              "label",
-              "placeholder",
-              "title"
-            ]
-          },
-          "ignoreAttribute": [
-            "className",
-            "class",
-            "id",
-            "name",
-            "type",
-            "href",
-            "src",
-            "srcSet",
-            "data-testid",
-            "data-state",
-            "data-collapsed",
-            "data-side",
-            "data-align",
-            "role",
-            "htmlFor",
-            "target",
-            "rel",
-            "method",
-            "action",
-            "encType",
-            "autoComplete",
-            "inputMode",
-            "pattern",
-            "accept",
-            "xmlns",
-            "viewBox",
-            "fill",
-            "stroke",
-            "strokeWidth",
-            "strokeLinecap",
-            "strokeLinejoin",
-            "d",
-            "cx",
-            "cy",
-            "r",
-            "x",
-            "y",
-            "x1",
-            "x2",
-            "y1",
-            "y2",
-            "width",
-            "height",
-            "transform",
-            "clipPath",
-            "clipRule",
-            "fillRule",
-            "variant",
-            "size",
-            "align",
-            "side",
-            "orientation",
-            "direction",
-            "position",
-            "layout",
-            "mode",
-            "theme",
-            "color",
-            "severity",
-            "status",
-            "priority",
-            "asChild",
-            "sideOffset",
-            "alignOffset",
-            "collisionPadding",
-            "locale",
-            "prefetch",
-            "scroll",
-            "shallow",
-            "replace",
-            "passHref",
-            "legacyBehavior",
-            "defaultValue",
-            "defaultChecked",
-            "dataKey",
-            "tickFormatter",
-            "domain",
-            "ticks",
-            "tickLine",
-            "axisLine",
-            "strokeDasharray",
-            "animationDuration",
-            "animationEasing",
-            "connectNulls",
-            "dot",
-            "activeDot",
-            "legendType",
-            "stackId",
-            "initial",
-            "animate",
-            "exit",
-            "transition",
-            "whileHover",
-            "whileTap",
-            "whileFocus",
-            "whileInView",
-            "tid"
-          ],
-          "words": {
-            "exclude": {
-              "$parameter": "i18n.excludedWords"
-            }
-          }
-        }
+        2
       ],
-      "test": "benefit",
+      "test": "adopt",
       "tier": "class"
     },
     {
@@ -64149,7 +64028,7 @@
       "b": [
         2
       ],
-      "note": "mode all and the union of checked attributes are strictest; ignoreAttribute keeps libra's list because attribute names such as className are not user-facing text; excluded words are body data; one-sided on this surface, options from the class ruling",
+      "note": "mode all and the union of checked attributes are strictest; ignoreAttribute keeps libra's list because attribute names such as className are not user-facing text; excluded words are body data; restricted to the TS surfaces that render user-facing text — on script, mode all flagged every string literal a script contains (e.g. \"--version\"); one-sided on this surface, options from the class ruling",
       "chosen": [
         "error",
         {

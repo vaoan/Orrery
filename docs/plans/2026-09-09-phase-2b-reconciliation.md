@@ -598,7 +598,8 @@ export const PRE_RULINGS = {
       words: { exclude: { $parameter: "i18n.excludedWords" } },
     }],
     test: "benefit",
-    note: "mode all and the union of checked attributes are strictest; ignoreAttribute keeps libra's list because attribute names such as className are not user-facing text; excluded words are body data",
+    surfaces: ["source", "component", "package"],
+    note: "mode all and the union of checked attributes are strictest; ignoreAttribute keeps libra's list because attribute names such as className are not user-facing text; excluded words are body data; restricted to the TS surfaces that render user-facing text — on script, mode all flagged every string literal a script contains (e.g. \"--version\")",
   },
   "sonarjs/no-duplicate-string": {
     chosen: ["error", { threshold: 2, ignoreStrings: { $union: "ignoreStrings", join: "|" } }],
@@ -2472,6 +2473,7 @@ export async function loadBodyConfig(startDir) {
 // Hand-written: what every block needs besides rules. Language options come from the donors'
 // effective configs (both use typescript-eslint's parser with the project service); settings
 // are what the React and boundaries plugins need to resolve elements and versions.
+import globals from "globals";
 import tseslint from "typescript-eslint";
 
 const STANDARD_ELEMENTS = [
@@ -2480,14 +2482,32 @@ const STANDARD_ELEMENTS = [
   { type: "feature", pattern: "apps/*/src/features/*/*", capture: ["feature", "layer"] },
   { type: "shared", pattern: "apps/*/src/shared/*", capture: ["layer"] },
   { type: "app", pattern: ["apps/*/src/app", "apps/*/src/app/**"] },
+  { type: "package", pattern: "packages/*/src", capture: ["package"] },
 ];
+
+// Both donors turn `no-undef` off on source/component/package (rulings.json: agree, chosen
+// [0, ...]) — the TypeScript compiler catches undefined identifiers there, not eslint. It stays
+// on only for `script`, adopted from aeleos. Globals go on every surface regardless: type-aware
+// parsing still needs `window`/`process`/etc. resolvable as known identifiers rather than
+// implicit `any`-flavoured globals, and `script` needs them because `no-undef` is on there.
+const SURFACE_GLOBALS = {
+  script: { ...globals.node },
+  "unit-test": { ...globals.node, ...globals.browser },
+  e2e: { ...globals.node, ...globals.browser },
+  source: { ...globals.browser, ...globals.node },
+  component: { ...globals.browser, ...globals.node },
+  package: { ...globals.browser, ...globals.node },
+};
 
 export default function base(surface, body, root) {
   const typescript = surface !== "script";
   return {
-    languageOptions: typescript
-      ? { parser: tseslint.parser, parserOptions: { projectService: true, tsconfigRootDir: root }, ecmaVersion: 2023, sourceType: "module" }
-      : { ecmaVersion: 2023, sourceType: "module" },
+    languageOptions: {
+      ...(typescript ? { parser: tseslint.parser, parserOptions: { projectService: true, tsconfigRootDir: root } } : {}),
+      ecmaVersion: 2023,
+      sourceType: "module",
+      globals: SURFACE_GLOBALS[surface],
+    },
     settings: {
       react: { version: "detect" },
       "boundaries/elements": [...STANDARD_ELEMENTS, ...body.boundaries.elements],
@@ -2496,6 +2516,8 @@ export default function base(surface, body, root) {
   };
 }
 ```
+
+S1/S2 amendment (this round): both `no-undef` and the missing `package` boundaries element were gaps the first `orrery observe` run against the fixture and libra exposed — `globals` was added to `packages/orrery/package.json` dependencies (it was not there when Task 6 first landed).
 
 `packages/orrery/package.json` gains:
 
@@ -2594,9 +2616,13 @@ export default await orrery();
 
 `eslint.local.mjs`: `export default [];`
 
-`tsconfig.json`: `{ "extends": "@vaoan/orrery/tsconfig", "include": ["apps/*/src", "packages/*/src"] }`
+`tsconfig.json`: `{ "extends": "@vaoan/orrery/tsconfig", "include": ["apps/*/src", "apps/*/tests", "apps/*/e2e", "packages/*/src", "packages/*/tests"] }`
+
+S3 amendment (this round): both donors' per-app tsconfigs include `**/*.ts`, so tests and e2e sit inside their own project — the original two-entry include left the fixture's e2e/unit-test files "not found by the project service". The include list above is what both the template and the fixture's own copy carry now (still byte-identical); `packages/orrery/src/lib/observe/scratch.mjs`'s `tsconfigInclude` default (Task 9) was widened to match.
 
 Source files are two to five lines each, valid TypeScript and TSX that violate nothing; `globals.css` is `@import "tailwindcss";`.
+
+S5 amendment (this round): the first real `orrery observe` run found the fixture was not actually clean — `sonarjs/prefer-read-only-props` (component/source props must be `readonly`), `jsdoc/require-param` (an `@param` tag per parameter), and `i18next/no-literal-string` (`mode: "all"` flags every string literal, including a template literal's static text). `layout.tsx`'s and `thing-tile.tsx`'s prop types gained `readonly`; `use-thing.ts` and `thing.ts` gained a full `@param`/`@returns` JSDoc block and moved their `"thing-"` prefix into an `UPPER_CASE` module constant (`THING_LABEL_PREFIX`) — eslint-plugin-i18next exempts a literal assigned to an all-uppercase identifier as machine data, not user-facing copy, so the template literal's own quasis carry no literal text once the prefix is interpolated in. No file gained an eslint-disable comment.
 
 Templates: copy the three pointer files (`eslint.config.mjs`, `eslint.local.mjs`, `tsconfig.json`) and the three `.husky` hooks (`pnpm orrery hook <name>` one-liners) and the five-line `ci.yml` caller (`uses: vaoan/Orrery/.github/workflows/ci.yml@main`) into `packages/orrery/templates/next-supabase-mono/` with the same relative paths — 7 files, matching `fixture-pointers.test.mjs`'s `files.length >= 7`.
 
@@ -3076,6 +3102,15 @@ import { pathToFileURL } from "node:url";
 
 const posix = (p) => p.replaceAll("\\", "/");
 
+// A real body's tree carries generated/build output the bundle itself never excludes (it is
+// normally only ever run through lint-staged, against staged files — a bulk sweep never
+// happens in real usage). observe's own violations pass is the one caller that walks the
+// whole tree (`apps packages scripts`), and without this it tries to parse libra's `.next`
+// webpack chunks — megabyte-sized generated JS — and OOMs the eslint child process. This is a
+// scratch-invocation concern, not a rulings/bundle one: it never touches the generated bundle
+// or rulings.json, only what observe's own materialised config additionally ignores.
+const GLOBAL_IGNORES = ["**/.next/**", "**/.turbo/**", "**/dist/**", "**/build/**", "**/coverage/**", "**/out/**", "**/.vercel/**", "**/node_modules/**"];
+
 // Emits a small subset of YAML: nested plain objects and arrays of strings, no quoting or
 // folding. That is all any of the physics/class tool functions ever return (ls-lint's `{ ls: {
 // pattern: { ext: rule } } }` shape), so a dependency for the full spec would be unused weight.
@@ -3107,7 +3142,9 @@ export async function materialise(bodyDir, bodyConfig, scratchDir, { bundleDir, 
     cspell: (await import(pathToFileURL(`${klass}/cspell.mjs`).href)).default,
     lsLint: (await import(pathToFileURL(`${bundle}/physics/ls-lint.mjs`).href)).default,
     syncpack: (await import(pathToFileURL(`${bundle}/physics/syncpack.mjs`).href)).default,
-    tsconfigInclude: bodyConfig.tsconfig?.include?.length ? bodyConfig.tsconfig.include : ["apps/*/src", "packages/*/src"],
+    tsconfigInclude: bodyConfig.tsconfig?.include?.length
+      ? bodyConfig.tsconfig.include
+      : ["apps/*/src", "apps/*/tests", "apps/*/e2e", "packages/*/src", "packages/*/tests"],
   };
   const body = { ...bodyConfig, root: bodyRoot };
   const write = (name, text) => {
@@ -3118,7 +3155,9 @@ export async function materialise(bodyDir, bodyConfig, scratchDir, { bundleDir, 
   return {
     eslint: write(
       "eslint.config.mjs",
-      `import orrery from ${JSON.stringify(pathToFileURL(`${klass}/eslint.mjs`).href)};\nexport default await orrery(${JSON.stringify(body, null, 2)});\n`
+      `import orrery from ${JSON.stringify(pathToFileURL(`${klass}/eslint.mjs`).href)};\n` +
+        `const config = await orrery(${JSON.stringify(body, null, 2)});\n` +
+        `export default [{ ignores: ${JSON.stringify(GLOBAL_IGNORES)} }, ...config];\n`
     ),
     tsconfig: write(
       "tsconfig.json",
@@ -3136,6 +3175,10 @@ export async function materialise(bodyDir, bodyConfig, scratchDir, { bundleDir, 
   };
 }
 ```
+
+Amendments folded into the block above (previously undocumented drift from the landed source, plus this round's S3/S4 fixes):
+- `GLOBAL_IGNORES` and the `export default [{ ignores: GLOBAL_IGNORES }, ...config]` wrapper (landed with Task 9 originally; never mirrored here until now) — without it, observe's whole-tree violations sweep tries to parse a real body's generated output (libra's `.next` webpack chunks OOM'd the eslint child process).
+- S3 (this round): `tsconfigInclude`'s default widened from `["apps/*/src", "packages/*/src"]` to `["apps/*/src", "apps/*/tests", "apps/*/e2e", "packages/*/src", "packages/*/tests"]`, matching the template's own `tsconfig.json` include list.
 
 ```javascript
 // packages/orrery/src/lib/observe/code.mjs
@@ -3215,6 +3258,21 @@ function matches(actual, want) {
   return Object.is(actual, want);
 }
 
+// What the bundle actually renders for a ruled rule, given the body: an eslint-config-prettier
+// key is always "off" in the real effective config regardless of what `chosen` says — the
+// prettier block is appended last, with no `files` filter, so it always wins that rule, options
+// and all: the options an earlier tier set do not necessarily clear just because the severity
+// does, so only severity is checked for these keys, never options. Every comparison against
+// "what the bundle produces" — the honesty check against a real effective config, and observe's
+// own "did the bundle tighten this rule" check against a body's own pre-bundle effective
+// config — must agree on that carve-out, or they drift apart. (They did: see the S4 note below.)
+function ruledValueMatches(actualValue, row, body) {
+  if (actualValue === undefined) return false;
+  if (prettierOffKeys.has(row.key)) return severityOf(actualValue) === "off";
+  const want = resolveParameters(row.chosen, body);
+  return severityOf(actualValue) === severityOf(want) && matches(optionsOf(actualValue), optionsOf(want));
+}
+
 // The honesty comparison (originally in tests/bundle-honesty.test.mjs): every rule the rulings
 // name for this surface must be present in the effective config with the ruled value (or, for a
 // rule eslint-config-prettier always turns off, must actually be off); every other rule the
@@ -3227,13 +3285,10 @@ export function effectiveMismatches(effectiveRules, rows, surface, body) {
     named.add(r.key);
     const actual = effectiveRules[r.key];
     if (actual === undefined) { out.push(`${r.key}: missing`); continue; }
-    if (prettierOffKeys.has(r.key)) {
-      if (severityOf(actual) !== "off") out.push(`${r.key}: got ${norm(actual)} want ["off"] (eslint-config-prettier always wins this rule)`);
-      continue;
+    if (!ruledValueMatches(actual, r, body)) {
+      if (prettierOffKeys.has(r.key)) out.push(`${r.key}: got ${norm(actual)} want ["off"] (eslint-config-prettier always wins this rule)`);
+      else out.push(`${r.key}: got ${norm(actual)} want ${norm(resolveParameters(r.chosen, body))}`);
     }
-    const want = resolveParameters(r.chosen, body);
-    const ok = severityOf(actual) === severityOf(want) && matches(optionsOf(actual), optionsOf(want));
-    if (!ok) out.push(`${r.key}: got ${norm(actual)} want ${norm(want)}`);
   }
   for (const [key, value] of Object.entries(effectiveRules)) if (!named.has(key) && severityOf(value) !== "off") out.push(`${key}: not in the rulings and not off`);
   return out;
@@ -3261,13 +3316,18 @@ export function compareToPrediction(observed, prediction) {
 }
 
 // Which rules the bundle tightens for this body: every ruled rule whose value differs from what
-// the body's own effective config has for that surface (or that the body lacks entirely).
+// the body's own effective config has for that surface (or that the body lacks entirely) — the
+// same `ruledValueMatches` effectiveMismatches uses against a real effective config. A rule
+// eslint-config-prettier always turns off is excluded outright, not compared: its real effective
+// value is always "off" regardless of `chosen` or of the body's own value, so it can never
+// contribute a new violation the bundle didn't already produce — reporting it "tightened" was
+// always spurious, however the body's own pre-bundle value happened to compare.
 export function tightenedFor(rows, bodyEffectiveBySurface, body) {
   const out = new Set();
   for (const r of rows) {
-    if (r.tool !== "eslint" || r.chosen === null || !r.tier) continue;
+    if (r.tool !== "eslint" || r.chosen === null || !r.tier || prettierOffKeys.has(r.key)) continue;
     const own = bodyEffectiveBySurface[r.surface]?.rules?.[r.key];
-    if (own === undefined || norm(own) !== norm(resolveParameters(r.chosen, body))) out.add(r.key);
+    if (!ruledValueMatches(own, r, body)) out.add(r.key);
   }
   return [...out].sort();
 }
@@ -3323,7 +3383,12 @@ export async function codeDrift(bodyDir, { rows, bodyConfig, samples, bodyEffect
           const effective = readEffectiveConfig(bodyDir, file, execWithScratch);
           mismatches.push(...effectiveMismatches(effective.rules ?? {}, rows, surface, bodyConfig).map((m) => `${surface} ${m}`));
         }
-        const json = run(node, [eslintBin, "-c", files.eslint, "--no-config-lookup", "-f", "json", "apps", "packages", "scripts"], bodyDir);
+        // Type-aware linting loads the body's whole TypeScript program into memory; a real
+        // monorepo (libra: ~1,100 source files) can exceed Node's default old-space ceiling
+        // during this one full-tree sweep (found running this against libra: an OOM crash, not
+        // a lint finding). The per-surface --print-config calls above are single small files
+        // and do not need it.
+        const json = run(node, ["--max-old-space-size=6144", eslintBin, "-c", files.eslint, "--no-config-lookup", "-f", "json", "apps", "packages", "scripts"], bodyDir);
         return { mismatches, violations: violationsByRule(json), tightened: tightenedFor(rows, bodyEffective ?? {}, bodyConfig) };
       });
     }
@@ -3381,6 +3446,10 @@ export async function codeDrift(bodyDir, { rows, bodyConfig, samples, bodyEffect
 ```
 
 `binField(pkg, binName)` (in `code.mjs`) reads each package's real `bin` field from its `package.json` under `packages/orrery/node_modules/<pkg>/` — not `createRequire(...).resolve`, which `jscpd` and `cspell` both refuse for `./package.json` (their `exports` maps don't expose it) — used for every tool except eslint. eslint itself is resolved via `resolveEslintBin` (`../effective-config.mjs`), from the `packages/orrery` directory: it is the one binary the rulings and the honesty comparison are measured against, so it gets the mandated resolver, not the generic one. Every tool block in `codeDrift` runs inside its own try/catch (`attempt`): a crash becomes `{ crashed: true, message }` for that tool's entry instead of aborting the run; `observe.mjs` prints `<body>: <tool> crashed: <message>`, fails the exit code, and still writes the report (`report.mjs` renders a crashed entry as `- <tool>: crashed — <message>`). A `scratchDir` `codeDrift` creates for itself (none passed in) is removed in a `finally`; one the caller passed stays, since the caller may still want to inspect it.
+
+Amendments folded into the `code.mjs` block above (previously undocumented drift from the landed source, plus this round's S4 fix):
+- The `--max-old-space-size=6144` argument on the whole-tree violations sweep's node invocation (landed with Task 9 originally; never mirrored here until now) — type-aware linting loads the body's entire TypeScript program into memory, and libra's ~1,100 source files exceeded Node's default old-space ceiling and OOM'd the child process. The per-surface `--print-config` calls are unaffected (single small files) and do not carry the flag.
+- S4 (this round): `tightenedFor` used to compare a body's own pre-bundle rule value straight against `chosen` (`norm(own) !== norm(resolveParameters(r.chosen, body))`), not the ruled-value comparison `effectiveMismatches` uses. That meant a rule eslint-config-prettier always turns off — whose real effective value in the bundle is always `"off"`, never `chosen` — was reported "tightened" whenever a body's own value for it merely differed from `chosen` (seven such rules, observed against libra). `ruledValueMatches` is now the one comparison both functions call; `tightenedFor` also excludes `prettierOffKeys` outright rather than comparing against them, since an always-off rule can never contribute a new violation regardless of what the body's own value happens to be.
 
 ```javascript
 // packages/orrery/src/lib/observe/report.mjs

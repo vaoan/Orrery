@@ -459,7 +459,7 @@ const classRules = {
     "@next/next/no-title-in-document-head": [1],
     "@next/next/no-typos": [1],
     "@next/next/no-unwanted-polyfillio": [1],
-    "i18next/no-literal-string": ["error", { "ignoreAttribute": ["className", "class", "id", "name", "type", "href", "src", "srcSet", "data-testid", "data-state", "data-collapsed", "data-side", "data-align", "role", "htmlFor", "target", "rel", "method", "action", "encType", "autoComplete", "inputMode", "pattern", "accept", "xmlns", "viewBox", "fill", "stroke", "strokeWidth", "strokeLinecap", "strokeLinejoin", "d", "cx", "cy", "r", "x", "y", "x1", "x2", "y1", "y2", "width", "height", "transform", "clipPath", "clipRule", "fillRule", "variant", "size", "align", "side", "orientation", "direction", "position", "layout", "mode", "theme", "color", "severity", "status", "priority", "asChild", "sideOffset", "alignOffset", "collisionPadding", "locale", "prefetch", "scroll", "shallow", "replace", "passHref", "legacyBehavior", "defaultValue", "defaultChecked", "dataKey", "tickFormatter", "domain", "ticks", "tickLine", "axisLine", "strokeDasharray", "animationDuration", "animationEasing", "connectNulls", "dot", "activeDot", "legendType", "stackId", "initial", "animate", "exit", "transition", "whileHover", "whileTap", "whileFocus", "whileInView", "tid"], "jsx-attributes": { "include": ["alt", "aria-description", "aria-label", "aria-labelledby", "aria-placeholder", "aria-valuetext", "label", "placeholder", "title"] }, "mode": "all", "should-validate-template": true, "words": { "exclude": body.i18n.excludedWords } }],
+    "i18next/no-literal-string": [2],
     "import/no-anonymous-default-export": [1],
     "jsx-a11y/alt-text": [1, { "elements": ["img"], "img": ["Image"] }],
     "jsx-a11y/aria-props": [1],

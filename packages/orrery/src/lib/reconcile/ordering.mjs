@@ -63,7 +63,8 @@ export const PRE_RULINGS = {
       words: { exclude: { $parameter: "i18n.excludedWords" } },
     }],
     test: "benefit",
-    note: "mode all and the union of checked attributes are strictest; ignoreAttribute keeps libra's list because attribute names such as className are not user-facing text; excluded words are body data",
+    surfaces: ["source", "component", "package"],
+    note: "mode all and the union of checked attributes are strictest; ignoreAttribute keeps libra's list because attribute names such as className are not user-facing text; excluded words are body data; restricted to the TS surfaces that render user-facing text — on script, mode all flagged every string literal a script contains (e.g. \"--version\")",
   },
   "sonarjs/no-duplicate-string": {
     chosen: ["error", { threshold: 2, ignoreStrings: { $union: "ignoreStrings", join: "|" } }],
