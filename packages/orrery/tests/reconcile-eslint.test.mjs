@@ -89,10 +89,20 @@ describe("reconcileEslint", () => {
     });
 
     it("falls back to the present side's own value when a fromSide marker points at the absent side", () => {
-      const a = { script: cfg({ "i18next/no-literal-string": [2, { mode: "all", ignoreAttribute: ["className"] }] }) };
+      const a = { source: cfg({ "i18next/no-literal-string": [2, { mode: "all", ignoreAttribute: ["className"] }] }) };
       const b = {};
       const [r] = reconcileEslint(a, b);
       expect(r.chosen[1].ignoreAttribute).toEqual(["className"]);
+    });
+
+    // S6: the pre-ruling is restricted to source/component/package; on script it never applies,
+    // so a one-sided rule is adopted verbatim, the same as any other rule with no pre-ruling.
+    it("does not apply the i18next pre-ruling on script; the present side's bare value is adopted verbatim", () => {
+      const a = {};
+      const b = { script: cfg({ "i18next/no-literal-string": [2] }) };
+      const [r] = reconcileEslint(a, b);
+      expect(r.test).toBe("adopt");
+      expect(r.chosen).toEqual([2]);
     });
 
     it("omits a fromSide key neither side has, rather than emitting null", () => {

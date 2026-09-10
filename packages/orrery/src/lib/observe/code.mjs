@@ -74,6 +74,22 @@ function matches(actual, want) {
   return Object.is(actual, want);
 }
 
+// What the bundle actually renders for a ruled rule, given the body: an eslint-config-prettier
+// key is always "off" in the real effective config regardless of what `chosen` says — the
+// prettier block is appended last, with no `files` filter, so it always wins that rule, options
+// and all: the options an earlier tier set do not necessarily clear just because the severity
+// does, so only severity is checked for these keys, never options. Every comparison against
+// "what the bundle produces" — the honesty check against a real effective config, and observe's
+// own "did the bundle tighten this rule" check against a body's own pre-bundle effective
+// config — must agree on that carve-out, or they drift apart. (They did: see
+// `ruledValueMatches` below.)
+function ruledValueMatches(actualValue, row, body) {
+  if (actualValue === undefined) return false;
+  if (prettierOffKeys.has(row.key)) return severityOf(actualValue) === "off";
+  const want = resolveParameters(row.chosen, body);
+  return severityOf(actualValue) === severityOf(want) && matches(optionsOf(actualValue), optionsOf(want));
+}
+
 // The honesty comparison (originally in tests/bundle-honesty.test.mjs): every rule the rulings
 // name for this surface must be present in the effective config with the ruled value (or, for a
 // rule eslint-config-prettier always turns off, must actually be off); every other rule the
@@ -86,13 +102,10 @@ export function effectiveMismatches(effectiveRules, rows, surface, body) {
     named.add(r.key);
     const actual = effectiveRules[r.key];
     if (actual === undefined) { out.push(`${r.key}: missing`); continue; }
-    if (prettierOffKeys.has(r.key)) {
-      if (severityOf(actual) !== "off") out.push(`${r.key}: got ${norm(actual)} want ["off"] (eslint-config-prettier always wins this rule)`);
-      continue;
+    if (!ruledValueMatches(actual, r, body)) {
+      if (prettierOffKeys.has(r.key)) out.push(`${r.key}: got ${norm(actual)} want ["off"] (eslint-config-prettier always wins this rule)`);
+      else out.push(`${r.key}: got ${norm(actual)} want ${norm(resolveParameters(r.chosen, body))}`);
     }
-    const want = resolveParameters(r.chosen, body);
-    const ok = severityOf(actual) === severityOf(want) && matches(optionsOf(actual), optionsOf(want));
-    if (!ok) out.push(`${r.key}: got ${norm(actual)} want ${norm(want)}`);
   }
   for (const [key, value] of Object.entries(effectiveRules)) if (!named.has(key) && severityOf(value) !== "off") out.push(`${key}: not in the rulings and not off`);
   return out;
@@ -120,13 +133,18 @@ export function compareToPrediction(observed, prediction) {
 }
 
 // Which rules the bundle tightens for this body: every ruled rule whose value differs from what
-// the body's own effective config has for that surface (or that the body lacks entirely).
+// the body's own effective config has for that surface (or that the body lacks entirely) — the
+// same `ruledValueMatches` effectiveMismatches uses against a real effective config. A rule
+// eslint-config-prettier always turns off is excluded outright, not compared:
+// its real effective value is always "off" regardless of `chosen` or of the body's own value, so
+// it can never contribute a new violation the bundle didn't already produce — reporting it
+// "tightened" was always spurious, however the body's own pre-bundle value happened to compare.
 export function tightenedFor(rows, bodyEffectiveBySurface, body) {
   const out = new Set();
   for (const r of rows) {
-    if (r.tool !== "eslint" || r.chosen === null || !r.tier) continue;
+    if (r.tool !== "eslint" || r.chosen === null || !r.tier || prettierOffKeys.has(r.key)) continue;
     const own = bodyEffectiveBySurface[r.surface]?.rules?.[r.key];
-    if (own === undefined || norm(own) !== norm(resolveParameters(r.chosen, body))) out.add(r.key);
+    if (!ruledValueMatches(own, r, body)) out.add(r.key);
   }
   return [...out].sort();
 }

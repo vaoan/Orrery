@@ -44,7 +44,9 @@ export async function materialise(bodyDir, bodyConfig, scratchDir, { bundleDir, 
     cspell: (await import(pathToFileURL(`${klass}/cspell.mjs`).href)).default,
     lsLint: (await import(pathToFileURL(`${bundle}/physics/ls-lint.mjs`).href)).default,
     syncpack: (await import(pathToFileURL(`${bundle}/physics/syncpack.mjs`).href)).default,
-    tsconfigInclude: bodyConfig.tsconfig?.include?.length ? bodyConfig.tsconfig.include : ["apps/*/src", "packages/*/src"],
+    tsconfigInclude: bodyConfig.tsconfig?.include?.length
+      ? bodyConfig.tsconfig.include
+      : ["apps/*/src", "apps/*/tests", "apps/*/e2e", "packages/*/src", "packages/*/tests"],
   };
   const body = { ...bodyConfig, root: bodyRoot };
   const write = (name, text) => {

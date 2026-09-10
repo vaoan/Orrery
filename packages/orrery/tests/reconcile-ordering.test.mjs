@@ -136,6 +136,21 @@ describe("stricter: pre-rulings and residue", () => {
     expect(r.test).toBe("residue");
     expect(r.chosen).toBeNull();
   });
+  // S6: PR #29's ruling made i18next/no-literal-string's `mode: "all"` pre-ruling apply to
+  // every surface, including `script` — flagging every string literal a CLI script contains
+  // (e.g. "--version"). It is restricted to the TS surfaces that actually render user-facing
+  // text: source, component, package.
+  it("does not apply the i18next pre-ruling on script; falls through to the ordinary ordering", () => {
+    expect(PRE_RULINGS["i18next/no-literal-string"].surfaces).toEqual(["source", "component", "package"]);
+    const r = stricter("i18next/no-literal-string", ["error", { mode: "jsx-text-only" }], ["error", { mode: "all" }], "script");
+    expect(r.chosen).not.toEqual(PRE_RULINGS["i18next/no-literal-string"].chosen);
+  });
+  it("still applies the i18next pre-ruling on source, component and package", () => {
+    for (const surface of ["source", "component", "package"]) {
+      const r = stricter("i18next/no-literal-string", ["error", { mode: "jsx-text-only" }], ["error", { mode: "all" }], surface);
+      expect(r.chosen).toEqual(PRE_RULINGS["i18next/no-literal-string"].chosen);
+    }
+  });
   it("every pre-ruling names its test", () => {
     for (const [rule, ruling] of Object.entries(PRE_RULINGS)) {
       expect(["strictest", "consistency", "benefit", "parameter"]).toContain(ruling.test);

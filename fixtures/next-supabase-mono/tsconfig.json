@@ -1,1 +1,1 @@
-{ "extends": "@vaoan/orrery/tsconfig", "include": ["apps/*/src", "packages/*/src"] }
+{ "extends": "@vaoan/orrery/tsconfig", "include": ["apps/*/src", "apps/*/tests", "apps/*/e2e", "packages/*/src", "packages/*/tests"] }

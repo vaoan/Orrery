@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { materialise } from "../src/lib/observe/scratch.mjs";
-import { effectiveMismatches, violationsByRule, compareToPrediction, binField, codeDrift } from "../src/lib/observe/code.mjs";
+import { effectiveMismatches, violationsByRule, compareToPrediction, binField, codeDrift, tightenedFor } from "../src/lib/observe/code.mjs";
 import { resolveEslintBin } from "../src/lib/effective-config.mjs";
 
 // Every path used in these tests is derived from the test file's own location (never a literal
@@ -94,6 +94,19 @@ describe("materialise", () => {
       for (const [ext, rule] of Object.entries(rules)) expect(yaml).toContain(`    ${ext}: ${rule}`);
     }
   });
+
+  // S3: both donors' per-app tsconfigs include `**/*.ts`, so tests and e2e files sit inside
+  // their own project — the fixture's e2e/unit-test files were "not found by the project
+  // service" until the default (and the template's own include list) covered those directories
+  // too. A body that does not override `tsconfig.include` gets this default.
+  it("defaults tsconfig include to source, tests and e2e for both apps and packages when the body does not override it", async () => {
+    const bundleDir = PACKAGE_DIR;
+    const files = await materialise(FAKE_BODY, { class: "next-supabase-mono", tailwind: { entryPoint: "g.css" } }, scratch, { bundleDir });
+    const tsconfig = JSON.parse(fs.readFileSync(files.tsconfig, "utf8"));
+    expect(tsconfig.include).toEqual(
+      ["apps/*/src", "apps/*/tests", "apps/*/e2e", "packages/*/src", "packages/*/tests"].map((i) => `${FAKE_BODY_POSIX}/${i}`)
+    );
+  });
 });
 
 describe("effectiveMismatches", () => {
@@ -112,6 +125,32 @@ describe("effectiveMismatches", () => {
       "better-tailwindcss/x: missing",
       "extra/rule: not in the rulings and not off",
     ]);
+  });
+});
+
+// S4: tightenedFor must use the same comparison as effectiveMismatches (severity + options
+// matching, with the eslint-config-prettier carve-out), not a raw norm(own) !== norm(chosen)
+// check — a body whose own value for a prettier-off rule merely differs from `chosen` (the
+// bundle can never actually enforce that rule; eslint-config-prettier always turns it off last)
+// must never be reported as tightened.
+describe("tightenedFor", () => {
+  const body = {};
+  it("never reports a rule eslint-config-prettier always turns off as tightened, even when the body's own value differs from chosen", () => {
+    const rows = [{ tool: "eslint", surface: "source", key: "quotes", chosen: ["error", "single"], tier: "physics", test: "agree" }];
+    const bodyEffective = { source: { rules: { quotes: ["error", "double"] } } };
+    expect(tightenedFor(rows, bodyEffective, body)).toEqual([]);
+  });
+
+  it("still reports tightened for a non-prettier rule whose body value differs from chosen", () => {
+    const rows = [{ tool: "eslint", surface: "source", key: "no-var", chosen: ["error"], tier: "physics", test: "agree" }];
+    const bodyEffective = { source: { rules: { "no-var": ["off"] } } };
+    expect(tightenedFor(rows, bodyEffective, body)).toEqual(["no-var"]);
+  });
+
+  it("reports nothing when the body's own value already matches chosen", () => {
+    const rows = [{ tool: "eslint", surface: "source", key: "no-var", chosen: ["error"], tier: "physics", test: "agree" }];
+    const bodyEffective = { source: { rules: { "no-var": ["error"] } } };
+    expect(tightenedFor(rows, bodyEffective, body)).toEqual([]);
   });
 });
 
