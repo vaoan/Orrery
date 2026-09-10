@@ -9,10 +9,65 @@
     "orrery": "./bin/orrery.mjs"
   },
   "exports": {
-    ".": "./src/cli.mjs"
+    ".": "./src/cli.mjs",
+    "./eslint": "./classes/next-supabase-mono/eslint.mjs",
+    "./eslint/physics": "./physics/eslint.mjs",
+    "./tsconfig": "./classes/next-supabase-mono/tsconfig.json",
+    "./tsconfig/physics": "./physics/tsconfig.json",
+    "./stylelint": "./classes/next-supabase-mono/stylelint.mjs",
+    "./jscpd": "./classes/next-supabase-mono/jscpd.mjs",
+    "./cspell": "./classes/next-supabase-mono/cspell.mjs",
+    "./knip": "./classes/next-supabase-mono/knip.mjs",
+    "./prettier": "./physics/prettier.mjs",
+    "./secretlint": "./physics/secretlint.mjs",
+    "./ls-lint": "./physics/ls-lint.mjs",
+    "./syncpack": "./physics/syncpack.mjs",
+    "./lint-staged": "./physics/lint-staged.mjs",
+    "./hooks": "./physics/hooks.mjs",
+    "./schema": "./classes/next-supabase-mono/schema.mjs"
   },
   "files": [
     "bin",
-    "src"
-  ]
+    "src",
+    "physics",
+    "classes",
+    "templates"
+  ],
+  "dependencies": {
+    "@eslint/js": "^10.0.1",
+    "@ls-lint/ls-lint": "^2.3.1",
+    "@next/eslint-plugin-next": "16.2.4",
+    "@secretlint/secretlint-rule-preset-recommend": "^12.3.1",
+    "@tanstack/eslint-plugin-query": "^5.100.5",
+    "@vitest/eslint-plugin": "^1.6.16",
+    "cspell": "^10.0.0",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-better-tailwindcss": "^4.4.1",
+    "eslint-plugin-boundaries": "^6.0.2",
+    "eslint-plugin-i18next": "^6.1.4",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-jsdoc": "^64.1.0",
+    "eslint-plugin-jsx-a11y": "^6.10.0",
+    "eslint-plugin-playwright": "^2.11.0",
+    "eslint-plugin-react": "^7.37.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-security": "^4.0.1",
+    "eslint-plugin-sonarjs": "^4.0.3",
+    "eslint-plugin-testing-library": "^7.16.2",
+    "eslint-plugin-tsdoc": "^0.5.2",
+    "eslint-plugin-unicorn": "^64.0.0",
+    "eslint-plugin-unused-imports": "^4.4.1",
+    "jscpd": "^4.0.9",
+    "knip": "^6.7.0",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.3",
+    "secretlint": "^12.3.1",
+    "stylelint": "^17.9.1",
+    "stylelint-config-standard": "^40.0.0",
+    "stylelint-config-tailwindcss": "^1.0.1",
+    "syncpack": "^14.3.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.0"
+  }
 }

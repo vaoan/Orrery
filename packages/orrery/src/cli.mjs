@@ -7,6 +7,7 @@ Usage:
   orrery hook <commit-msg|pre-push> [args]
   orrery release [--dry-run] [--version-file <package.json>]
   orrery reconcile <repoA> <repoB> [--sample surface=path]... [--out <dir>]
+  orrery bundle [--rulings docs/decisions/rulings.json] [--package packages/orrery]
 
 Commands:
   diff-eslint   compare two repositories' effective ESLint configurations
@@ -15,6 +16,7 @@ Commands:
   hook          run a git hook: commit-msg validates the subject, pre-push validates the branch and runs tests
   release       cut release/vYYYY.MM.DD.N from develop and open its PR into main
   reconcile     generate the ruling records and rulings.json from two donor repositories
+  bundle        generate the physics and class tiers from rulings.json
 `;
 
 const COMMANDS = {
@@ -24,6 +26,7 @@ const COMMANDS = {
   hook: async (argv) => (await import("./commands/hook.mjs")).default(argv),
   release: async (argv) => (await import("./commands/release.mjs")).default(argv),
   reconcile: async (argv) => (await import("./commands/reconcile.mjs")).default(argv),
+  bundle: async (argv) => (await import("./commands/bundle.mjs")).default(argv),
 };
 
 export async function run(argv) {
