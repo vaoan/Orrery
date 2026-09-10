@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL, fileURLToPath } from "node:url";
 import { PLUGIN_SOURCES, dependenciesFor } from "../src/lib/bundle/plugins.mjs";
 import { renderPhysicsEslint, renderClassEslint, literal } from "../src/lib/bundle/eslint.mjs";
 import { renderTsconfig, renderStylelint, renderFunction } from "../src/lib/bundle/tools.mjs";
@@ -15,6 +16,18 @@ describe("literal", () => {
     expect(literal(["error", { entryPoint: { $parameter: "tailwind.entryPoint" } }])).toBe('["error", { "entryPoint": body.tailwind.entryPoint }]');
     expect(literal(["error", { patterns: [{ group: ["../*"] }, { $parameter: "imports.restrictedPatterns" }] }])).toBe('["error", { "patterns": [{ "group": ["../*"] }, ...body.imports.restrictedPatterns] }]');
     expect(literal({ b: 1, a: [2] })).toBe('{ "a": [2], "b": 1 }');
+  });
+
+  // Regression: a generated tool function must satisfy `(body?) => object` — calling it with no
+  // argument must still return the schema's defaults, not throw on an intermediate undefined key
+  // and not silently return `undefined` where the schema promises `[]` or `{}`. `literal`'s
+  // `defaults` argument is what makes that true: supplied, a `$parameter` renders as an optional
+  // chain with its default embedded, both as a plain field and as an array-extending spread.
+  it("renders a $parameter as an optional chain with its embedded default when defaults are supplied", () => {
+    expect(literal({ $parameter: "hooks.preCommit" }, "", { hooks: { preCommit: [] } })).toBe("body.hooks?.preCommit ?? []");
+    expect(literal({ $parameter: "knip.root" }, "", { knip: { root: {} } })).toBe("body.knip?.root ?? {}");
+    expect(literal({ $parameter: "workspacePackages" }, "", { workspacePackages: [] })).toBe("body.workspacePackages ?? []");
+    expect(literal(["a", { $parameter: "ignore.spelling" }], "", { ignore: { spelling: [] } })).toBe('["a", ...(body.ignore?.spelling ?? [])]');
   });
 });
 
@@ -79,6 +92,52 @@ describe("renderTsconfig / renderStylelint / renderFunction", () => {
     expect(src).toContain('"version": "0.2"');
     expect(src).toContain('"words": body.spelling');
     expect(src).toContain('"ignorePaths": ["node_modules", ...(body.ignore?.spelling ?? [])]');
+  });
+});
+
+describe("renderFunction — EXTENDERS collision regression", () => {
+  // knip's EXTENDERS entries "apps.entry" and "packages.entry" share a leaf name ("entry") under
+  // different parents. A textual splice keyed only on the leaf name (the brief's original
+  // regex-based implementation) finds the first "entry": [ occurrence for both, nesting
+  // packages' extension inside apps' fallback instead of extending its own field. The fix
+  // addresses each field by its full path, so each extends only its own parameter.
+  it("extends apps.entry from knip.apps.extraEntries and packages.entry from knip.packages.extraEntries, not each other", () => {
+    const rows = [
+      { tool: "knip", surface: "*", key: "apps.entry", chosen: ["src/app/**/*.ts"], tier: "class", test: "benefit" },
+      { tool: "knip", surface: "*", key: "packages.entry", chosen: ["tests/**/*.ts"], tier: "class", test: "benefit" },
+    ];
+    const src = renderFunction("knip", rows, provenance);
+    expect(src).toContain('"entry": ["src/app/**/*.ts", ...(body.knip?.apps?.extraEntries ?? [])]');
+    expect(src).toContain('"entry": ["tests/**/*.ts", ...(body.knip?.packages?.extraEntries ?? [])]');
+    expect(src).not.toContain("[, ...");
+  });
+});
+
+describe("generated tool functions satisfy (body?) => object", () => {
+  // Real-data regression for the same contract: build the actual bundle from the committed
+  // rulings.json and prove every generated physics/class tool function tolerates a missing
+  // argument — this is what surfaced the bug (the brief's own given tests don't exercise two
+  // EXTENDERS entries sharing a leaf, and none of them call a generated function with no body).
+  it("returns an object from every generated tool function called with no argument", async () => {
+    const rulingsPath = fileURLToPath(new URL("../../../docs/decisions/rulings.json", import.meta.url));
+    const rulings = JSON.parse(fs.readFileSync(rulingsPath, "utf8"));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-contract-"));
+    fs.mkdirSync(path.join(dir, "classes/next-supabase-mono"), { recursive: true });
+    fs.writeFileSync(path.join(dir, "classes/next-supabase-mono/schema.mjs"), "export default {};");
+    fs.writeFileSync(path.join(dir, "classes/next-supabase-mono/eslint.base.mjs"), "export default {};");
+    writeBundle(rulings, dir);
+
+    const files = [
+      "physics/hooks.mjs", "physics/syncpack.mjs", "physics/lint-staged.mjs", "physics/ls-lint.mjs", "physics/prettier.mjs", "physics/secretlint.mjs",
+      "classes/next-supabase-mono/knip.mjs", "classes/next-supabase-mono/cspell.mjs", "classes/next-supabase-mono/jscpd.mjs", "classes/next-supabase-mono/stylelint.mjs",
+    ];
+    for (const file of files) {
+      const mod = await import(pathToFileURL(path.join(dir, file)).href);
+      const result = mod.default();
+      expect(result, `${file} default()`).toBeTypeOf("object");
+      expect(result, `${file} default()`).not.toBeNull();
+    }
+    fs.rmSync(dir, { recursive: true, force: true });
   });
 });
 
