@@ -8,6 +8,7 @@ Usage:
   orrery release [--dry-run] [--version-file <package.json>]
   orrery reconcile <repoA> <repoB> [--sample surface=path]... [--out <dir>]
   orrery bundle [--rulings docs/decisions/rulings.json] [--package packages/orrery]
+  orrery observe <bodyDir>... [--predict] [--report <dir>]
 
 Commands:
   diff-eslint   compare two repositories' effective ESLint configurations
@@ -17,6 +18,7 @@ Commands:
   release       cut release/vYYYY.MM.DD.N from develop and open its PR into main
   reconcile     generate the ruling records and rulings.json from two donor repositories
   bundle        generate the physics and class tiers from rulings.json
+  observe       version, pointer and code drift of a body against the bundle, read-only
 `;
 
 const COMMANDS = {
@@ -27,6 +29,7 @@ const COMMANDS = {
   release: async (argv) => (await import("./commands/release.mjs")).default(argv),
   reconcile: async (argv) => (await import("./commands/reconcile.mjs")).default(argv),
   bundle: async (argv) => (await import("./commands/bundle.mjs")).default(argv),
+  observe: async (argv) => (await import("./commands/observe.mjs")).default(argv),
 };
 
 export async function run(argv) {
