@@ -15,6 +15,12 @@ export const COMMIT_PATTERN = new RegExp(
 const ok = () => ({ ok: true, reason: "" });
 const fail = (reason) => ({ ok: false, reason });
 
+// A description that starts with a plan/phase/task label says what the plan called the
+// work, not what the work does: a phase label (a single digit, optionally one letter, then
+// a hyphen — "2b-", "3-") or one of these words used as a leading label ("fix-" here is the
+// redundant task-refinement label, distinct from the branch's own `fix/` type prefix).
+const PLAN_LABEL_PATTERN = /^(?:[0-9][a-z]?-|(?:phase|task|step|wave|round|fix)-)/;
+
 export function branchType(name) {
   if (BACK_MERGE_PATTERN.test(name)) return "back-merge";
   if (RELEASE_PATTERN.test(name)) return "release";
@@ -24,10 +30,23 @@ export function branchType(name) {
 }
 
 export function checkBranchName(name) {
-  if (branchType(name)) return ok();
-  return fail(
-    `branch "${name}" must be type/short-kebab-description with type one of ${TYPE_ALT}, hotfix/short-kebab-description, release/vYYYY.MM.DD.N, or back-merge/<sha> (automation only)`
-  );
+  const type = branchType(name);
+  if (!type) {
+    return fail(
+      `branch "${name}" must be type/short-kebab-description with type one of ${TYPE_ALT}, hotfix/short-kebab-description, release/vYYYY.MM.DD.N, or back-merge/<sha> (automation only)`
+    );
+  }
+  // release/*, hotfix/* and back-merge/* are automation-shaped patterns handled by their own
+  // regexes above; the descriptive-name rule below governs only type/* branches.
+  if (type === "release" || type === "hotfix" || type === "back-merge") return ok();
+  const description = name.slice(name.indexOf("/") + 1);
+  const words = description.split("-");
+  if (PLAN_LABEL_PATTERN.test(description) || words.length < 2) {
+    return fail(
+      `branch description must describe the change (two or more words, no plan label such as "2b-"): got "${description}"; try feat/reconcile-records-command`
+    );
+  }
+  return ok();
 }
 
 export function checkBranchTarget(head, base) {

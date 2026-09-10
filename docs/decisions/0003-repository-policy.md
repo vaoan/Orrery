@@ -89,3 +89,11 @@ The flow was exercised end to end on Orrery before any body: release v2026.09.09
   mode" rows in the Application log) is removed. `repo apply` stays an
   on-demand command from Orrery; a body's own CI is what enforces policy
   drift against it now.
+- **2026-09-10 — descriptive branch names:** `checkBranchName` now rejects a
+  `type/*` description that starts with a plan/phase/task label (`2b-`,
+  `phase-`, `task-`, …) or has fewer than two hyphen-separated words. Reason:
+  plan labels like `2b-` passed the old check while saying nothing about what
+  the branch actually changes, and the owner's ruling was "if libra has it,
+  everyone should have it… we gain more by having it." The rule is enforced
+  everywhere through the reusable `orrery ci branch-name` check and the
+  pre-push hook, both of which call the same `checkBranchName`.

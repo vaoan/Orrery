@@ -6,7 +6,7 @@ import {
 
 describe("branch names", () => {
   it.each([
-    ["feat/phase-2a-diff-eslint", true],
+    ["feat/phase-2a-diff-eslint", false],             // plan label ("phase-"), not a description
     ["release/v2026.09.05.1", true],
     ["docs/repo-boilerplate-spec", true],
     ["chore/node24-actions", true],
@@ -21,6 +21,15 @@ describe("branch names", () => {
     ["back-merge/abc1234", true],
     ["back-merge/ABC1234", false],
     ["back-merge/abc", false], // too short
+    // descriptive-name rule: no plan/phase/task label, at least two words
+    ["feat/2b-reconcile-records", false],
+    ["feat/phase-2b", false],
+    ["fix/thing", false],                              // one word says nothing
+    ["feat/reconcile-records-command", true],
+    ["fix/eslint-bin-lookup-ignores-node-path", true],
+    ["docs/branch-name-rule", true],
+    ["release/v2026.09.09.1", true],                   // automation pattern, untouched
+    ["back-merge/abc1234", true],                       // automation pattern, untouched
   ])("%s -> %s", (name, ok) => {
     expect(checkBranchName(name).ok).toBe(ok);
   });
@@ -28,6 +37,16 @@ describe("branch names", () => {
   it("names the rule in the reason", () => {
     expect(checkBranchName("Feature/X").reason).toMatch(/type\/short-kebab-description/);
     expect(checkBranchName("Feature/X").reason).toContain(TYPES.join("|"));
+  });
+
+  it("names the descriptive-name rule in the reason, with a good example", () => {
+    const r = checkBranchName("feat/2b-reconcile");
+    expect(r.ok).toBe(false);
+    expect(r.reason).toMatch(/describe the change/);
+    expect(r.reason).toMatch(/two or more words/);
+    expect(r.reason).toContain('"2b-"');
+    expect(r.reason).toContain("2b-reconcile");
+    expect(r.reason).toContain("feat/reconcile-records-command");
   });
 
   it("extracts the type", () => {
