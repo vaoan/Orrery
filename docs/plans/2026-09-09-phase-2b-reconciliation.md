@@ -2013,35 +2013,40 @@ Expected: FAIL — cannot resolve the modules
 // Where each rule prefix's plugin comes from. `member` is the expression that yields the plugin
 // object after `import <name> from "<module>"`. Versions are the donors' (libra's where they differ).
 export const PLUGIN_SOURCES = {
-  "@typescript-eslint": { module: "typescript-eslint", name: "tseslint", member: "tseslint.plugin", version: "^8.59.0" },
-  sonarjs: { module: "eslint-plugin-sonarjs", name: "sonarjs", member: "sonarjs", version: "^4.0.3" },
+  "@typescript-eslint": { module: "typescript-eslint", name: "tseslint", member: "tseslint.plugin", version: "^8.65.0" },
+  sonarjs: { module: "eslint-plugin-sonarjs", name: "sonarjs", member: "sonarjs", version: "^4.2.0" },
   unicorn: { module: "eslint-plugin-unicorn", name: "unicorn", member: "unicorn", version: "^64.0.0" },
   security: { module: "eslint-plugin-security", name: "security", member: "security", version: "^4.0.1" },
   "unused-imports": { module: "eslint-plugin-unused-imports", name: "unusedImports", member: "unusedImports", version: "^4.4.1" },
   jsdoc: { module: "eslint-plugin-jsdoc", name: "jsdoc", member: "jsdoc", version: "^64.1.0" },
   tsdoc: { module: "eslint-plugin-tsdoc", name: "tsdoc", member: "tsdoc", version: "^0.5.2" },
   boundaries: { module: "eslint-plugin-boundaries", name: "boundaries", member: "boundaries", version: "^6.0.2" },
-  "@next/next": { module: "@next/eslint-plugin-next", name: "next", member: "next", version: "16.2.4" },
-  react: { module: "eslint-plugin-react", name: "react", member: "react", version: "^7.37.0" },
+  "@next/next": { module: "@next/eslint-plugin-next", name: "next", member: "next", version: "^16.3.0" },
+  react: { module: "eslint-plugin-react", name: "react", member: "react", version: "^7.37.5" },
   "react-hooks": { module: "eslint-plugin-react-hooks", name: "reactHooks", member: "reactHooks", version: "^7.1.1" },
-  "jsx-a11y": { module: "eslint-plugin-jsx-a11y", name: "jsxA11y", member: "jsxA11y", version: "^6.10.0" },
-  "better-tailwindcss": { module: "eslint-plugin-better-tailwindcss", name: "betterTailwindcss", member: "betterTailwindcss", version: "^4.4.1" },
+  "jsx-a11y": { module: "eslint-plugin-jsx-a11y", name: "jsxA11y", member: "jsxA11y", version: "^6.10.2" },
+  "better-tailwindcss": { module: "eslint-plugin-better-tailwindcss", name: "betterTailwindcss", member: "betterTailwindcss", version: "^4.7.0" },
   "@tanstack/query": { module: "@tanstack/eslint-plugin-query", name: "tanstackQuery", member: "tanstackQuery", version: "^5.100.5" },
-  i18next: { module: "eslint-plugin-i18next", name: "i18next", member: "i18next", version: "^6.1.4" },
+  i18next: { module: "eslint-plugin-i18next", name: "i18next", member: "i18next", version: "^6.1.5" },
   "testing-library": { module: "eslint-plugin-testing-library", name: "testingLibrary", member: "testingLibrary", version: "^7.16.2" },
   playwright: { module: "eslint-plugin-playwright", name: "playwright", member: "playwright", version: "^2.11.0" },
-  vitest: { module: "@vitest/eslint-plugin", name: "vitest", member: "vitest", version: "^1.6.16" },
-  import: { module: "eslint-plugin-import", name: "importPlugin", member: "importPlugin", version: "^2.31.0" },
+  vitest: { module: "@vitest/eslint-plugin", name: "vitest", member: "vitest", version: "^1.6.27" },
+  import: { module: "eslint-plugin-import", name: "importPlugin", member: "importPlugin", version: "^2.32.0" },
 };
 
 // Prefixes that appear only as `off` (from eslint-config-prettier) and have no plugin of their own.
 export const PRETTIER_OFF_PREFIXES = ["@stylistic", "@stylistic/js", "@stylistic/ts", "@stylistic/jsx", "vue", "flowtype", "babel", "@babel", "standard"];
 
+// Versions are the HIGHER of the two donors' actually-installed copies (fix round 1, 2026-09-09):
+// the fixture surfaced that `@next/eslint-plugin-next` was pinned to libra's 16.2.4 when the
+// ruling for "no-location-assign-relative-destination" was adopted from aeleos's 16.3.0, which
+// broke every real ESLint run through the bundle. Re-measured every dependency the same way and
+// raised the floor wherever a donor was ahead of the pin, not just the one that crashed.
 export const TOOL_DEPENDENCIES = {
-  eslint: "^9.39.4", "@eslint/js": "^10.0.1", "eslint-config-prettier": "^10.1.5", typescript: "^6.0.3",
-  stylelint: "^17.9.1", "stylelint-config-standard": "^40.0.0", "stylelint-config-tailwindcss": "^1.0.1",
-  knip: "^6.7.0", jscpd: "^4.0.9", cspell: "^10.0.0", syncpack: "^14.3.1", secretlint: "^12.3.1", "@secretlint/secretlint-rule-preset-recommend": "^12.3.1",
-  "@ls-lint/ls-lint": "^2.3.1", "lint-staged": "^16.4.0", prettier: "^3.8.3",
+  eslint: "^9.39.5", "@eslint/js": "^10.0.1", "eslint-config-prettier": "^10.1.8", typescript: "^6.0.3",
+  stylelint: "^17.14.1", "stylelint-config-standard": "^40.0.0", "stylelint-config-tailwindcss": "^1.0.1",
+  knip: "^6.31.0", jscpd: "^4.2.5", cspell: "^10.0.1", syncpack: "^14.3.1", secretlint: "^12.3.1", "@secretlint/secretlint-rule-preset-recommend": "^12.3.1",
+  "@ls-lint/ls-lint": "^2.3.1", "lint-staged": "^16.4.0", prettier: "^3.9.6",
 };
 
 export function dependenciesFor(prefixes) {
@@ -2460,7 +2465,7 @@ A minimal `next-supabase-mono` body inside this repository, wired to the bundle 
 **Files:**
 - Modify: `pnpm-workspace.yaml` — add `fixtures/*`
 - Create: `fixtures/next-supabase-mono/package.json`, `orrery.config.mjs`, `eslint.config.mjs`, `eslint.local.mjs`, `tsconfig.json`, `apps/web/src/features/thing/application/use-thing.ts`, `apps/web/src/features/thing/presentation/thing-tile.tsx`, `apps/web/src/app/layout.tsx`, `apps/web/src/app/globals.css`, `apps/web/tests/use-thing.test.ts`, `apps/web/e2e/home.spec.ts`, `packages/core/src/thing.ts`, `scripts/build.mjs`
-- Create: `packages/orrery/templates/next-supabase-mono/` — the pointer files `init` will write: `eslint.config.mjs`, `tsconfig.json`, `.husky/commit-msg`, `.husky/pre-push`, `.husky/pre-commit`, `.github/workflows/ci.yml`; the fixture's copies are byte-identical to these
+- Create: `packages/orrery/templates/next-supabase-mono/` — the pointer files `init` will write: `eslint.config.mjs`, `eslint.local.mjs`, `tsconfig.json`, `.husky/commit-msg`, `.husky/pre-push`, `.husky/pre-commit`, `.github/workflows/ci.yml` (7 files: the "three pointer files" of Step 1 below are `eslint.config.mjs`, `eslint.local.mjs`, and `tsconfig.json`); the fixture's copies are byte-identical to these
 - Test: `packages/orrery/tests/bundle-honesty.test.mjs`
 - Test: `packages/orrery/tests/fixture-pointers.test.mjs`
 
@@ -2472,8 +2477,10 @@ A minimal `next-supabase-mono` body inside this repository, wired to the bundle 
 
 `fixtures/next-supabase-mono/package.json`:
 ```json
-{ "name": "fixture-next-supabase-mono", "private": true, "type": "module", "devDependencies": { "@vaoan/orrery": "workspace:*" }, "prettier": "@vaoan/orrery/prettier" }
+{ "name": "fixture-next-supabase-mono", "private": true, "type": "module", "devDependencies": { "@vaoan/orrery": "workspace:*", "eslint": "^9.39.5" }, "prettier": "@vaoan/orrery/prettier" }
 ```
+
+Accepted deviation from the original sketch (fix round 1): `eslint` is a direct fixture devDependency, at the same range `@vaoan/orrery` itself depends on. `readEffectiveConfig` resolves the ESLint binary by walking `node_modules/eslint` up from the *target* directory on disk, never through Node's own resolver — real bodies (aeleos, libra) satisfy this because each installs its own `eslint` at its own repo root. The fixture's root is `fixtures/next-supabase-mono`, one level below Orrery's own root; `@vaoan/orrery`'s `eslint` lives under `packages/orrery`, which is not an ancestor of the fixture, so without this the walk finds nothing and every `--print-config` call fails with "eslint is not installed". Declaring `eslint` directly on the fixture mirrors what every real body already needs.
 
 `orrery.config.mjs`:
 ```javascript
@@ -2499,7 +2506,7 @@ export default await orrery();
 
 Source files are two to five lines each, valid TypeScript and TSX that violate nothing; `globals.css` is `@import "tailwindcss";`.
 
-Templates: copy the three pointer files and the three `.husky` hooks (`pnpm orrery hook <name>` one-liners) and the five-line `ci.yml` caller (`uses: vaoan/Orrery/.github/workflows/ci.yml@main`) into `packages/orrery/templates/next-supabase-mono/` with the same relative paths.
+Templates: copy the three pointer files (`eslint.config.mjs`, `eslint.local.mjs`, `tsconfig.json`) and the three `.husky` hooks (`pnpm orrery hook <name>` one-liners) and the five-line `ci.yml` caller (`uses: vaoan/Orrery/.github/workflows/ci.yml@main`) into `packages/orrery/templates/next-supabase-mono/` with the same relative paths — 7 files, matching `fixture-pointers.test.mjs`'s `files.length >= 7`.
 
 - [ ] **Step 2: Write the failing tests**
 
