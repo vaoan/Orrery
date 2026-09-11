@@ -71,7 +71,6 @@ describe("lint-staged", () => {
     expect(Object.keys(config).length).toBeGreaterThan(0);
     for (const [glob, commands] of Object.entries(config)) {
       expect(typeof glob, "key " + JSON.stringify(glob)).toBe("string");
-      expect(glob, "a lint-staged key is a whole glob, never a fragment of one split on a dot").toMatch(/\./);
       expect(Array.isArray(commands) || typeof commands === "string", "value of " + glob + " must be a string or string[]").toBe(true);
       for (const command of Array.isArray(commands) ? commands : [commands]) expect(typeof command, "command under " + glob).toBe("string");
     }

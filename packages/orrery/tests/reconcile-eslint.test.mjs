@@ -231,6 +231,14 @@ describe("reconcileEslint", () => {
       expect(assertMarker({ selector: "X" })).toBeNull();
     });
 
+    // m2 (Wave B2 residual): $inherit rows are filtered out at the top level by
+    // bundle/tools.mjs's toolRows before rendering, but a nested occurrence still reaches
+    // assertMarker — it must be recognised, not thrown as an unknown marker.
+    it("recognises a nested $inherit marker", () => {
+      expect(assertMarker({ $inherit: true })).toBe("$inherit");
+      expect(() => assertMarker({ $inherit: true, extra: "x" })).toThrow(/unknown attribute/);
+    });
+
     it("resolveMarkers throws", () => {
       expect(() => resolveMarkers(["error", { x: { $parameter: "x", base: "a" } }], [], [])).toThrow(/base/);
     });

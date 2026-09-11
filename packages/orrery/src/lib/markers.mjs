@@ -23,6 +23,11 @@ export const MARKER_ATTRIBUTES = {
   // (aeleos's `identity`) is body data, so it leaves the class base and returns as that body's
   // `boundaries.elements`/`boundaries.allow`.
   $fromSide: ["withoutElementType"],
+  // Omit this key so the preset's own default applies (stylelint's `undefined`-means-inherit
+  // rows). `bundle/tools.mjs`'s `toolRows` filters top-level $inherit rows out before rendering;
+  // this entry exists so a nested occurrence is recognised by `assertMarker` rather than thrown
+  // as an unknown marker. No further attributes.
+  $inherit: [],
 };
 
 const MARKER_KEYS = Object.keys(MARKER_ATTRIBUTES);

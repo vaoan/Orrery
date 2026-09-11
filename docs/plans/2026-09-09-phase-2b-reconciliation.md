@@ -4962,8 +4962,6 @@ export async function codeDrift(bodyDir, { rows, bodyConfig, samples, bodyEffect
 
     if (tools.includes("jscpd")) {
       attempt(results, "jscpd", () => {
-        // jscpd's own report is the file it writes via -o; the console text run() returns is
-        // only ever used to prove the process itself didn't crash.
         const result = run(node, [binField("jscpd"), "-c", files.jscpd, "-r", "json", "-o", dir, "."], bodyDir);
         const reportFile = path.join(dir, "jscpd-report.json");
         // jscpd's own report is the file it writes via -o, so that file IS the evidence: a
@@ -5494,6 +5492,11 @@ export const MARKER_ATTRIBUTES = {
   // (aeleos's `identity`) is body data, so it leaves the class base and returns as that body's
   // `boundaries.elements`/`boundaries.allow`.
   $fromSide: ["withoutElementType"],
+  // Omit this key so the preset's own default applies (stylelint's `undefined`-means-inherit
+  // rows). `bundle/tools.mjs`'s `toolRows` filters top-level $inherit rows out before rendering;
+  // this entry exists so a nested occurrence is recognised by `assertMarker` rather than thrown
+  // as an unknown marker. No further attributes.
+  $inherit: [],
 };
 
 const MARKER_KEYS = Object.keys(MARKER_ATTRIBUTES);
