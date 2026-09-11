@@ -326,8 +326,6 @@ export async function codeDrift(bodyDir, { rows, bodyConfig, samples, bodyEffect
 
     if (tools.includes("jscpd")) {
       attempt(results, "jscpd", () => {
-        // jscpd's own report is the file it writes via -o; the console text run() returns is
-        // only ever used to prove the process itself didn't crash.
         const result = run(node, [binField("jscpd"), "-c", files.jscpd, "-r", "json", "-o", dir, "."], bodyDir);
         const reportFile = path.join(dir, "jscpd-report.json");
         // jscpd's own report is the file it writes via -o, so that file IS the evidence: a
