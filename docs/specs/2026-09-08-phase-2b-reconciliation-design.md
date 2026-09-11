@@ -138,7 +138,10 @@ Recorded here because it shaped the body surface; built in Phase 2d.
 
 Reads the two donors, applies the ruling order, and writes the ruling records
 and the bundle. It runs once; afterwards the bundle is the truth and the donors
-are never consulted again. `diff-eslint` becomes its first sub-step.
+are never consulted again. `diff-eslint` becomes its first sub-step. Donor
+configurations are executed in-process (their `eslint.config.mjs` is imported
+and their tools run as child processes with the body as cwd); the donors are
+trusted repositories of the same owner.
 
 ### Measurement surfaces
 

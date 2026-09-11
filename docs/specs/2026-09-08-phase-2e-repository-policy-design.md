@@ -171,6 +171,8 @@ It runs at three moments:
 - **Nightly, from Orrery,** against every body in the registry. This is the
   fourth drift alongside version, pointer and code. It re-applies rather than
   only reporting, and the observation report lists what it corrected.
+  *Amended by ADR 0017 (2026-09-10): no scheduled run exists; `orrery repo
+  apply` runs on demand only.*
 - **On demand,** when the policy file changes.
 
 Changing protection needs a token with admin rights. Orrery's CI holds that
