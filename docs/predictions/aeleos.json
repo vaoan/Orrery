@@ -1,7 +1,7 @@
 {
   "body": "aeleos",
   "sha": "5e70a21",
-  "generatedAt": "2026-09-10",
+  "generatedAt": "2026-09-11",
   "bodyConfig": {
     "class": "next-supabase-mono",
     "workspacePackages": [],
@@ -10,18 +10,105 @@
       "entryPoint": "apps/hub/src/app/globals.css"
     },
     "boundaries": {
-      "elements": [],
-      "allow": []
-    },
-    "imports": {
-      "restrictedPatterns": []
+      "elements": [
+        {
+          "type": "identity",
+          "pattern": [
+            "packages/identity/src",
+            "packages/identity/src/**"
+          ]
+        }
+      ],
+      "allow": [
+        {
+          "from": {
+            "type": "app"
+          },
+          "allow": {
+            "to": {
+              "type": "identity"
+            }
+          }
+        },
+        {
+          "from": {
+            "type": "feature-barrel"
+          },
+          "allow": {
+            "to": {
+              "type": "identity"
+            }
+          }
+        },
+        {
+          "from": {
+            "type": "feature"
+          },
+          "allow": {
+            "to": {
+              "type": "identity"
+            }
+          }
+        },
+        {
+          "from": {
+            "type": "shared"
+          },
+          "allow": {
+            "to": {
+              "type": "identity"
+            }
+          }
+        },
+        {
+          "from": {
+            "type": "identity"
+          },
+          "allow": {
+            "to": {
+              "type": "identity"
+            }
+          }
+        }
+      ]
     },
     "i18n": {
       "excludedWords": []
     },
     "e2e": {
-      "restrictedSyntax": [],
       "assertFunctionNames": []
+    },
+    "restrictions": {
+      "source": {
+        "syntax": [],
+        "imports": [],
+        "properties": []
+      },
+      "component": {
+        "syntax": [],
+        "imports": [],
+        "properties": []
+      },
+      "package": {
+        "syntax": [],
+        "imports": [],
+        "properties": []
+      },
+      "unit-test": {
+        "syntax": [],
+        "imports": [],
+        "properties": []
+      },
+      "e2e": {
+        "syntax": [],
+        "imports": [],
+        "properties": []
+      },
+      "script": {
+        "syntax": [],
+        "imports": [],
+        "properties": []
+      }
     },
     "spelling": [],
     "ignore": {
@@ -67,6 +154,7 @@
     "@next/next/no-head-import-in-document",
     "@next/next/no-html-link-for-pages",
     "@next/next/no-img-element",
+    "@next/next/no-location-assign-relative-destination",
     "@next/next/no-page-custom-font",
     "@next/next/no-script-component-in-head",
     "@next/next/no-styled-jsx-in-document",
@@ -85,6 +173,7 @@
     "@typescript-eslint/no-magic-numbers",
     "@typescript-eslint/no-non-null-assertion",
     "better-tailwindcss/enforce-canonical-classes",
+    "better-tailwindcss/enforce-consistent-class-order",
     "better-tailwindcss/no-conflicting-classes",
     "better-tailwindcss/no-deprecated-classes",
     "better-tailwindcss/no-duplicate-classes",
@@ -100,6 +189,7 @@
     "jsx-a11y/aria-props",
     "jsx-a11y/aria-proptypes",
     "jsx-a11y/aria-unsupported-elements",
+    "jsx-a11y/no-noninteractive-element-interactions",
     "jsx-a11y/role-has-required-aria-props",
     "jsx-a11y/role-supports-aria-props",
     "no-console",
@@ -209,7 +299,9 @@
     "testing-library/prefer-query-by-disappearance",
     "unicorn/prefer-math-trunc",
     "unicorn/prefer-string-raw",
-    "unused-imports/no-unused-imports"
+    "unused-imports/no-unused-imports",
+    "vitest/no-commented-out-tests",
+    "vitest/no-disabled-tests"
   ],
   "counts": {
     "@typescript-eslint/naming-convention": 2,
@@ -217,11 +309,11 @@
     "@typescript-eslint/no-non-null-assertion": 79,
     "better-tailwindcss/enforce-consistent-class-order": 110,
     "better-tailwindcss/no-unknown-classes": 140,
-    "boundaries/no-unknown": 6,
+    "boundaries/dependencies": 5,
     "i18next/no-literal-string": 796,
     "import/no-duplicates": 10,
     "import/order": 303,
-    "no-restricted-syntax": 36,
+    "no-restricted-syntax": 5,
     "playwright/no-conditional-in-test": 16,
     "playwright/no-wait-for-selector": 6,
     "playwright/prefer-locator": 1,
@@ -247,7 +339,6 @@
     "unicorn/prefer-string-raw": 3
   },
   "baseline": {
-    "better-tailwindcss/enforce-consistent-class-order": 110,
     "better-tailwindcss/no-unknown-classes": 140,
     "unicorn/numeric-separators-style": 7
   },

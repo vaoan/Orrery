@@ -1,5 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import base from "../classes/next-supabase-mono/eslint.base.mjs";
+import eslintConfig from "../classes/next-supabase-mono/eslint.mjs";
 
 const body = { boundaries: { elements: [], allow: [] } };
 const root = "/repo";
@@ -47,5 +51,32 @@ describe("eslint.base.mjs STANDARD_ELEMENTS", () => {
     const { settings } = base("source", { boundaries: { elements: [extra], allow: [] } }, root);
     expect(settings["boundaries/elements"]).toContainEqual(extra);
     expect(settings["boundaries/elements"]).toContainEqual({ type: "package", pattern: "packages/*/src", capture: ["package"] });
+  });
+});
+
+// I6: "the body has no eslint.local.mjs" is a question for the filesystem, not for the module
+// loader. ERR_MODULE_NOT_FOUND is also what a LOCAL FILE that imports something missing throws, so
+// catching it by code reported a broken local override as an absent one — lint carried on without
+// the body's own rules and said nothing.
+describe("the generated class config's loadLocal", () => {
+  const body = { class: "next-supabase-mono", tailwind: { entryPoint: "apps/web/src/app/globals.css" } };
+  let dir;
+  beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-local-")); });
+  afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  it("returns no extra blocks when the body has no eslint.local.mjs", async () => {
+    const blocks = await eslintConfig({ ...body, root: dir });
+    expect(blocks.some((b) => b?.name === "local-probe")).toBe(false);
+  });
+
+  it("appends the body's own local blocks last when it has one", async () => {
+    fs.writeFileSync(path.join(dir, "eslint.local.mjs"), 'export default [{ name: "local-probe", files: ["x.ts"], rules: {} }];\n');
+    const blocks = await eslintConfig({ ...body, root: dir });
+    expect(blocks.at(-1).name).toBe("local-probe");
+  });
+
+  it("propagates an import error from inside the body's own local file", async () => {
+    fs.writeFileSync(path.join(dir, "eslint.local.mjs"), 'import "./definitely-not-here.mjs";\nexport default [];\n');
+    await expect(eslintConfig({ ...body, root: dir })).rejects.toThrow();
   });
 });

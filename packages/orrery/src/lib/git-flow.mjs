@@ -15,11 +15,32 @@ export const COMMIT_PATTERN = new RegExp(
 const ok = () => ({ ok: true, reason: "" });
 const fail = (reason) => ({ ok: false, reason });
 
-// A description that starts with a plan/phase/task label says what the plan called the
-// work, not what the work does: a phase label (a single digit, optionally one letter, then
-// a hyphen — "2b-", "3-") or one of these words used as a leading label ("fix-" here is the
-// redundant task-refinement label, distinct from the branch's own `fix/` type prefix).
-const PLAN_LABEL_PATTERN = /^(?:[0-9][a-z]?-|(?:phase|task|step|wave|round|fix)-)/;
+// A description that starts with a plan label says what the plan called the work, not what the
+// work does. A label is one of exactly three shapes:
+//
+//   1. a phase/task word followed by a digit token — "phase-2b-", "task-5-", "step-3-",
+//      "wave-1-", "round-2-";
+//   2. a leading digit token — "2b-", "3-";
+//   3. a single letter followed by a digit token — "t5-", "p2-".
+//
+// Bare words are fine: "task-runner", "round-corners" and "step-indicator" are descriptions, not
+// labels, and only the digit after the word makes one. "3d-viewer" stays rejected, because "3d"
+// IS a digit token and no rule can tell a 3D viewer from phase 3d — say "three-d-viewer" or name
+// the thing it renders. "fix-" is rejected only on a `fix/` branch, where it is the redundant
+// task-refinement label repeating the branch's own type; on any other type "fix-typos-in-readme"
+// describes the change.
+const DIGIT_TOKEN = /^[0-9][a-z0-9]*$/;
+const LETTER_DIGIT_TOKEN = /^[a-z][0-9][a-z0-9]*$/;
+const LABEL_WORD = /^(?:phase|task|step|wave|round)$/;
+
+export function planLabel(description, type) {
+  const [first, second] = description.split("-");
+  if (DIGIT_TOKEN.test(first)) return `"${first}-" is a digit token, which names a phase and not a change`;
+  if (LETTER_DIGIT_TOKEN.test(first)) return `"${first}-" is a letter-and-number label, which names a task and not a change`;
+  if (LABEL_WORD.test(first) && second !== undefined && DIGIT_TOKEN.test(second)) return `"${first}-${second}-" is a plan label`;
+  if (type === "fix" && first === "fix") return `"fix-" repeats the branch's own fix/ type`;
+  return null;
+}
 
 export function branchType(name) {
   if (BACK_MERGE_PATTERN.test(name)) return "back-merge";
@@ -40,10 +61,10 @@ export function checkBranchName(name) {
   // regexes above; the descriptive-name rule below governs only type/* branches.
   if (type === "release" || type === "hotfix" || type === "back-merge") return ok();
   const description = name.slice(name.indexOf("/") + 1);
-  const words = description.split("-");
-  if (PLAN_LABEL_PATTERN.test(description) || words.length < 2) {
+  const label = planLabel(description, type);
+  if (label || description.split("-").length < 2) {
     return fail(
-      `branch description must describe the change (two or more words, no plan label such as "2b-"): got "${description}"; try feat/reconcile-records-command`
+      `branch description must describe the change (two or more words, no plan label such as "2b-"): got "${description}"${label ? ` — ${label}` : ""}; try feat/reconcile-records-command`
     );
   }
   return ok();

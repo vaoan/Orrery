@@ -38,15 +38,67 @@ export const ORDINAL_OPTIONS = {
 
 // Anywhere in the key: `argsIgnorePattern`, `allowShortCircuit`, `onlyIfContainsSeparator` all count.
 export const EXEMPTION_KEY = /(allow|ignore|except|exempt|skip|onlyIf)/i;
-export const PARAMETER_KEYS = ["entryPoint", "elements", "patterns", "paths", "project", "tsconfigRootDir", "words", "packageDir"];
+export const PARAMETER_KEYS = ["entryPoint", "elements", "paths", "project", "tsconfigRootDir", "words", "packageDir"];
 
 const PARAMETER_NAME = {
   entryPoint: "tailwind.entryPoint",
   elements: "boundaries.elements",
   rules: "boundaries.allow",
-  patterns: "imports.restrictedPatterns",
   words: "i18n.excludedWords",
 };
+
+// C3, the one rule: physics must be true for a repository that does not exist yet, and
+// `no-restricted-syntax`/`-imports`/`-properties` are core rules — physics by plugin — whose whole
+// content is whatever a project decided to ban. aeleos's and libra's entries name their own files
+// (`shared/application/utils/featureFlagChecks.ts`), their own modules (`**/local-supabase-env*`)
+// and their own conventions (`.claude/rules/tailwind.md`); shipping those to every body is one
+// project's opinion wearing physics's clothes.
+//
+// The token test that decides: an option entry is project-specific when its JSON carries a path
+// separator, a source-file extension, the `@/` alias prefix, or `.claude` — including inside a
+// `message`, since a message that cites a path cites a project. Purely relative specifiers
+// (`../*`, `./x`) are stripped before the test: banning a parent-relative import names a shape,
+// not a project, and that ban is the one genuinely universal entry both donors carry.
+const RELATIVE_PREFIX = /\.{1,2}\//g;
+const PROJECT_TOKEN = /@\/|\.claude|\.(?:ts|tsx|js|jsx|mjs|cjs|json|md|css|ya?ml)\b|\//;
+export const namesProject = (entry) => PROJECT_TOKEN.test(JSON.stringify(entry ?? null).replaceAll(RELATIVE_PREFIX, ""));
+
+// Which body parameter each restriction rule's leftovers become. The parameter is per surface —
+// what a body bans in a unit test is not what it bans in a script — so the full path is
+// `restrictions.<surface>.<field>`.
+export const RESTRICTION_FIELD = { "no-restricted-syntax": "syntax", "no-restricted-imports": "imports", "no-restricted-properties": "properties" };
+
+const dedupe = (entries) => {
+  const seen = new Set();
+  return entries.filter((e) => { const k = JSON.stringify(e); if (seen.has(k)) return false; seen.add(k); return true; });
+};
+
+// Splits one restriction rule's options into the universal subset that stays in the shared tier and
+// a `$parameter` marker that carries the rest back to the body that wanted it. `no-restricted-
+// imports` takes one options OBJECT ({ paths, patterns }); the other two take a flat list of
+// entries — both reduce to "a list of entries and where to put them back".
+//
+// `always` is the difference between the two call sites. From `parameterise` (a conflict: the two
+// donors ban different things) the answer is always the union plus the parameter, because there is
+// no stricter side to pick. From the adopt/agree pass the split only happens when something in the
+// options really is project-specific: a restriction both donors agree on, naming nothing of their
+// own, is physics and stays whole.
+export function splitRestrictions(rule, surface, optionsA, optionsB = [], { always = false } = {}) {
+  const field = RESTRICTION_FIELD[rule];
+  if (!field) return null;
+  const parameter = { $parameter: `restrictions.${surface}.${field}` };
+  if (rule === "no-restricted-imports") {
+    const objects = [optionsA[0], optionsB[0]].filter((o) => o && typeof o === "object" && !Array.isArray(o));
+    const patterns = dedupe(objects.flatMap((o) => o.patterns ?? []));
+    const paths = dedupe(objects.flatMap((o) => o.paths ?? []));
+    if (!always && !patterns.some(namesProject) && !paths.some(namesProject)) return null;
+    const keptPaths = paths.filter((p) => !namesProject(p));
+    return [{ ...(keptPaths.length ? { paths: keptPaths } : {}), patterns: [...patterns.filter((p) => !namesProject(p)), parameter] }];
+  }
+  const entries = dedupe([...optionsA, ...optionsB]);
+  if (!always && !entries.some(namesProject)) return null;
+  return [...entries.filter((e) => !namesProject(e)), parameter];
+}
 
 export const PRE_RULINGS = {
   "unicorn/number-literal-case": {
@@ -71,13 +123,21 @@ export const PRE_RULINGS = {
     test: "benefit",
     note: "threshold 2 is strictest; ignoreStrings is the union because both sides exempt machine strings (MIME types, CSS variables, Tailwind classes), not code",
   },
+  // C2: the base is RENDERED, not implied. The old shape said `{ $parameter: "boundaries.allow",
+  // base: "a" }` — an attribute nothing implemented, silently dropped, so the class shipped a
+  // `default: "disallow"` policy with no allowed edges at all and every check agreed with it.
+  // `$fromSide: "a"` puts aeleos's layered policy into the row's own `chosen`, where rulings.json
+  // records it and the honesty check compares it; `withoutElementType` lifts out aeleos's own
+  // `identity` element, which is aeleos body data and comes back through its
+  // `boundaries.elements`/`boundaries.allow` at cut-over; `boundaries.allow` appends whatever a
+  // body adds on top.
   "boundaries/dependencies": {
-    chosen: ["error", { default: "disallow", rules: { $parameter: "boundaries.allow", base: "a" } }],
+    chosen: ["error", { default: "disallow", rules: [{ $fromSide: "a", withoutElementType: "identity" }, { $parameter: "boundaries.allow" }] }],
     test: "parameter",
-    note: "aeleos's layered policy (domain/application/presentation) is the class base because it is stricter; each body's extra element types and their allowed edges are parameters",
+    note: "aeleos's layered policy (domain/application/presentation) is the class base because it is stricter, with its own identity element lifted out as aeleos body data; each body's extra element types and their allowed edges are appended",
   },
   "boundaries/elements": {
-    chosen: [{ $parameter: "boundaries.elements", base: "class" }],
+    chosen: [{ $parameter: "boundaries.elements" }],
     test: "parameter",
     note: "element paths are body data on top of the class's standard app/features/shared/proxy layout",
   },
@@ -106,10 +166,10 @@ export const PRE_RULINGS = {
       { selector: "CallExpression[callee.property.name='locator'][arguments.0.value=/class/]", message: "Do not select by class attribute in E2E tests. Use getByTestId, or an attribute selector." },
       { selector: "CallExpression[callee.property.name='locator'] Literal[value=/data-testid/]", message: "Use page.getByTestId('id') rather than a raw attribute selector." },
       { selector: "NewExpression[callee.name='Promise'] CallExpression[callee.name='setTimeout']", message: "No unconditional setTimeout-based waits. Wait for a condition, or justify this exact line with eslint-disable-next-line and a comment." },
-      { $parameter: "e2e.restrictedSyntax" },
+      { $parameter: "restrictions.e2e.syntax" },
     ],
     test: "benefit",
-    note: "the union of both sides' bans is stricter than either; messages are aeleos's where both ban a selector and are rewritten to name no body file or helper elsewhere; aeleos's combined label/placeholder selector is subsumed by libra's two; libra's Supabase port and helper bans are body data and become the e2e.restrictedSyntax parameter",
+    note: "the union of both sides' bans is stricter than either; messages are aeleos's where both ban a selector and are rewritten to name no body file or helper elsewhere; aeleos's combined label/placeholder selector is subsumed by libra's two; libra's Supabase port and helper bans are body data and become the restrictions.e2e.syntax parameter",
   },
   "playwright/expect-expect": {
     chosen: ["error", { assertFunctionNames: { $parameter: "e2e.assertFunctionNames" } }],
@@ -156,16 +216,19 @@ function exemptionOrder(a, b) {
 
 const hasExemption = (o) => Object.keys(o).some((k) => EXEMPTION_KEY.test(k) || (o[k] && typeof o[k] === "object" && !Array.isArray(o[k]) && hasExemption(o[k])));
 
-function parameterise(rule, optionsA, optionsB) {
+// `rawA`/`rawB` are the two sides' options WITH their messages: `optionsOf` strips every `message`,
+// and a message that cites a project file is exactly the evidence the restriction token test reads.
+function parameterise(rule, optionsA, optionsB, surface, rawA = optionsA, rawB = optionsB) {
+  // C3: a restriction rule's conflict is never "one side is stricter" — the two donors simply ban
+  // different things. The union of what names no project stays shared; the rest goes back to the
+  // body it belongs to, per surface.
+  const restrictions = splitRestrictions(rule, surface, rawA, rawB, { always: true });
+  if (restrictions) return restrictions;
   const [oa = {}, ob = {}] = [optionsA[0], optionsB[0]];
   if (typeof oa !== "object" || typeof ob !== "object") return null;
   const keys = new Set([...Object.keys(oa), ...Object.keys(ob)]);
   const param = [...keys].find((k) => PARAMETER_KEYS.includes(k));
   if (!param) return null;
-  if (rule === "no-restricted-imports") {
-    const universal = [...(oa.patterns ?? []), ...(ob.patterns ?? [])].filter((p) => (p.group ?? []).some((g) => g.startsWith("../")));
-    return [{ patterns: [...universal, { $parameter: PARAMETER_NAME.patterns }] }];
-  }
   const merged = { ...oa, ...ob };
   merged[param] = { $parameter: PARAMETER_NAME[param] ?? param };
   for (const k of Object.keys(merged)) if (k !== param && EXEMPTION_KEY.test(k)) delete merged[k];
@@ -192,7 +255,8 @@ export function stricter(rule, a, b, surface) {
   if (sevA === "off" && optionsA.length === 0) return { chosen: [severity, ...optionsB], test: "strictest", note: "switched on" };
   if (sevB === "off" && optionsB.length === 0) return { chosen: [severity, ...optionsA], test: "strictest", note: "switched on" };
 
-  const parameterised = parameterise(rule, optionsA, optionsB);
+  const rawOptions = (value) => (Array.isArray(value) ? value.slice(1) : []);
+  const parameterised = parameterise(rule, optionsA, optionsB, surface, rawOptions(a), rawOptions(b));
   if (parameterised) return { chosen: [severity, ...parameterised], test: "parameter", note: "project data becomes a body parameter; the stricter severity is kept" };
 
   const ordinal = ORDINAL_OPTIONS[rule];

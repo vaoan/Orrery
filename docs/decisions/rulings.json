@@ -1,6 +1,6 @@
 {
   "provenance": {
-    "date": "2026-09-10",
+    "date": "2026-09-11",
     "a": {
       "name": "aeleos",
       "dir": "Z:/Github/aeleos",
@@ -65,11 +65,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -82,11 +82,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -116,11 +116,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -150,11 +150,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -167,11 +167,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -184,11 +184,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -235,11 +235,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -286,11 +286,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -301,11 +301,11 @@
         1
       ],
       "b": null,
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -318,11 +318,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -352,11 +352,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -386,11 +386,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -403,11 +403,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -420,11 +420,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -2818,11 +2818,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -3920,9 +3920,9 @@
       "b": [
         0
       ],
-      "note": "severity warn over off",
+      "note": "severity warn over off; no rule ships at warn (spec)",
       "chosen": [
-        "warn"
+        "error"
       ],
       "test": "strictest",
       "tier": "class"
@@ -4065,16 +4065,16 @@
           "allowMultiline": true
         }
       ],
-      "note": "project data becomes a body parameter; the stricter severity is kept",
+      "note": "project data becomes a body parameter; the stricter severity is kept; no rule ships at warn (spec)",
       "chosen": [
-        "warn",
+        "error",
         {
           "entryPoint": {
             "$parameter": "tailwind.entryPoint"
           }
         }
       ],
-      "test": "parameter",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -4443,15 +4443,223 @@
           ]
         }
       ],
-      "note": "aeleos's layered policy (domain/application/presentation) is the class base because it is stricter; each body's extra element types and their allowed edges are parameters",
+      "note": "aeleos's layered policy (domain/application/presentation) is the class base because it is stricter, with its own identity element lifted out as aeleos body data; each body's extra element types and their allowed edges are appended",
       "chosen": [
         "error",
         {
           "default": "disallow",
-          "rules": {
-            "$parameter": "boundaries.allow",
-            "base": "a"
-          }
+          "rules": [
+            {
+              "from": {
+                "type": "app"
+              },
+              "allow": {
+                "to": {
+                  "type": [
+                    "app",
+                    "feature-barrel",
+                    "shared"
+                  ]
+                }
+              }
+            },
+            {
+              "from": {
+                "type": "proxy"
+              },
+              "allow": {
+                "to": {
+                  "type": [
+                    "feature-barrel",
+                    "shared"
+                  ]
+                }
+              }
+            },
+            {
+              "from": {
+                "type": "feature-barrel"
+              },
+              "allow": {
+                "to": [
+                  {
+                    "type": "feature",
+                    "captured": {
+                      "feature": "{{ from.captured.feature }}"
+                    }
+                  },
+                  {
+                    "type": [
+                      "shared"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "from": {
+                "type": "feature",
+                "captured": {
+                  "layer": "domain"
+                }
+              },
+              "allow": {
+                "to": [
+                  {
+                    "type": "feature",
+                    "captured": {
+                      "feature": "{{ from.captured.feature }}",
+                      "layer": "domain"
+                    }
+                  },
+                  {
+                    "type": "shared",
+                    "captured": {
+                      "layer": "domain"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "from": {
+                "type": "feature",
+                "captured": [
+                  {
+                    "layer": "application"
+                  },
+                  {
+                    "layer": "infrastructure"
+                  }
+                ]
+              },
+              "allow": {
+                "to": [
+                  {
+                    "type": "feature",
+                    "captured": [
+                      {
+                        "feature": "{{ from.captured.feature }}",
+                        "layer": "domain"
+                      },
+                      {
+                        "feature": "{{ from.captured.feature }}",
+                        "layer": "application"
+                      },
+                      {
+                        "feature": "{{ from.captured.feature }}",
+                        "layer": "infrastructure"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "shared",
+                    "captured": [
+                      {
+                        "layer": "domain"
+                      },
+                      {
+                        "layer": "application"
+                      },
+                      {
+                        "layer": "infrastructure"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "from": {
+                "type": "feature",
+                "captured": {
+                  "layer": "presentation"
+                }
+              },
+              "allow": {
+                "to": [
+                  {
+                    "type": "feature",
+                    "captured": {
+                      "feature": "{{ from.captured.feature }}"
+                    }
+                  },
+                  {
+                    "type": [
+                      "shared"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "from": {
+                "type": "shared",
+                "captured": {
+                  "layer": "domain"
+                }
+              },
+              "allow": {
+                "to": [
+                  {
+                    "type": "shared",
+                    "captured": {
+                      "layer": "domain"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "from": {
+                "type": "shared",
+                "captured": [
+                  {
+                    "layer": "application"
+                  },
+                  {
+                    "layer": "infrastructure"
+                  }
+                ]
+              },
+              "allow": {
+                "to": [
+                  {
+                    "type": "shared",
+                    "captured": [
+                      {
+                        "layer": "domain"
+                      },
+                      {
+                        "layer": "application"
+                      },
+                      {
+                        "layer": "infrastructure"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "from": {
+                "type": "shared",
+                "captured": {
+                  "layer": "presentation"
+                }
+              },
+              "allow": {
+                "to": {
+                  "type": [
+                    "shared"
+                  ]
+                }
+              }
+            },
+            {
+              "$parameter": "boundaries.allow"
+            }
+          ]
         }
       ],
       "test": "parameter",
@@ -5272,11 +5480,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -5616,9 +5824,9 @@
           ]
         }
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1,
+        "error",
         {
           "elements": [
             "img"
@@ -5628,7 +5836,7 @@
           ]
         }
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -5641,11 +5849,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -5658,11 +5866,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -5675,11 +5883,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -5692,11 +5900,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -5709,11 +5917,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -6859,12 +7067,7 @@
         {
           "patterns": [
             {
-              "group": [
-                "../*"
-              ]
-            },
-            {
-              "$parameter": "imports.restrictedPatterns"
+              "$parameter": "restrictions.source.imports"
             }
           ]
         }
@@ -6933,19 +7136,14 @@
           "message": "Do not access flags.showXxx directly. Use hasFlag(FeatureFlag.X, flags) or useHasFlag(FeatureFlag.X). See: shared/application/utils/featureFlagChecks.ts"
         }
       ],
-      "note": "",
+      "note": "the entries naming a project path, file or helper are that body's own and become the restrictions.source.syntax parameter",
       "chosen": [
-        2,
+        "error",
         {
-          "selector": "MemberExpression[computed=true][object.name='flags'][property.type='MemberExpression'][property.object.name='FeatureFlag']",
-          "message": "Do not access flags[FeatureFlag.X] directly. Use hasFlag(FeatureFlag.X, flags) or useHasFlag(FeatureFlag.X). See: shared/application/utils/featureFlagChecks.ts"
-        },
-        {
-          "selector": "MemberExpression[computed=false][object.name='flags'][property.name=/^show/]",
-          "message": "Do not access flags.showXxx directly. Use hasFlag(FeatureFlag.X, flags) or useHasFlag(FeatureFlag.X). See: shared/application/utils/featureFlagChecks.ts"
+          "$parameter": "restrictions.source.syntax"
         }
       ],
-      "test": "adopt",
+      "test": "parameter",
       "tier": "physics"
     },
     {
@@ -7784,11 +7982,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -7920,11 +8118,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -17647,11 +17845,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -17664,11 +17862,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -17698,11 +17896,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -17732,11 +17930,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -17749,11 +17947,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -17766,11 +17964,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -17817,11 +18015,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -17868,11 +18066,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -17883,11 +18081,11 @@
         1
       ],
       "b": null,
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -17900,11 +18098,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -17934,11 +18132,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -17968,11 +18166,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -17985,11 +18183,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -18002,11 +18200,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -20400,11 +20598,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -21502,9 +21700,9 @@
       "b": [
         0
       ],
-      "note": "severity warn over off",
+      "note": "severity warn over off; no rule ships at warn (spec)",
       "chosen": [
-        "warn"
+        "error"
       ],
       "test": "strictest",
       "tier": "class"
@@ -21647,16 +21845,16 @@
           "allowMultiline": true
         }
       ],
-      "note": "project data becomes a body parameter; the stricter severity is kept",
+      "note": "project data becomes a body parameter; the stricter severity is kept; no rule ships at warn (spec)",
       "chosen": [
-        "warn",
+        "error",
         {
           "entryPoint": {
             "$parameter": "tailwind.entryPoint"
           }
         }
       ],
-      "test": "parameter",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -22025,15 +22223,223 @@
           ]
         }
       ],
-      "note": "aeleos's layered policy (domain/application/presentation) is the class base because it is stricter; each body's extra element types and their allowed edges are parameters",
+      "note": "aeleos's layered policy (domain/application/presentation) is the class base because it is stricter, with its own identity element lifted out as aeleos body data; each body's extra element types and their allowed edges are appended",
       "chosen": [
         "error",
         {
           "default": "disallow",
-          "rules": {
-            "$parameter": "boundaries.allow",
-            "base": "a"
-          }
+          "rules": [
+            {
+              "from": {
+                "type": "app"
+              },
+              "allow": {
+                "to": {
+                  "type": [
+                    "app",
+                    "feature-barrel",
+                    "shared"
+                  ]
+                }
+              }
+            },
+            {
+              "from": {
+                "type": "proxy"
+              },
+              "allow": {
+                "to": {
+                  "type": [
+                    "feature-barrel",
+                    "shared"
+                  ]
+                }
+              }
+            },
+            {
+              "from": {
+                "type": "feature-barrel"
+              },
+              "allow": {
+                "to": [
+                  {
+                    "type": "feature",
+                    "captured": {
+                      "feature": "{{ from.captured.feature }}"
+                    }
+                  },
+                  {
+                    "type": [
+                      "shared"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "from": {
+                "type": "feature",
+                "captured": {
+                  "layer": "domain"
+                }
+              },
+              "allow": {
+                "to": [
+                  {
+                    "type": "feature",
+                    "captured": {
+                      "feature": "{{ from.captured.feature }}",
+                      "layer": "domain"
+                    }
+                  },
+                  {
+                    "type": "shared",
+                    "captured": {
+                      "layer": "domain"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "from": {
+                "type": "feature",
+                "captured": [
+                  {
+                    "layer": "application"
+                  },
+                  {
+                    "layer": "infrastructure"
+                  }
+                ]
+              },
+              "allow": {
+                "to": [
+                  {
+                    "type": "feature",
+                    "captured": [
+                      {
+                        "feature": "{{ from.captured.feature }}",
+                        "layer": "domain"
+                      },
+                      {
+                        "feature": "{{ from.captured.feature }}",
+                        "layer": "application"
+                      },
+                      {
+                        "feature": "{{ from.captured.feature }}",
+                        "layer": "infrastructure"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "shared",
+                    "captured": [
+                      {
+                        "layer": "domain"
+                      },
+                      {
+                        "layer": "application"
+                      },
+                      {
+                        "layer": "infrastructure"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "from": {
+                "type": "feature",
+                "captured": {
+                  "layer": "presentation"
+                }
+              },
+              "allow": {
+                "to": [
+                  {
+                    "type": "feature",
+                    "captured": {
+                      "feature": "{{ from.captured.feature }}"
+                    }
+                  },
+                  {
+                    "type": [
+                      "shared"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "from": {
+                "type": "shared",
+                "captured": {
+                  "layer": "domain"
+                }
+              },
+              "allow": {
+                "to": [
+                  {
+                    "type": "shared",
+                    "captured": {
+                      "layer": "domain"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "from": {
+                "type": "shared",
+                "captured": [
+                  {
+                    "layer": "application"
+                  },
+                  {
+                    "layer": "infrastructure"
+                  }
+                ]
+              },
+              "allow": {
+                "to": [
+                  {
+                    "type": "shared",
+                    "captured": [
+                      {
+                        "layer": "domain"
+                      },
+                      {
+                        "layer": "application"
+                      },
+                      {
+                        "layer": "infrastructure"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "from": {
+                "type": "shared",
+                "captured": {
+                  "layer": "presentation"
+                }
+              },
+              "allow": {
+                "to": {
+                  "type": [
+                    "shared"
+                  ]
+                }
+              }
+            },
+            {
+              "$parameter": "boundaries.allow"
+            }
+          ]
         }
       ],
       "test": "parameter",
@@ -22875,11 +23281,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -23408,11 +23814,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -23442,11 +23848,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -23459,11 +23865,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -24609,12 +25015,7 @@
         {
           "patterns": [
             {
-              "group": [
-                "../*"
-              ]
-            },
-            {
-              "$parameter": "imports.restrictedPatterns"
+              "$parameter": "restrictions.component.imports"
             }
           ]
         }
@@ -24683,19 +25084,14 @@
           "message": "Do not access flags.showXxx directly. Use hasFlag(FeatureFlag.X, flags) or useHasFlag(FeatureFlag.X). See: shared/application/utils/featureFlagChecks.ts"
         }
       ],
-      "note": "",
+      "note": "the entries naming a project path, file or helper are that body's own and become the restrictions.component.syntax parameter",
       "chosen": [
-        2,
+        "error",
         {
-          "selector": "MemberExpression[computed=true][object.name='flags'][property.type='MemberExpression'][property.object.name='FeatureFlag']",
-          "message": "Do not access flags[FeatureFlag.X] directly. Use hasFlag(FeatureFlag.X, flags) or useHasFlag(FeatureFlag.X). See: shared/application/utils/featureFlagChecks.ts"
-        },
-        {
-          "selector": "MemberExpression[computed=false][object.name='flags'][property.name=/^show/]",
-          "message": "Do not access flags.showXxx directly. Use hasFlag(FeatureFlag.X, flags) or useHasFlag(FeatureFlag.X). See: shared/application/utils/featureFlagChecks.ts"
+          "$parameter": "restrictions.component.syntax"
         }
       ],
-      "test": "adopt",
+      "test": "parameter",
       "tier": "physics"
     },
     {
@@ -25534,11 +25930,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -25670,11 +26066,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -35418,11 +35814,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -35435,11 +35831,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -35469,11 +35865,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -35503,11 +35899,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -35520,11 +35916,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -35537,11 +35933,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -35588,11 +35984,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -35639,11 +36035,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -35654,11 +36050,11 @@
         1
       ],
       "b": null,
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -35671,11 +36067,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -35705,11 +36101,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -35739,11 +36135,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -35756,11 +36152,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -35773,11 +36169,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -39252,11 +39648,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -39460,9 +39856,9 @@
           ]
         }
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1,
+        "error",
         {
           "elements": [
             "img"
@@ -39472,7 +39868,7 @@
           ]
         }
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -39485,11 +39881,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -39502,11 +39898,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -39519,11 +39915,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -39536,11 +39932,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -39553,11 +39949,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -40525,19 +40921,14 @@
           "message": "Use queryByTestId (or role-based test id wrappers) instead of queryByText to avoid text/i18n-coupled assertions."
         }
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec); the entries naming a project path, file or helper are that body's own and become the restrictions.unit-test.syntax parameter",
       "chosen": [
-        1,
+        "error",
         {
-          "selector": "CallExpression[callee.property.name='queryByText']",
-          "message": "Use queryByTestId (or role-based test id wrappers) instead of queryByText to avoid text/i18n-coupled assertions."
-        },
-        {
-          "selector": "CallExpression[callee.name='queryByText']",
-          "message": "Use queryByTestId (or role-based test id wrappers) instead of queryByText to avoid text/i18n-coupled assertions."
+          "$parameter": "restrictions.unit-test.syntax"
         }
       ],
-      "test": "adopt",
+      "test": "parameter",
       "tier": "physics"
     },
     {
@@ -41221,11 +41612,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -41289,11 +41680,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -41425,11 +41816,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -42450,11 +42841,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -42920,11 +43311,11 @@
         1
       ],
       "b": null,
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -42956,11 +43347,11 @@
         1
       ],
       "b": null,
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -43663,11 +44054,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -43680,11 +44071,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -43714,11 +44105,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -43748,11 +44139,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -43765,11 +44156,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -43782,11 +44173,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -43833,11 +44224,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -43884,11 +44275,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -43899,11 +44290,11 @@
         1
       ],
       "b": null,
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -43916,11 +44307,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -43950,11 +44341,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -43984,11 +44375,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -44001,11 +44392,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -44018,11 +44409,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -47497,11 +47888,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -47705,9 +48096,9 @@
           ]
         }
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1,
+        "error",
         {
           "elements": [
             "img"
@@ -47717,7 +48108,7 @@
           ]
         }
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -47730,11 +48121,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -47747,11 +48138,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -47764,11 +48155,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -47781,11 +48172,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -47798,11 +48189,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -48778,22 +49169,18 @@
           ]
         }
       ],
-      "note": "",
+      "note": "the entries naming a project path, file or helper are that body's own and become the restrictions.e2e.imports parameter",
       "chosen": [
-        2,
+        "error",
         {
           "patterns": [
             {
-              "group": [
-                "**/local-supabase-env*",
-                "**/local-supabase-env.js"
-              ],
-              "message": "local-supabase-env is banned in e2e files. Read credentials directly from process.env."
+              "$parameter": "restrictions.e2e.imports"
             }
           ]
         }
       ],
-      "test": "adopt",
+      "test": "parameter",
       "tier": "physics"
     },
     {
@@ -48910,7 +49297,7 @@
           "message": "getLocalSupabaseEnv() is banned in e2e files. Read credentials directly from process.env."
         }
       ],
-      "note": "the union of both sides' bans is stricter than either; messages are aeleos's where both ban a selector and are rewritten to name no body file or helper elsewhere; aeleos's combined label/placeholder selector is subsumed by libra's two; libra's Supabase port and helper bans are body data and become the e2e.restrictedSyntax parameter",
+      "note": "the union of both sides' bans is stricter than either; messages are aeleos's where both ban a selector and are rewritten to name no body file or helper elsewhere; aeleos's combined label/placeholder selector is subsumed by libra's two; libra's Supabase port and helper bans are body data and become the restrictions.e2e.syntax parameter",
       "chosen": [
         "error",
         {
@@ -48978,11 +49365,11 @@
           "message": "No unconditional setTimeout-based waits. Wait for a condition, or justify this exact line with eslint-disable-next-line and a comment."
         },
         {
-          "$parameter": "e2e.restrictedSyntax"
+          "$parameter": "restrictions.e2e.syntax"
         }
       ],
       "test": "benefit",
-      "tier": "physics"
+      "tier": "class"
     },
     {
       "tool": "eslint",
@@ -49587,11 +49974,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -49649,11 +50036,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -49664,11 +50051,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -49747,11 +50134,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -49936,11 +50323,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -49968,11 +50355,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -49983,11 +50370,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -49998,11 +50385,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -50013,11 +50400,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -50028,11 +50415,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -50262,11 +50649,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -50330,11 +50717,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -50466,11 +50853,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "agree",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -52142,11 +52529,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -52157,11 +52544,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -52187,11 +52574,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -52217,11 +52604,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -52232,11 +52619,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -52247,11 +52634,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -52292,11 +52679,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -52337,11 +52724,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -52352,11 +52739,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -52382,11 +52769,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -52412,11 +52799,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -52427,11 +52814,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -52442,11 +52829,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -55914,11 +56301,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -55963,9 +56350,9 @@
           ]
         }
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1,
+        "error",
         {
           "elements": [
             "img"
@@ -55975,7 +56362,7 @@
           ]
         }
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -55986,11 +56373,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -56001,11 +56388,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -56016,11 +56403,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -56031,11 +56418,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -56046,11 +56433,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -57539,11 +57926,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -57599,11 +57986,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -57719,11 +58106,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -59324,11 +59711,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -59339,11 +59726,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -59369,11 +59756,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -59399,11 +59786,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -59414,11 +59801,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -59429,11 +59816,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -59474,11 +59861,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -59517,11 +59904,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -59532,11 +59919,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -59562,11 +59949,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -59592,11 +59979,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -59607,11 +59994,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -59622,11 +60009,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -62020,11 +62407,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -63222,15 +63609,15 @@
           "allowMultiline": true
         }
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1,
+        "error",
         {
           "entryPoint": "apps/store/src/app/globals.css",
           "allowMultiline": true
         }
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -63599,15 +63986,223 @@
           ]
         }
       ],
-      "note": "aeleos's layered policy (domain/application/presentation) is the class base because it is stricter; each body's extra element types and their allowed edges are parameters",
+      "note": "aeleos's layered policy (domain/application/presentation) is the class base because it is stricter, with its own identity element lifted out as aeleos body data; each body's extra element types and their allowed edges are appended",
       "chosen": [
         "error",
         {
           "default": "disallow",
-          "rules": {
-            "$parameter": "boundaries.allow",
-            "base": "a"
-          }
+          "rules": [
+            {
+              "from": {
+                "type": "app"
+              },
+              "allow": {
+                "to": {
+                  "type": [
+                    "app",
+                    "feature-barrel",
+                    "shared"
+                  ]
+                }
+              }
+            },
+            {
+              "from": {
+                "type": "proxy"
+              },
+              "allow": {
+                "to": {
+                  "type": [
+                    "feature-barrel",
+                    "shared"
+                  ]
+                }
+              }
+            },
+            {
+              "from": {
+                "type": "feature-barrel"
+              },
+              "allow": {
+                "to": [
+                  {
+                    "type": "feature",
+                    "captured": {
+                      "feature": "{{ from.captured.feature }}"
+                    }
+                  },
+                  {
+                    "type": [
+                      "shared"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "from": {
+                "type": "feature",
+                "captured": {
+                  "layer": "domain"
+                }
+              },
+              "allow": {
+                "to": [
+                  {
+                    "type": "feature",
+                    "captured": {
+                      "feature": "{{ from.captured.feature }}",
+                      "layer": "domain"
+                    }
+                  },
+                  {
+                    "type": "shared",
+                    "captured": {
+                      "layer": "domain"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "from": {
+                "type": "feature",
+                "captured": [
+                  {
+                    "layer": "application"
+                  },
+                  {
+                    "layer": "infrastructure"
+                  }
+                ]
+              },
+              "allow": {
+                "to": [
+                  {
+                    "type": "feature",
+                    "captured": [
+                      {
+                        "feature": "{{ from.captured.feature }}",
+                        "layer": "domain"
+                      },
+                      {
+                        "feature": "{{ from.captured.feature }}",
+                        "layer": "application"
+                      },
+                      {
+                        "feature": "{{ from.captured.feature }}",
+                        "layer": "infrastructure"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "shared",
+                    "captured": [
+                      {
+                        "layer": "domain"
+                      },
+                      {
+                        "layer": "application"
+                      },
+                      {
+                        "layer": "infrastructure"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "from": {
+                "type": "feature",
+                "captured": {
+                  "layer": "presentation"
+                }
+              },
+              "allow": {
+                "to": [
+                  {
+                    "type": "feature",
+                    "captured": {
+                      "feature": "{{ from.captured.feature }}"
+                    }
+                  },
+                  {
+                    "type": [
+                      "shared"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "from": {
+                "type": "shared",
+                "captured": {
+                  "layer": "domain"
+                }
+              },
+              "allow": {
+                "to": [
+                  {
+                    "type": "shared",
+                    "captured": {
+                      "layer": "domain"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "from": {
+                "type": "shared",
+                "captured": [
+                  {
+                    "layer": "application"
+                  },
+                  {
+                    "layer": "infrastructure"
+                  }
+                ]
+              },
+              "allow": {
+                "to": [
+                  {
+                    "type": "shared",
+                    "captured": [
+                      {
+                        "layer": "domain"
+                      },
+                      {
+                        "layer": "application"
+                      },
+                      {
+                        "layer": "infrastructure"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "from": {
+                "type": "shared",
+                "captured": {
+                  "layer": "presentation"
+                }
+              },
+              "allow": {
+                "to": {
+                  "type": [
+                    "shared"
+                  ]
+                }
+              }
+            },
+            {
+              "$parameter": "boundaries.allow"
+            }
+          ]
         }
       ],
       "test": "parameter",
@@ -64177,11 +64772,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -64511,9 +65106,9 @@
           ]
         }
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1,
+        "error",
         {
           "elements": [
             "img"
@@ -64523,7 +65118,7 @@
           ]
         }
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -64534,11 +65129,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -64549,11 +65144,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -64564,11 +65159,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -64579,11 +65174,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -64594,11 +65189,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -65744,12 +66339,7 @@
         {
           "patterns": [
             {
-              "group": [
-                "../*"
-              ]
-            },
-            {
-              "$parameter": "imports.restrictedPatterns"
+              "$parameter": "restrictions.package.imports"
             }
           ]
         }
@@ -65808,19 +66398,14 @@
           "message": "Avoid arbitrary color values (e.g. bg-[#f5f5f5]). Use semantic color tokens (bg-primary, text-muted-foreground, etc.) instead. See: .claude/rules/single-source-of-truth.md"
         }
       ],
-      "note": "",
+      "note": "the entries naming a project path, file or helper are that body's own and become the restrictions.package.syntax parameter",
       "chosen": [
-        2,
+        "error",
         {
-          "selector": "JSXAttribute[name.name='className'] Literal[value=/\\w+\\-\\[\\d+[a-z]*\\]/]",
-          "message": "Avoid arbitrary Tailwind values (e.g. text-[10px], w-[347px]). Use semantic design tokens or Tailwind defaults instead. See: .claude/rules/tailwind.md"
-        },
-        {
-          "selector": "JSXAttribute[name.name='className'] Literal[value=/(bg|text|border|ring|outline|shadow|from|to|via)\\-\\[#[0-9a-fA-F]+\\]/]",
-          "message": "Avoid arbitrary color values (e.g. bg-[#f5f5f5]). Use semantic color tokens (bg-primary, text-muted-foreground, etc.) instead. See: .claude/rules/single-source-of-truth.md"
+          "$parameter": "restrictions.package.syntax"
         }
       ],
-      "test": "adopt",
+      "test": "parameter",
       "tier": "physics"
     },
     {
@@ -66645,11 +67230,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {
@@ -66761,11 +67346,11 @@
       "b": [
         1
       ],
-      "note": "",
+      "note": "no rule ships at warn (spec)",
       "chosen": [
-        1
+        "error"
       ],
-      "test": "adopt",
+      "test": "strictest",
       "tier": "class"
     },
     {

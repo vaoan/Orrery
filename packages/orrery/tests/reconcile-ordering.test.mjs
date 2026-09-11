@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { severityOf, optionsOf, stricter, PRE_RULINGS } from "../src/lib/reconcile/ordering.mjs";
+import { severityOf, optionsOf, stricter, PRE_RULINGS, namesProject, splitRestrictions } from "../src/lib/reconcile/ordering.mjs";
 
 describe("severityOf / optionsOf", () => {
   it("normalises numbers and strings and strips trailing empties and messages", () => {
@@ -59,11 +59,14 @@ describe("stricter: parameters", () => {
     expect(r.chosen).toEqual(["error", { entryPoint: { $parameter: "tailwind.entryPoint" } }]);
     expect(r.test).toBe("parameter");
   });
-  it("splits no-restricted-imports into the universal pattern and alias parameters", () => {
+  // C3: the universal half of a restriction rule is the half that names nothing project-specific.
+  // A parent-relative ban (`../*`) names a shape; an alias group names a project's own module
+  // layout, so it goes back to that body as a per-surface parameter.
+  it("splits no-restricted-imports into the universal pattern and the surface's own parameter", () => {
     const a = ["error", { patterns: [{ group: ["../*"] }] }];
     const b = ["error", { patterns: [{ group: ["@ui/*"] }, { group: ["@shared/*"] }] }];
-    const r = stricter("no-restricted-imports", a, b);
-    expect(r.chosen).toEqual(["error", { patterns: [{ group: ["../*"] }, { $parameter: "imports.restrictedPatterns" }] }]);
+    const r = stricter("no-restricted-imports", a, b, "source");
+    expect(r.chosen).toEqual(["error", { patterns: [{ group: ["../*"] }, { $parameter: "restrictions.source.imports" }] }]);
     expect(r.test).toBe("parameter");
   });
 });
@@ -129,12 +132,28 @@ describe("stricter: pre-rulings and residue", () => {
     expect(messages.some((m) => m.includes(".claude/"))).toBe(false);
     expect(messages.some((m) => m.includes("tid("))).toBe(false);
     // the shared list ends with the e2e parameter marker
-    expect(r.chosen.at(-1)).toEqual({ $parameter: "e2e.restrictedSyntax" });
+    expect(r.chosen.at(-1)).toEqual({ $parameter: "restrictions.e2e.syntax" });
   });
   it("falls through to the ordinary ordering when a surface-restricted pre-ruling's surface does not match", () => {
     const r = stricter("no-restricted-syntax", ["error", { selector: "a" }], ["error", { selector: "b" }], "source");
-    expect(r.test).toBe("residue");
-    expect(r.chosen).toBeNull();
+    // Not the e2e pre-ruling's Playwright union: the ordinary ordering handles it, which for a
+    // restriction rule means the union of what names no project plus this surface's parameter.
+    expect(r.test).toBe("parameter");
+    expect(r.chosen).toEqual(["error", { selector: "a" }, { selector: "b" }, { $parameter: "restrictions.source.syntax" }]);
+  });
+
+  // C3: the same rule on the same two donors, judged by the token test rather than by hand.
+  it("keeps the entries that name nothing project-specific and parameterises the ones that do", () => {
+    const a = ["error", { selector: "WithStatement" }, { selector: "CallExpression[callee.name='readFileSync']", message: "See: shared/application/utils/fs.ts" }];
+    const b = ["error", { selector: "CallExpression[callee.name='eval']" }];
+    const r = stricter("no-restricted-syntax", a, b, "package");
+    expect(r.test).toBe("parameter");
+    expect(r.chosen).toEqual([
+      "error",
+      { selector: "WithStatement" },
+      { selector: "CallExpression[callee.name='eval']" },
+      { $parameter: "restrictions.package.syntax" },
+    ]);
   });
   // S6: PR #29's ruling made i18next/no-literal-string's `mode: "all"` pre-ruling apply to
   // every surface, including `script` — flagging every string literal a CLI script contains
@@ -156,5 +175,47 @@ describe("stricter: pre-rulings and residue", () => {
       expect(["strictest", "consistency", "benefit", "parameter"]).toContain(ruling.test);
       expect(ruling.note.length, rule).toBeGreaterThan(10);
     }
+  });
+});
+
+// C3, the token test itself. It is deliberately crude and errs toward the body: the cost of
+// calling something project-specific that was not is that the body restates it at cut-over; the
+// cost of the other mistake is one project's opinion shipped to every repository as physics.
+describe("namesProject", () => {
+  it.each([
+    [{ selector: "WithStatement" }, false],
+    [{ group: ["../*"] }, false],
+    [{ group: ["./sibling"] }, false],
+    [{ object: "document", property: "querySelector" }, false],
+    [{ group: ["@/features/*"] }, true],
+    [{ selector: "X", message: "See: shared/application/utils/featureFlagChecks.ts" }, true],
+    [{ selector: "X", message: "See: .claude/rules/tailwind.md" }, true],
+    [{ group: ["**/local-supabase-env*"] }, true],
+    [{ selector: "Literal[value=/globals.css/]" }, true],
+  ])("%j -> %s", (entry, expected) => {
+    expect(namesProject(entry)).toBe(expected);
+  });
+});
+
+describe("splitRestrictions", () => {
+  it("returns null for a rule that is not a restriction rule", () => {
+    expect(splitRestrictions("no-var", "source", [])).toBeNull();
+  });
+
+  it("leaves an adopt row alone when nothing in it names a project", () => {
+    expect(splitRestrictions("no-restricted-syntax", "source", [{ selector: "WithStatement" }])).toBeNull();
+  });
+
+  it("splits an adopt row that does, naming the surface's own parameter", () => {
+    expect(splitRestrictions("no-restricted-syntax", "unit-test", [{ selector: "X", message: "see docs/a.md" }, { selector: "WithStatement" }])).toEqual([
+      { selector: "WithStatement" },
+      { $parameter: "restrictions.unit-test.syntax" },
+    ]);
+  });
+
+  it("keeps no-restricted-imports's options-object shape", () => {
+    expect(splitRestrictions("no-restricted-imports", "e2e", [{ patterns: [{ group: ["**/local-supabase-env*"] }] }])).toEqual([
+      { patterns: [{ $parameter: "restrictions.e2e.imports" }] },
+    ]);
   });
 });

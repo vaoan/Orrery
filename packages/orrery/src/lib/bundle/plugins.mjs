@@ -27,6 +27,10 @@ export const PRETTIER_OFF_PREFIXES = ["@stylistic", "@stylistic/js", "@stylistic
 
 export const TOOL_DEPENDENCIES = {
   eslint: "^9.39.5", "@eslint/js": "^10.0.1", "eslint-config-prettier": "^10.1.8", typescript: "^6.0.3",
+  // C2: eslint-plugin-boundaries resolves every specifier through the `import/resolver` setting the
+  // class declares; without this resolver an aliased `@/...` import is an unknown element and the
+  // dependency graph is decorative. Version: aeleos's, the only donor that had it.
+  "eslint-import-resolver-typescript": "^4.4.5",
   stylelint: "^17.14.1", "stylelint-config-standard": "^40.0.0", "stylelint-config-tailwindcss": "^1.0.1",
   knip: "^6.31.0", jscpd: "^4.2.5", cspell: "^10.0.1", syncpack: "^14.3.1", secretlint: "^12.3.1", "@secretlint/secretlint-rule-preset-recommend": "^12.3.1",
   "@ls-lint/ls-lint": "^2.3.1", "lint-staged": "^16.4.0", prettier: "^3.9.6",

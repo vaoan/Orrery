@@ -35,13 +35,42 @@ const defaults = {
   today: () => new Date().toISOString().slice(0, 10),
 };
 
-// Before adoption a body has no orrery.config.mjs of its own: observe falls back to the body's
-// parameters recorded in docs/predictions/<name>.json when a prediction already exists, else the
-// schema defaults with a placeholder tailwind entry point good enough to run the bundle against.
-function fallbackBodyConfig(bodyDir) {
+// I2: a body that HAS an orrery.config.mjs is governed by it, full stop. The prediction's
+// `bodyConfig` is a record of what a body's parameters were when the prediction was taken —
+// useful before adoption, when the body has no config of its own, and wrong the moment it does:
+// observing a body against parameters it no longer holds proves nothing about the body.
+// Before adoption the order is: the prediction's recorded parameters, else the schema defaults
+// with a placeholder tailwind entry point good enough to run the bundle against.
+async function resolveBodyConfig(bodyDir, prediction) {
   const configFile = path.join(bodyDir, "orrery.config.mjs");
-  if (fs.existsSync(configFile)) return loadBodyConfig(bodyDir).then((c) => c.config);
-  return Promise.resolve({ class: "next-supabase-mono", tailwind: { entryPoint: "apps/*/src/app/globals.css" } });
+  if (fs.existsSync(configFile)) return { config: (await loadBodyConfig(bodyDir)).config, source: "the body's own orrery.config.mjs" };
+  if (prediction?.bodyConfig) return { config: prediction.bodyConfig, source: "the prediction's recorded bodyConfig" };
+  return { config: { class: "next-supabase-mono", tailwind: { entryPoint: "apps/*/src/app/globals.css" } }, source: "the schema defaults" };
+}
+
+// I1: a pointer file that a body has but that no longer matches the template, a local override
+// that breaks the "named files only" rule, and an orrery.config.mjs the schema rejects are all
+// drift the run must FAIL on, not merely mention in the report. The one state that is not a
+// failure is `["missing"]` — a body before adoption has no config of its own and no pointer files
+// yet, and observing it is exactly what `--predict` is for. A `differs` only counts once the body
+// has at least one pointer file the template actually placed there, which is what separates "has
+// not adopted Orrery" from "adopted Orrery and drifted": a body before adoption has an
+// eslint.config.mjs and a .husky/pre-commit of its very own, at exactly the paths the templates
+// use, and every one of them reads as `differs` — measured against both donors, where nothing is
+// `identical` at all. One identical pointer is the evidence that the body was adopted, and from
+// then on a pointer that stops matching is drift the run must fail on. The remaining hole is small
+// and deliberate: a body that drifts EVERY pointer at once reads as un-adopted again.
+export function pointerFailures(pointers) {
+  const failures = [];
+  const config = pointers?.config ?? [];
+  const configErrors = config.filter((e) => e !== "missing");
+  if (configErrors.length > 0) failures.push(`orrery.config.mjs is invalid: ${configErrors.join("; ")}`);
+  for (const violation of pointers?.local ?? []) failures.push(`eslint.local.mjs: ${violation}`);
+  const files = pointers?.files ?? [];
+  if (files.some((f) => f.state === "identical")) {
+    for (const f of files.filter((f) => f.state === "differs")) failures.push(`${f.path} differs from the template it points at`);
+  }
+  return failures;
 }
 
 export default async function observe(argv, deps = {}) {
@@ -85,23 +114,40 @@ export default async function observe(argv, deps = {}) {
     const pointers = await d.pointerDrift(bodyDir, templates, schema);
 
     const prediction = d.loadPrediction(name);
-    const bodyConfig = withDefaults(prediction?.bodyConfig ?? (await fallbackBodyConfig(bodyDir)), schema);
+    const resolved = await resolveBodyConfig(bodyDir, prediction);
+    const bodyConfig = withDefaults(resolved.config, schema);
+
+    const pointerProblems = pointerFailures(pointers);
+    if (pointerProblems.length > 0) {
+      failed = true;
+      console.error(`${name}: pointer drift:\n  ${pointerProblems.join("\n  ")}`);
+    }
 
     const samples = values.surface
       ? Object.fromEntries(Object.entries(d.findSurfaceSamples(bodyDir)).filter(([s]) => s === values.surface))
       : d.findSurfaceSamples(bodyDir);
 
+    // I2: the body's own effective config is what "did the bundle tighten this rule" is measured
+    // against. Swallowing a failure to read it and substituting `{ rules: {} }` does not degrade
+    // gracefully — it reports every ruled rule as tightened, which reads as a clean run with a
+    // large prediction, so the failure disappears into a number nobody can check.
     const bodyEffective = {};
+    const bodyEffectiveError = [];
     for (const [surface, file] of Object.entries(samples)) {
       try {
         bodyEffective[surface] = d.readEffectiveConfig(bodyDir, file);
-      } catch {
+      } catch (error) {
         bodyEffective[surface] = { rules: {} };
+        bodyEffectiveError.push(`${surface} (${file}): ${error.message}`);
       }
+    }
+    if (bodyEffectiveError.length > 0) {
+      failed = true;
+      console.error(`${name}: could not read the body's own effective config:\n  ${bodyEffectiveError.join("\n  ")}`);
     }
 
     const code = await d.codeDrift(bodyDir, { rows: rulings.rows, bodyConfig, samples, bodyEffective, tools: values.tools?.split(",") });
-    const entry = { name, dir: bodyDir, sha, version, pointers, code };
+    const entry = { name, dir: bodyDir, sha, version, pointers, code, bodyConfigSource: resolved.source, ...(bodyEffectiveError.length ? { bodyEffectiveError } : {}) };
 
     // A tool crashing (codeDrift catches per tool) never aborts the run: report it, fail the
     // exit code, and keep going — the report below is written regardless, crash included.
