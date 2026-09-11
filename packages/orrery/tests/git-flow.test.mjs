@@ -34,6 +34,44 @@ describe("branch names", () => {
     expect(checkBranchName(name).ok).toBe(ok);
   });
 
+  // The plan-label rule, one case per shape it accepts and rejects.
+  it.each([
+    // 1. a phase/task word followed by a digit token
+    ["feat/phase-2b-reconciliation", false],
+    ["feat/task-5-records", false],
+    ["feat/step-3-migration", false],
+    ["feat/wave-1-cleanup", false],
+    ["feat/round-2-review", false],
+    // 2. a leading digit token
+    ["feat/2b-reconcile-records", false],
+    ["feat/3-more-work", false],
+    // "3d" is a digit token and no rule can tell a 3D viewer from phase 3d
+    ["feat/3d-viewer", false],
+    // 3. a single letter followed by a digit token
+    ["feat/t5-records", false],
+    ["feat/p2-repository-policy", false],
+    // bare words are fine: only the digit after the word makes a label
+    ["feat/task-runner", true],
+    ["feat/round-corners", true],
+    ["feat/step-indicator", true],
+    ["feat/phase-shift-detector", true],
+    ["feat/wave-form-preview", true],
+    ["chore/node24-actions", true],
+    // "fix-" is a label only on a fix/ branch
+    ["fix/fix-thing", false],
+    ["feat/fix-typos-in-readme", true],
+    ["fix/eslint-bin-lookup-ignores-node-path", true],
+  ])("plan label: %s -> %s", (name, allowed) => {
+    expect(checkBranchName(name).ok, checkBranchName(name).reason).toBe(allowed);
+  });
+
+  it("says which label shape it saw", () => {
+    expect(checkBranchName("feat/3d-viewer").reason).toContain("digit token");
+    expect(checkBranchName("feat/t5-records").reason).toContain("letter-and-number label");
+    expect(checkBranchName("feat/phase-2b-reconciliation").reason).toContain("plan label");
+    expect(checkBranchName("fix/fix-thing").reason).toContain("repeats the branch's own fix/ type");
+  });
+
   it("names the rule in the reason", () => {
     expect(checkBranchName("Feature/X").reason).toMatch(/type\/short-kebab-description/);
     expect(checkBranchName("Feature/X").reason).toContain(TYPES.join("|"));

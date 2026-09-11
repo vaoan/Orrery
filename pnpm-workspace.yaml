@@ -1,3 +1,7 @@
 packages:
   - "packages/*"
   - "fixtures/*"
+allowBuilds:
+  # eslint-import-resolver-typescript pulls unrs-resolver, whose postinstall selects the native
+  # binding for this platform. The class's boundaries policy is resolved through it.
+  unrs-resolver: true

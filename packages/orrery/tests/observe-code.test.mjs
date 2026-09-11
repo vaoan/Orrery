@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { materialise } from "../src/lib/observe/scratch.mjs";
-import { effectiveMismatches, violationsByRule, compareToPrediction, binField, codeDrift, tightenedFor } from "../src/lib/observe/code.mjs";
+import { effectiveMismatches, violationsByRule, compareToPrediction, binField, codeDrift, tightenedFor, matches } from "../src/lib/observe/code.mjs";
 import { resolveEslintBin } from "../src/lib/effective-config.mjs";
 
 // Every path used in these tests is derived from the test file's own location (never a literal
@@ -379,4 +379,115 @@ describe("codeDrift", () => {
       fs.rmSync(scratch, { recursive: true, force: true });
     }
   }, 30_000);
+});
+
+// C5: crash detection is status-aware for EVERY tool, not just the two whose parser happens to
+// throw. Each of these tools exits non-zero on findings as well as on a crash, and each parser
+// answers "no findings" when handed something that is not its report — so a panic, an OOM kill or
+// a bad config used to be recorded as a clean run. One pair per tool: an empty-stream exit 2 is a
+// crash; a real report at exit 1 is findings.
+describe("codeDrift: a non-zero exit with no report is a crash, not a clean run", () => {
+  const withScratch = async (fn) => {
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-crash-"));
+    try {
+      return await fn(scratch);
+    } finally {
+      fs.rmSync(scratch, { recursive: true, force: true });
+    }
+  };
+
+  const drift = (tool, run, scratch) =>
+    codeDrift(FAKE_BODY, { rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: [tool], run, scratchDir: scratch });
+
+  const CRASHED = { stdout: "", stderr: "", status: 2 };
+
+  // The real report each tool writes when it really did find something, at its own exit code 1 and
+  // on its own stream — measured shapes, the same ones the T1 stream tests above use.
+  const REPORTS = {
+    eslint: { run: () => ({ stdout: JSON.stringify([{ filePath: "a.ts", messages: [{ ruleId: "no-var" }] }]), stderr: "", status: 1 }), expect: (r) => expect(r.eslint.violations).toEqual({ "no-var": 1 }) },
+    tsc: { run: () => ({ stdout: "apps/web/src/a.ts(1,1): error TS2307: Cannot find module.\n", stderr: "", status: 1 }), expect: (r) => expect(r.tsc).toEqual({ errors: { TS2307: 1 } }) },
+    stylelint: { run: () => ({ stdout: "", stderr: JSON.stringify([{ warnings: [{}, {}] }]), status: 1 }), expect: (r) => expect(r.stylelint).toEqual({ count: 2 }) },
+    cspell: { run: () => ({ stdout: "apps/web/src/a.ts:3:5 - Unknown word (teh)\n", stderr: "", status: 1 }), expect: (r) => expect(r.cspell).toEqual({ issues: 1 }) },
+    "ls-lint": { run: () => ({ stdout: "", stderr: "apps/web/src/BadName.ts failed for `.ts` rules: kebabcase\n", status: 1 }), expect: (r) => expect(r["ls-lint"]).toEqual({ errors: 1 }) },
+    syncpack: { run: () => ({ stdout: "", stderr: "\u2718 react 18.0.0 != 19.0.0\n", status: 1 }), expect: (r) => expect(r.syncpack).toEqual({ mismatches: 1 }) },
+  };
+
+  it.each(Object.keys(REPORTS))("%s: exit 2 with empty streams is crashed", async (tool) => {
+    await withScratch(async (scratch) => {
+      const result = await drift(tool, () => CRASHED, scratch);
+      expect(result[tool].crashed, JSON.stringify(result[tool])).toBe(true);
+      expect(result[tool].message).toContain(tool);
+    });
+  });
+
+  it.each(Object.keys(REPORTS))("%s: a real report at exit 1 is findings", async (tool) => {
+    await withScratch(async (scratch) => {
+      const result = await drift(tool, REPORTS[tool].run, scratch);
+      expect(result[tool].crashed, JSON.stringify(result[tool])).toBeUndefined();
+      REPORTS[tool].expect(result);
+    });
+  });
+
+  // jscpd is the one tool whose report is a FILE (-o), not a stream: the file is the evidence.
+  it("jscpd: exit 2 with no report file written is crashed", async () => {
+    await withScratch(async (scratch) => {
+      const result = await drift("jscpd", () => CRASHED, scratch);
+      expect(result.jscpd.crashed, JSON.stringify(result.jscpd)).toBe(true);
+      expect(result.jscpd.message).toContain("jscpd");
+    });
+  });
+
+  it("jscpd: a report file at exit 1 is findings", async () => {
+    await withScratch(async (scratch) => {
+      const run = () => {
+        fs.writeFileSync(path.join(scratch, "jscpd-report.json"), JSON.stringify({ statistics: { total: { clones: 4 } } }));
+        return { stdout: "", stderr: "", status: 1 };
+      };
+      const result = await drift("jscpd", run, scratch);
+      expect(result.jscpd).toEqual({ clones: 4 });
+    });
+  });
+
+  // The other direction: a clean run is a clean run, whatever its streams hold.
+  it("reads exit 0 as clean for every tool", async () => {
+    await withScratch(async (scratch) => {
+      const result = await codeDrift(FAKE_BODY, {
+        rows: [], bodyConfig: {}, samples: {}, bodyEffective: {},
+        tools: ["eslint", "tsc", "stylelint", "cspell", "ls-lint", "syncpack"],
+        run: () => ({ stdout: "", stderr: "", status: 0 }),
+        scratchDir: scratch,
+      });
+      expect(Object.values(result).some((r) => r?.crashed)).toBe(false);
+      expect(result.eslint.violations).toEqual({});
+      expect(result.syncpack).toEqual({ mismatches: 0 });
+    });
+  });
+});
+
+// Minor: `apps packages scripts` is the class's shape, not every body's.
+describe("codeDrift: eslint's sweep tolerates a directory the body does not have", () => {
+  it("passes --no-error-on-unmatched-pattern", async () => {
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-unmatched-"));
+    const calls = [];
+    try {
+      await codeDrift(FAKE_BODY, {
+        rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: ["eslint"],
+        run: (command, args) => { calls.push(args); return { stdout: "[]", stderr: "", status: 0 }; },
+        scratchDir: scratch,
+      });
+    } finally {
+      fs.rmSync(scratch, { recursive: true, force: true });
+    }
+    const sweep = calls.find((a) => a.includes("apps") && a.includes("packages") && a.includes("scripts"));
+    expect(sweep).toBeTruthy();
+    expect(sweep).toContain("--no-error-on-unmatched-pattern");
+  });
+});
+
+// C2/I5: `matches` is the third reader of a marker, and it used to ignore an attribute it did not
+// understand exactly as the other two did.
+describe("matches rejects an unknown marker attribute", () => {
+  it("throws naming the attribute", () => {
+    expect(() => matches({ a: 1 }, { $parameter: "x", base: "a" })).toThrow(/base/);
+  });
 });

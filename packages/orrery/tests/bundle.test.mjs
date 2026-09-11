@@ -192,3 +192,24 @@ describe("writeBundle", () => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 });
+
+describe("packages/orrery/package.json declares every dependency the bundle needs", () => {
+  // The generated physics/class eslint files import a plugin module per rule prefix they carry,
+  // and the materialised tool configs load the tools themselves. `dependenciesFor` is the single
+  // list of what that comes to; the package manifest must be a superset of it, or the bundle
+  // imports something the package never asked for — which is exactly how
+  // "@next/next/no-location-assign-relative-destination" broke every real run.
+  it("declares at least dependenciesFor(every prefix in the committed rulings.json)", () => {
+    const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+    const rulings = JSON.parse(fs.readFileSync(path.join(root, "docs/decisions/rulings.json"), "utf8"));
+    const manifest = JSON.parse(fs.readFileSync(path.join(root, "packages/orrery/package.json"), "utf8"));
+    const prefixes = [...new Set(
+      rulings.rows
+        .filter((r) => r.tool === "eslint" && r.tier && r.chosen !== null)
+        .map((r) => (r.key.includes("/") ? r.key.slice(0, r.key.lastIndexOf("/")) : "core"))
+    )].filter((p) => PLUGIN_SOURCES[p]);
+    const needed = dependenciesFor(prefixes);
+    const missing = Object.keys(needed).filter((name) => !(name in manifest.dependencies));
+    expect(missing, "packages/orrery/package.json is missing a dependency the bundle imports").toEqual([]);
+  });
+});

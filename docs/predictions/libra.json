@@ -1,7 +1,7 @@
 {
   "body": "libra",
   "sha": "1c79de72",
-  "generatedAt": "2026-09-10",
+  "generatedAt": "2026-09-11",
   "bodyConfig": {
     "class": "next-supabase-mono",
     "workspacePackages": [],
@@ -13,31 +13,10 @@
       "elements": [],
       "allow": []
     },
-    "imports": {
-      "restrictedPatterns": []
-    },
     "i18n": {
       "excludedWords": []
     },
     "e2e": {
-      "restrictedSyntax": [
-        {
-          "selector": "Literal[value=54321]",
-          "message": "Do not hardcode Supabase port 54321 in e2e files. Read NEXT_PUBLIC_SUPABASE_URL from process.env."
-        },
-        {
-          "selector": "Literal[value=64321]",
-          "message": "Do not hardcode Supabase port 64321 in e2e files. Read NEXT_PUBLIC_SUPABASE_URL from process.env."
-        },
-        {
-          "selector": "Literal[value=/127\\.0\\.0\\.1:(54321|64321)/]",
-          "message": "Do not hardcode Supabase fallback URLs in e2e files. Read NEXT_PUBLIC_SUPABASE_URL from process.env."
-        },
-        {
-          "selector": "CallExpression[callee.name='getLocalSupabaseEnv'], CallExpression[callee.object.name='getLocalSupabaseEnv']",
-          "message": "getLocalSupabaseEnv() is banned in e2e files. Read credentials directly from process.env."
-        }
-      ],
       "assertFunctionNames": [
         "expectVisible",
         "expectHidden",
@@ -46,6 +25,55 @@
         "createPaymentMethod",
         "setPermissions"
       ]
+    },
+    "restrictions": {
+      "source": {
+        "syntax": [],
+        "imports": [],
+        "properties": []
+      },
+      "component": {
+        "syntax": [],
+        "imports": [],
+        "properties": []
+      },
+      "package": {
+        "syntax": [],
+        "imports": [],
+        "properties": []
+      },
+      "unit-test": {
+        "syntax": [],
+        "imports": [],
+        "properties": []
+      },
+      "e2e": {
+        "syntax": [
+          {
+            "selector": "Literal[value=54321]",
+            "message": "Do not hardcode Supabase port 54321 in e2e files. Read NEXT_PUBLIC_SUPABASE_URL from process.env."
+          },
+          {
+            "selector": "Literal[value=64321]",
+            "message": "Do not hardcode Supabase port 64321 in e2e files. Read NEXT_PUBLIC_SUPABASE_URL from process.env."
+          },
+          {
+            "selector": "Literal[value=/127\\.0\\.0\\.1:(54321|64321)/]",
+            "message": "Do not hardcode Supabase fallback URLs in e2e files. Read NEXT_PUBLIC_SUPABASE_URL from process.env."
+          },
+          {
+            "selector": "CallExpression[callee.name='getLocalSupabaseEnv'], CallExpression[callee.object.name='getLocalSupabaseEnv']",
+            "message": "getLocalSupabaseEnv() is banned in e2e files. Read credentials directly from process.env."
+          }
+        ],
+        "imports": [],
+        "properties": []
+      },
+      "script": {
+        "syntax": [],
+        "imports": [],
+        "properties": []
+      }
     },
     "spelling": [],
     "ignore": {
@@ -77,14 +105,29 @@
     }
   },
   "tightened": [
+    "@next/next/google-font-display",
+    "@next/next/google-font-preconnect",
+    "@next/next/next-script-for-ga",
+    "@next/next/no-async-client-component",
+    "@next/next/no-before-interactive-script-outside-document",
+    "@next/next/no-css-tags",
+    "@next/next/no-head-element",
     "@next/next/no-html-link-for-pages",
+    "@next/next/no-img-element",
     "@next/next/no-location-assign-relative-destination",
+    "@next/next/no-page-custom-font",
+    "@next/next/no-styled-jsx-in-document",
+    "@next/next/no-title-in-document-head",
+    "@next/next/no-typos",
+    "@next/next/no-unwanted-polyfillio",
+    "@tanstack/query/no-rest-destructuring",
     "@typescript-eslint/no-deprecated",
     "@typescript-eslint/no-unused-expressions",
     "@typescript-eslint/no-unused-vars",
     "better-tailwindcss/enforce-consistent-class-order",
     "better-tailwindcss/no-concatenated-classes",
     "better-tailwindcss/no-unknown-classes",
+    "better-tailwindcss/no-unnecessary-whitespace",
     "boundaries/dependencies",
     "boundaries/no-unknown",
     "boundaries/no-unknown-files",
@@ -92,6 +135,7 @@
     "for-direction",
     "getter-return",
     "i18next/no-literal-string",
+    "import/no-anonymous-default-export",
     "jsdoc/check-param-names",
     "jsdoc/no-types",
     "jsdoc/require-description",
@@ -99,8 +143,15 @@
     "jsdoc/require-param",
     "jsdoc/require-param-description",
     "jsdoc/require-returns-description",
+    "jsx-a11y/alt-text",
     "jsx-a11y/anchor-is-valid",
+    "jsx-a11y/aria-props",
+    "jsx-a11y/aria-proptypes",
+    "jsx-a11y/aria-unsupported-elements",
     "jsx-a11y/no-autofocus",
+    "jsx-a11y/no-noninteractive-element-interactions",
+    "jsx-a11y/role-has-required-aria-props",
+    "jsx-a11y/role-supports-aria-props",
     "no-async-promise-executor",
     "no-case-declarations",
     "no-class-assign",
@@ -156,9 +207,22 @@
     "no-useless-catch",
     "no-useless-escape",
     "no-with",
+    "playwright/max-nested-describe",
+    "playwright/no-duplicate-hooks",
+    "playwright/no-duplicate-slow",
+    "playwright/no-nested-step",
+    "playwright/no-wait-for-selector",
+    "playwright/prefer-hooks-in-order",
+    "playwright/prefer-hooks-on-top",
+    "playwright/prefer-locator",
+    "playwright/prefer-to-have-count",
+    "playwright/prefer-to-have-length",
+    "react-hooks/exhaustive-deps",
+    "react-hooks/incompatible-library",
     "react-hooks/refs",
     "react-hooks/rules-of-hooks",
     "react-hooks/set-state-in-effect",
+    "react-hooks/unsupported-syntax",
     "require-yield",
     "security/detect-eval-with-expression",
     "security/detect-unsafe-regex",
@@ -189,6 +253,7 @@
     "sonarjs/super-linear-regex",
     "sonarjs/synchronous-suite-callback",
     "sonarjs/todo-tag",
+    "testing-library/no-debugging-utils",
     "testing-library/prefer-screen-queries",
     "tsdoc/syntax",
     "unicorn/consistent-function-scoping",
@@ -213,21 +278,20 @@
     "vitest/valid-expect"
   ],
   "counts": {
-    "(fatal)": 101,
+    "(fatal)": 105,
     "@typescript-eslint/no-deprecated": 3,
     "@typescript-eslint/no-magic-numbers": 34,
     "@typescript-eslint/no-unused-vars": 1,
     "better-tailwindcss/enforce-consistent-class-order": 923,
     "better-tailwindcss/no-unknown-classes": 1886,
-    "boundaries/no-unknown": 355,
+    "boundaries/dependencies": 496,
+    "boundaries/no-unknown": 3,
     "boundaries/no-unknown-files": 18,
     "i18next/no-literal-string": 1426,
     "jsdoc/require-jsdoc": 580,
     "jsdoc/require-param": 278,
     "jsx-a11y/no-autofocus": 2,
     "no-empty": 1,
-    "no-restricted-imports": 15,
-    "no-restricted-syntax": 1,
     "playwright/expect-expect": 2,
     "playwright/no-conditional-in-test": 8,
     "react-hooks/refs": 78,

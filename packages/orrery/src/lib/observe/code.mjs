@@ -7,6 +7,7 @@ import prettierConfig from "eslint-config-prettier";
 import { optionsOf, severityOf } from "../reconcile/ordering.mjs";
 import { readEffectiveConfig, resolveEslintBin } from "../effective-config.mjs";
 import { materialise } from "./scratch.mjs";
+import { assertMarker } from "../markers.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const packageDir = path.resolve(here, "../../..");
@@ -40,11 +41,18 @@ const prettierOffKeys = new Set(Object.keys(prettierConfig.rules));
 
 const read = (body, dotted) => dotted.split(".").reduce((o, k) => o?.[k], body);
 
+// C2/I5: `assertMarker` rejects a marker attribute nobody implements. This function and `matches`
+// below are two of the three readers that used to drop `base: "a"` in silence, which is how the
+// class shipped a boundaries policy with no base and every check agreed with it.
 function resolveParameters(value, body) {
   if (Array.isArray(value)) {
-    return value.flatMap((v) => (v && typeof v === "object" && !Array.isArray(v) && "$parameter" in v ? (read(body, v.$parameter) ?? []) : [resolveParameters(v, body)]));
+    return value.flatMap((v) => {
+      assertMarker(v);
+      return v && typeof v === "object" && !Array.isArray(v) && "$parameter" in v ? (read(body, v.$parameter) ?? []) : [resolveParameters(v, body)];
+    });
   }
   if (value && typeof value === "object") {
+    assertMarker(value);
     return "$parameter" in value ? read(body, value.$parameter) : Object.fromEntries(Object.entries(value).map(([k, v]) => [k, resolveParameters(v, body)]));
   }
   return value;
@@ -68,9 +76,12 @@ const norm = (v) => JSON.stringify(canonical([severityOf(v), ...optionsOf(v)]));
 // never had to spell out once ESLint validates the option object, so the fully-resolved `actual`
 // is a superset of the minimal `chosen` literal by construction, not by the bundle misrendering
 // the ruling.
-function matches(actual, want) {
+export function matches(actual, want) {
   if (Array.isArray(want)) return Array.isArray(actual) && actual.length === want.length && want.every((w, i) => matches(actual[i], w));
-  if (want && typeof want === "object") return !!actual && typeof actual === "object" && !Array.isArray(actual) && Object.entries(want).every(([k, v]) => matches(actual[k], v));
+  if (want && typeof want === "object") {
+    assertMarker(want);
+    return !!actual && typeof actual === "object" && !Array.isArray(actual) && Object.entries(want).every(([k, v]) => matches(actual[k], v));
+  }
   return Object.is(actual, want);
 }
 
@@ -204,6 +215,30 @@ function defaultRun(command, args, cwd) {
 // eslint chokes on) must not take the rest of the run down with it. A caught failure becomes
 // `{ crashed: true, message }` for that tool's entry — the caller (the observe command) is the
 // one that prints it and fails the run, since it is the one that knows which body this was.
+// C5: every tool here exits non-zero on FINDINGS as well as on a crash, so the exit status alone
+// cannot tell the two apart — and every parser here answers "no findings" when handed something
+// that is not its report at all (a panic trace, an empty stream after an OOM), which observe then
+// recorded as a clean run. Six of the seven tools read that way.
+//
+// The rule, per tool: status 0 is a clean run and its report — empty or not — is parsed as it
+// stands. A non-zero status is findings ONLY if the tool's own stream really carries its own
+// report: it parses, and `evidence` recognises at least one finding in it. Anything else throws,
+// and `attempt` turns that into `{ crashed: true, message }` for that tool's entry.
+function statusAware(tool, result, { stream, parse, evidence }) {
+  const text = result?.[stream] ?? "";
+  if (result?.status === 0) return parse(text);
+  let parsed;
+  try {
+    parsed = parse(text);
+  } catch (error) {
+    throw new Error(`${tool} exited ${result?.status} and its ${stream} is not a ${tool} report: ${error.message}`);
+  }
+  if (!evidence(text, parsed)) {
+    throw new Error(`${tool} exited ${result?.status} with no findings on its ${stream}; that is a crash, not a report`);
+  }
+  return parsed;
+}
+
 function attempt(results, tool, fn) {
   try {
     results[tool] = fn();
@@ -244,8 +279,15 @@ export async function codeDrift(bodyDir, { rows, bodyConfig, samples, bodyEffect
         // during this one full-tree sweep (found running this against libra: an OOM crash, not
         // a lint finding). The per-surface --print-config calls above are single small files
         // and do not need it.
-        const result = run(node, ["--max-old-space-size=6144", eslintBin, "-c", files.eslint, "--no-config-lookup", "-f", "json", "apps", "packages", "scripts"], bodyDir);
-        return { mismatches, violations: violationsByRule(result.stdout), tightened: tightenedFor(rows, bodyEffective ?? {}, bodyConfig, classEffective) };
+        // Minor: `apps packages scripts` is the class's shape, not every body's — a body with no
+        // scripts/ directory is not an error, it is a body with no scripts.
+        const result = run(node, ["--max-old-space-size=6144", eslintBin, "-c", files.eslint, "--no-config-lookup", "--no-error-on-unmatched-pattern", "-f", "json", "apps", "packages", "scripts"], bodyDir);
+        const violations = statusAware("eslint", result, {
+          stream: "stdout",
+          parse: (text) => violationsByRule(text || "[]"),
+          evidence: (text, counts) => Object.keys(counts).length > 0,
+        });
+        return { mismatches, violations, tightened: tightenedFor(rows, bodyEffective ?? {}, bodyConfig, classEffective) };
       });
     }
 
@@ -253,9 +295,16 @@ export async function codeDrift(bodyDir, { rows, bodyConfig, samples, bodyEffect
       attempt(results, "tsc", () => {
         // tsc's own report is on stdout.
         const result = run(node, [binField("typescript", "tsc"), "-p", files.tsconfig, "--pretty", "false"], bodyDir);
-        const counts = {};
-        for (const m of result.stdout.matchAll(/error (TS\d+):/g)) counts[m[1]] = (counts[m[1]] ?? 0) + 1;
-        return { errors: counts };
+        const errors = statusAware("tsc", result, {
+          stream: "stdout",
+          parse: (text) => {
+            const counts = {};
+            for (const m of text.matchAll(/error (TS\d+):/g)) counts[m[1]] = (counts[m[1]] ?? 0) + 1;
+            return counts;
+          },
+          evidence: (text, counts) => Object.keys(counts).length > 0,
+        });
+        return { errors };
       });
     }
 
@@ -265,7 +314,13 @@ export async function codeDrift(bodyDir, { rows, bodyConfig, samples, bodyEffect
         // report to stderr, even on a clean, zero-exit run — never stdout. The old stdout-only
         // read silently turned every real stylelint finding into a false "crashed".
         const result = run(node, [binField("stylelint"), "--config", files.stylelint, "-f", "json", "**/*.css"], bodyDir);
-        return { count: JSON.parse(result.stderr || "[]").reduce((n, f) => n + f.warnings.length, 0) };
+        return {
+          count: statusAware("stylelint", result, {
+            stream: "stderr",
+            parse: (text) => JSON.parse(text || "[]").reduce((n, f) => n + f.warnings.length, 0),
+            evidence: (text, count) => count > 0,
+          }),
+        };
       });
     }
 
@@ -273,9 +328,17 @@ export async function codeDrift(bodyDir, { rows, bodyConfig, samples, bodyEffect
       attempt(results, "jscpd", () => {
         // jscpd's own report is the file it writes via -o; the console text run() returns is
         // only ever used to prove the process itself didn't crash.
-        run(node, [binField("jscpd"), "-c", files.jscpd, "-r", "json", "-o", dir, "."], bodyDir);
+        const result = run(node, [binField("jscpd"), "-c", files.jscpd, "-r", "json", "-o", dir, "."], bodyDir);
         const reportFile = path.join(dir, "jscpd-report.json");
-        return { clones: fs.existsSync(reportFile) ? (JSON.parse(fs.readFileSync(reportFile, "utf8")).statistics?.total?.clones ?? 0) : 0 };
+        // jscpd's own report is the file it writes via -o, so that file IS the evidence: a
+        // non-zero exit with no report written is a crash, not a duplication finding.
+        return {
+          clones: statusAware("jscpd", result, {
+            stream: "stdout",
+            parse: () => (fs.existsSync(reportFile) ? (JSON.parse(fs.readFileSync(reportFile, "utf8")).statistics?.total?.clones ?? 0) : 0),
+            evidence: () => fs.existsSync(reportFile),
+          }),
+        };
       });
     }
 
@@ -283,7 +346,13 @@ export async function codeDrift(bodyDir, { rows, bodyConfig, samples, bodyEffect
       attempt(results, "cspell", () => {
         // cspell's own report is on stdout.
         const result = run(node, [binField("cspell"), "lint", "-c", files.cspell, "--no-progress", "--no-summary", "**/*.{ts,tsx,md}"], bodyDir);
-        return { issues: result.stdout.split(/\r?\n/).filter((l) => /:\d+:\d+ - /.test(l)).length };
+        return {
+          issues: statusAware("cspell", result, {
+            stream: "stdout",
+            parse: (text) => text.split(/\r?\n/).filter((l) => /:\d+:\d+ - /.test(l)).length,
+            evidence: (text, issues) => issues > 0,
+          }),
+        };
       });
     }
 
@@ -295,7 +364,13 @@ export async function codeDrift(bodyDir, { rows, bodyConfig, samples, bodyEffect
         // than a specific rule name so any rule this config ever turns on is counted, not just
         // kebab-case.
         const result = run(node, [binField("@ls-lint/ls-lint", "ls-lint"), "-config", files.lsLint], bodyDir);
-        return { errors: result.stderr.split(/\r?\n/).filter((l) => l.includes("failed for")).length };
+        return {
+          errors: statusAware("ls-lint", result, {
+            stream: "stderr",
+            parse: (text) => text.split(/\r?\n/).filter((l) => l.includes("failed for")).length,
+            evidence: (text, errors) => errors > 0,
+          }),
+        };
       });
     }
 
@@ -312,7 +387,13 @@ export async function codeDrift(bodyDir, { rows, bodyConfig, samples, bodyEffect
         // discovery from there. The report — real findings and the clean "no issues" banner
         // alike — is on stderr.
         const result = run(node, [binField("syncpack"), "lint"], bodyDir);
-        return { mismatches: (result.stderr.match(/✘/g) ?? []).length };
+        return {
+          mismatches: statusAware("syncpack", result, {
+            stream: "stderr",
+            parse: (text) => (text.match(/✘/g) ?? []).length,
+            evidence: (text, mismatches) => mismatches > 0,
+          }),
+        };
       });
     }
 

@@ -12,9 +12,21 @@ export default {
       allow: { type: "object[]", default: [] },      // extra { from, to } edges
     },
   },
-  imports: { type: "object", fields: { restrictedPatterns: { type: "object[]", default: [] } } },
   i18n: { type: "object", fields: { excludedWords: { type: "string[]", default: [] } } },
-  e2e: { type: "object", fields: { restrictedSyntax: { type: "object[]", default: [] }, assertFunctionNames: { type: "string[]", default: [] } } },
+  e2e: { type: "object", fields: { assertFunctionNames: { type: "string[]", default: [] } } },
+  // C3: what a body bans with no-restricted-syntax / -imports / -properties is that body's own
+  // opinion, and it differs per surface — a Supabase port ban belongs in e2e, an arbitrary-Tailwind
+  // ban in components. The shared tiers keep only the entries that name nothing project-specific
+  // and splice these in after them. A body adds bans here; it can never remove a shared one.
+  restrictions: {
+    type: "object",
+    fields: Object.fromEntries(
+      ["source", "component", "package", "unit-test", "e2e", "script"].map((surface) => [
+        surface,
+        { type: "object", fields: { syntax: { type: "object[]", default: [] }, imports: { type: "object[]", default: [] }, properties: { type: "object[]", default: [] } } },
+      ])
+    ),
+  },
   spelling: { type: "string[]", default: [] },
   ignore: { type: "object", fields: { duplication: { type: "string[]", default: [] }, secrets: { type: "string[]", default: [] }, spelling: { type: "string[]", default: [] } } },
   knip: { type: "object", fields: { apps: { type: "object", fields: { extraEntries: { type: "string[]", default: [] }, extraProjects: { type: "string[]", default: [] } } }, packages: { type: "object", fields: { extraEntries: { type: "string[]", default: [] }, extraProjects: { type: "string[]", default: [] } } }, root: { type: "object", default: {} } } },

@@ -271,13 +271,20 @@ import path from "node:path";
 
 // The six kinds of file whose resolved eslint config differs in the donors. Patterns are
 // the layouts seen in the constellation; an override on the command line is authoritative.
+// Each app-scoped surface tries the donors' own consumer-facing apps (aeleos: hub, libra:
+// store) before falling back to a plain apps/* wildcard: a bare wildcard sorts alphabetically
+// across every app in a monorepo, and in libra that puts apps/admin ahead of apps/store even
+// though store is the app whose config the donor reader is meant to sample. The bracketed
+// pattern is a seed of known layouts, not policy — same spirit as CANDIDATES in
+// effective-config.mjs — and it is simply skipped (no matches) for any repo without a
+// hub or store app, leaving the generic fallback to do the work.
 const NOT_SOURCE = /(\.test\.|\.spec\.|\.d\.ts$|(^|\/)index\.tsx?$)/;
 
 export const SURFACES = [
-  { name: "source", patterns: ["apps/*/src/features/**/*.ts", "apps/*/src/**/*.ts"], exclude: NOT_SOURCE },
-  { name: "component", patterns: ["apps/*/src/features/**/*.tsx", "apps/*/src/**/*.tsx"], exclude: NOT_SOURCE },
-  { name: "unit-test", patterns: ["apps/*/tests/**/*.test.{ts,tsx}", "apps/*/src/**/*.test.{ts,tsx}"], exclude: /(^|\/)e2e\// },
-  { name: "e2e", patterns: ["apps/*/e2e/**/*.spec.ts", "apps/*/tests/e2e/**/*.spec.ts"], exclude: /$^/ },
+  { name: "source", patterns: ["apps/{hub,store}/src/features/**/*.ts", "apps/*/src/features/**/*.ts", "apps/*/src/**/*.ts"], exclude: NOT_SOURCE },
+  { name: "component", patterns: ["apps/{hub,store}/src/features/**/*.tsx", "apps/*/src/features/**/*.tsx", "apps/*/src/**/*.tsx"], exclude: NOT_SOURCE },
+  { name: "unit-test", patterns: ["apps/{hub,store}/tests/**/*.test.{ts,tsx}", "apps/*/tests/**/*.test.{ts,tsx}", "apps/*/src/**/*.test.{ts,tsx}"], exclude: /(^|\/)e2e\// },
+  { name: "e2e", patterns: ["apps/{hub,store}/e2e/**/*.spec.ts", "apps/{hub,store}/tests/e2e/**/*.spec.ts", "apps/*/e2e/**/*.spec.ts", "apps/*/tests/e2e/**/*.spec.ts"], exclude: /$^/ },
   { name: "script", patterns: ["scripts/*.mjs"], exclude: /\.d\.mts$/ },
   { name: "package", patterns: ["packages/*/src/**/*.ts"], exclude: NOT_SOURCE },
 ];
@@ -427,7 +434,16 @@ Pure functions that decide one eslint rule. This is where the spec's ruling orde
 - Produces:
   - `severityOf(value) => "off"|"warn"|"error"`, `optionsOf(value) => any[]` (trailing empty objects stripped, `message` keys removed at any depth).
   - `ORDINAL_OPTIONS`: `{ [rule]: { at: index | key, lower: boolean } }` — which option is ordinal and whether lower is stricter.
-  - `EXEMPTION_KEY = /^(allow|ignore|except|exempt|skip)/i`; `PARAMETER_KEYS = ["entryPoint", "elements", "patterns", "paths", "project", "tsconfigRootDir", "words", "packageDir"]`.
+  - `EXEMPTION_KEY = /(allow|ignore|except|exempt|skip|onlyIf)/i` — UNANCHORED, matching anywhere in an
+    option key, because the exemptions worth detecting sit in the middle of one: `argsIgnorePattern`,
+    `allowShortCircuit`, `onlyIfContainsSeparator`. An anchored form would have matched none of them.
+  - `PARAMETER_KEYS = ["entryPoint", "elements", "paths", "project", "tsconfigRootDir", "words", "packageDir"]`
+    (C3 removed `patterns`: `no-restricted-imports` is now split by the restriction rule below, per surface,
+    not by a single `imports.restrictedPatterns` parameter).
+  - `namesProject(entry)`, `RESTRICTION_FIELD`, `splitRestrictions(rule, surface, optionsA, optionsB?, { always? })`
+    — C3's token test and the split it drives: the universal subset of a `no-restricted-syntax` /
+    `-imports` / `-properties` rule stays in the shared tier, the rest becomes that surface's
+    `restrictions.<surface>.<field>` body parameter.
   - `PRE_RULINGS`: the table from "Verified before writing", keyed by rule, each `{ chosen | parameter, test, note, surfaces? }`. `surfaces`, when present, is the list of surfaces the pre-ruling governs; absent means everywhere.
   - `stricter(rule, a, b, surface?) => { chosen, test, note }` — the whole ordering for one conflicting rule. A surface-restricted pre-ruling applies only when `surface` is among its `surfaces`; otherwise `stricter` falls through to the ordinary ordering exactly as if the rule had no pre-ruling.
 
@@ -436,7 +452,7 @@ Pure functions that decide one eslint rule. This is where the spec's ruling orde
 ```javascript
 // packages/orrery/tests/reconcile-ordering.test.mjs
 import { describe, it, expect } from "vitest";
-import { severityOf, optionsOf, stricter, PRE_RULINGS } from "../src/lib/reconcile/ordering.mjs";
+import { severityOf, optionsOf, stricter, PRE_RULINGS, namesProject, splitRestrictions } from "../src/lib/reconcile/ordering.mjs";
 
 describe("severityOf / optionsOf", () => {
   it("normalises numbers and strings and strips trailing empties and messages", () => {
@@ -496,11 +512,14 @@ describe("stricter: parameters", () => {
     expect(r.chosen).toEqual(["error", { entryPoint: { $parameter: "tailwind.entryPoint" } }]);
     expect(r.test).toBe("parameter");
   });
-  it("splits no-restricted-imports into the universal pattern and alias parameters", () => {
+  // C3: the universal half of a restriction rule is the half that names nothing project-specific.
+  // A parent-relative ban (`../*`) names a shape; an alias group names a project's own module
+  // layout, so it goes back to that body as a per-surface parameter.
+  it("splits no-restricted-imports into the universal pattern and the surface's own parameter", () => {
     const a = ["error", { patterns: [{ group: ["../*"] }] }];
     const b = ["error", { patterns: [{ group: ["@ui/*"] }, { group: ["@shared/*"] }] }];
-    const r = stricter("no-restricted-imports", a, b);
-    expect(r.chosen).toEqual(["error", { patterns: [{ group: ["../*"] }, { $parameter: "imports.restrictedPatterns" }] }]);
+    const r = stricter("no-restricted-imports", a, b, "source");
+    expect(r.chosen).toEqual(["error", { patterns: [{ group: ["../*"] }, { $parameter: "restrictions.source.imports" }] }]);
     expect(r.test).toBe("parameter");
   });
 });
@@ -516,11 +535,141 @@ describe("stricter: pre-rulings and residue", () => {
     expect(r.chosen).toBeNull();
     expect(r.test).toBe("residue");
   });
+  it("rules on testing-library/no-dom-import: react's autofix is the benefit", () => {
+    const r = stricter("testing-library/no-dom-import", [2], [2, "react"], "unit-test");
+    expect(r.chosen).toEqual(["error", "react"]);
+    expect(r.test).toBe("benefit");
+  });
+  it("rules on playwright/expect-expect: assertFunctionNames becomes the e2e parameter", () => {
+    const r = stricter("playwright/expect-expect", [2], [2, { assertFunctionNames: ["x"] }], "e2e");
+    expect(r.chosen).toEqual(["error", { assertFunctionNames: { $parameter: "e2e.assertFunctionNames" } }]);
+    expect(r.test).toBe("parameter");
+  });
+  it("rules on no-restricted-syntax: the union of both sides minus body-data selectors, ending in the e2e parameter", () => {
+    const r = stricter("no-restricted-syntax", [2], [2], "e2e");
+    expect(r.test).toBe("benefit");
+    const entries = r.chosen.slice(1, -1);
+    const selectors = entries.map((o) => o.selector);
+    const messages = entries.map((o) => o.message);
+
+    // every selector aeleos bans, kept
+    expect(selectors).toEqual(expect.arrayContaining([
+      "CallExpression[callee.property.name=/^(getByRole|getAllByRole|queryByRole|queryAllByRole|findByRole|findAllByRole)$/]",
+      "CallExpression[callee.property.name=/^(getByText|getAllByText|queryByText|queryAllByText|findByText|findAllByText)$/]",
+      "CallExpression[callee.property.name='toContainText']",
+      "CallExpression[callee.property.name='toHaveText']",
+      "CallExpression[callee.property.name='locator'] Literal[value=/data-testid/]",
+      "NewExpression[callee.name='Promise'] CallExpression[callee.name='setTimeout']",
+    ]));
+    // every selector libra bans (beyond aeleos's), kept
+    expect(selectors).toEqual(expect.arrayContaining([
+      "CallExpression[callee.property.name='toHaveClass']",
+      "CallExpression[callee.property.name='toHaveCSS']",
+      "CallExpression[callee.property.name='locator'][arguments.0.value=/^[.][a-zA-Z]/]",
+      "CallExpression[callee.property.name='locator'][arguments.0.value=/class/]",
+      "CallExpression[callee.name=/^(getByRole|getAllByRole|queryByRole|queryAllByRole|findByRole|findAllByRole)$/]",
+      "CallExpression[callee.name=/^(getByText|getAllByText|queryByText|queryAllByText|findByText|findAllByText)$/]",
+      "CallExpression[callee.property.name=/^(getByLabel|getByLabelText|getAllByLabel|getAllByLabelText|queryByLabel|queryByLabelText|queryAllByLabel|queryAllByLabelText|findByLabel|findByLabelText|findAllByLabel|findAllByLabelText)$/]",
+      "CallExpression[callee.name=/^(getByLabel|getByLabelText|getAllByLabel|getAllByLabelText|queryByLabel|queryByLabelText|queryAllByLabel|queryAllByLabelText|findByLabel|findByLabelText|findAllByLabel|findAllByLabelText)$/]",
+      "CallExpression[callee.property.name=/^(getByPlaceholder|getByPlaceholderText|getAllByPlaceholder|getAllByPlaceholderText|queryByPlaceholder|queryByPlaceholderText|queryAllByPlaceholder|queryAllByPlaceholderText|findByPlaceholder|findByPlaceholderText|findAllByPlaceholder|findAllByPlaceholderText)$/]",
+      "CallExpression[callee.name=/^(getByPlaceholder|getByPlaceholderText|getAllByPlaceholder|getAllByPlaceholderText|queryByPlaceholder|queryByPlaceholderText|queryAllByPlaceholder|queryAllByPlaceholderText|findByPlaceholder|findByPlaceholderText|findAllByPlaceholder|findAllByPlaceholderText)$/]",
+    ]));
+    // aeleos's combined label/placeholder selector is subsumed by libra's two and dropped
+    expect(selectors).not.toContain("CallExpression[callee.property.name=/^(getByLabel|getByLabelText|getByPlaceholder|getByPlaceholderText)$/]");
+    // libra's Supabase-specific bans are body data, not in the shared list
+    expect(selectors).not.toContain("Literal[value=54321]");
+    expect(selectors).not.toContain("Literal[value=64321]");
+    expect(selectors).not.toContain("Literal[value=/127\\.0\\.0\\.1:(54321|64321)/]");
+    expect(selectors).not.toContain("CallExpression[callee.name='getLocalSupabaseEnv'], CallExpression[callee.object.name='getLocalSupabaseEnv']");
+    // no message names a body file or a body-specific helper
+    expect(messages.some((m) => m.includes(".claude/"))).toBe(false);
+    expect(messages.some((m) => m.includes("tid("))).toBe(false);
+    // the shared list ends with the e2e parameter marker
+    expect(r.chosen.at(-1)).toEqual({ $parameter: "restrictions.e2e.syntax" });
+  });
+  it("falls through to the ordinary ordering when a surface-restricted pre-ruling's surface does not match", () => {
+    const r = stricter("no-restricted-syntax", ["error", { selector: "a" }], ["error", { selector: "b" }], "source");
+    // Not the e2e pre-ruling's Playwright union: the ordinary ordering handles it, which for a
+    // restriction rule means the union of what names no project plus this surface's parameter.
+    expect(r.test).toBe("parameter");
+    expect(r.chosen).toEqual(["error", { selector: "a" }, { selector: "b" }, { $parameter: "restrictions.source.syntax" }]);
+  });
+
+  // C3: the same rule on the same two donors, judged by the token test rather than by hand.
+  it("keeps the entries that name nothing project-specific and parameterises the ones that do", () => {
+    const a = ["error", { selector: "WithStatement" }, { selector: "CallExpression[callee.name='readFileSync']", message: "See: shared/application/utils/fs.ts" }];
+    const b = ["error", { selector: "CallExpression[callee.name='eval']" }];
+    const r = stricter("no-restricted-syntax", a, b, "package");
+    expect(r.test).toBe("parameter");
+    expect(r.chosen).toEqual([
+      "error",
+      { selector: "WithStatement" },
+      { selector: "CallExpression[callee.name='eval']" },
+      { $parameter: "restrictions.package.syntax" },
+    ]);
+  });
+  // S6: PR #29's ruling made i18next/no-literal-string's `mode: "all"` pre-ruling apply to
+  // every surface, including `script` — flagging every string literal a CLI script contains
+  // (e.g. "--version"). It is restricted to the TS surfaces that actually render user-facing
+  // text: source, component, package.
+  it("does not apply the i18next pre-ruling on script; falls through to the ordinary ordering", () => {
+    expect(PRE_RULINGS["i18next/no-literal-string"].surfaces).toEqual(["source", "component", "package"]);
+    const r = stricter("i18next/no-literal-string", ["error", { mode: "jsx-text-only" }], ["error", { mode: "all" }], "script");
+    expect(r.chosen).not.toEqual(PRE_RULINGS["i18next/no-literal-string"].chosen);
+  });
+  it("still applies the i18next pre-ruling on source, component and package", () => {
+    for (const surface of ["source", "component", "package"]) {
+      const r = stricter("i18next/no-literal-string", ["error", { mode: "jsx-text-only" }], ["error", { mode: "all" }], surface);
+      expect(r.chosen).toEqual(PRE_RULINGS["i18next/no-literal-string"].chosen);
+    }
+  });
   it("every pre-ruling names its test", () => {
     for (const [rule, ruling] of Object.entries(PRE_RULINGS)) {
       expect(["strictest", "consistency", "benefit", "parameter"]).toContain(ruling.test);
       expect(ruling.note.length, rule).toBeGreaterThan(10);
     }
+  });
+});
+
+// C3, the token test itself. It is deliberately crude and errs toward the body: the cost of
+// calling something project-specific that was not is that the body restates it at cut-over; the
+// cost of the other mistake is one project's opinion shipped to every repository as physics.
+describe("namesProject", () => {
+  it.each([
+    [{ selector: "WithStatement" }, false],
+    [{ group: ["../*"] }, false],
+    [{ group: ["./sibling"] }, false],
+    [{ object: "document", property: "querySelector" }, false],
+    [{ group: ["@/features/*"] }, true],
+    [{ selector: "X", message: "See: shared/application/utils/featureFlagChecks.ts" }, true],
+    [{ selector: "X", message: "See: .claude/rules/tailwind.md" }, true],
+    [{ group: ["**/local-supabase-env*"] }, true],
+    [{ selector: "Literal[value=/globals.css/]" }, true],
+  ])("%j -> %s", (entry, expected) => {
+    expect(namesProject(entry)).toBe(expected);
+  });
+});
+
+describe("splitRestrictions", () => {
+  it("returns null for a rule that is not a restriction rule", () => {
+    expect(splitRestrictions("no-var", "source", [])).toBeNull();
+  });
+
+  it("leaves an adopt row alone when nothing in it names a project", () => {
+    expect(splitRestrictions("no-restricted-syntax", "source", [{ selector: "WithStatement" }])).toBeNull();
+  });
+
+  it("splits an adopt row that does, naming the surface's own parameter", () => {
+    expect(splitRestrictions("no-restricted-syntax", "unit-test", [{ selector: "X", message: "see docs/a.md" }, { selector: "WithStatement" }])).toEqual([
+      { selector: "WithStatement" },
+      { $parameter: "restrictions.unit-test.syntax" },
+    ]);
+  });
+
+  it("keeps no-restricted-imports's options-object shape", () => {
+    expect(splitRestrictions("no-restricted-imports", "e2e", [{ patterns: [{ group: ["**/local-supabase-env*"] }] }])).toEqual([
+      { patterns: [{ $parameter: "restrictions.e2e.imports" }] },
+    ]);
   });
 });
 ```
@@ -573,15 +722,67 @@ export const ORDINAL_OPTIONS = {
 
 // Anywhere in the key: `argsIgnorePattern`, `allowShortCircuit`, `onlyIfContainsSeparator` all count.
 export const EXEMPTION_KEY = /(allow|ignore|except|exempt|skip|onlyIf)/i;
-export const PARAMETER_KEYS = ["entryPoint", "elements", "patterns", "paths", "project", "tsconfigRootDir", "words", "packageDir"];
+export const PARAMETER_KEYS = ["entryPoint", "elements", "paths", "project", "tsconfigRootDir", "words", "packageDir"];
 
 const PARAMETER_NAME = {
   entryPoint: "tailwind.entryPoint",
   elements: "boundaries.elements",
   rules: "boundaries.allow",
-  patterns: "imports.restrictedPatterns",
   words: "i18n.excludedWords",
 };
+
+// C3, the one rule: physics must be true for a repository that does not exist yet, and
+// `no-restricted-syntax`/`-imports`/`-properties` are core rules — physics by plugin — whose whole
+// content is whatever a project decided to ban. aeleos's and libra's entries name their own files
+// (`shared/application/utils/featureFlagChecks.ts`), their own modules (`**/local-supabase-env*`)
+// and their own conventions (`.claude/rules/tailwind.md`); shipping those to every body is one
+// project's opinion wearing physics's clothes.
+//
+// The token test that decides: an option entry is project-specific when its JSON carries a path
+// separator, a source-file extension, the `@/` alias prefix, or `.claude` — including inside a
+// `message`, since a message that cites a path cites a project. Purely relative specifiers
+// (`../*`, `./x`) are stripped before the test: banning a parent-relative import names a shape,
+// not a project, and that ban is the one genuinely universal entry both donors carry.
+const RELATIVE_PREFIX = /\.{1,2}\//g;
+const PROJECT_TOKEN = /@\/|\.claude|\.(?:ts|tsx|js|jsx|mjs|cjs|json|md|css|ya?ml)\b|\//;
+export const namesProject = (entry) => PROJECT_TOKEN.test(JSON.stringify(entry ?? null).replaceAll(RELATIVE_PREFIX, ""));
+
+// Which body parameter each restriction rule's leftovers become. The parameter is per surface —
+// what a body bans in a unit test is not what it bans in a script — so the full path is
+// `restrictions.<surface>.<field>`.
+export const RESTRICTION_FIELD = { "no-restricted-syntax": "syntax", "no-restricted-imports": "imports", "no-restricted-properties": "properties" };
+
+const dedupe = (entries) => {
+  const seen = new Set();
+  return entries.filter((e) => { const k = JSON.stringify(e); if (seen.has(k)) return false; seen.add(k); return true; });
+};
+
+// Splits one restriction rule's options into the universal subset that stays in the shared tier and
+// a `$parameter` marker that carries the rest back to the body that wanted it. `no-restricted-
+// imports` takes one options OBJECT ({ paths, patterns }); the other two take a flat list of
+// entries — both reduce to "a list of entries and where to put them back".
+//
+// `always` is the difference between the two call sites. From `parameterise` (a conflict: the two
+// donors ban different things) the answer is always the union plus the parameter, because there is
+// no stricter side to pick. From the adopt/agree pass the split only happens when something in the
+// options really is project-specific: a restriction both donors agree on, naming nothing of their
+// own, is physics and stays whole.
+export function splitRestrictions(rule, surface, optionsA, optionsB = [], { always = false } = {}) {
+  const field = RESTRICTION_FIELD[rule];
+  if (!field) return null;
+  const parameter = { $parameter: `restrictions.${surface}.${field}` };
+  if (rule === "no-restricted-imports") {
+    const objects = [optionsA[0], optionsB[0]].filter((o) => o && typeof o === "object" && !Array.isArray(o));
+    const patterns = dedupe(objects.flatMap((o) => o.patterns ?? []));
+    const paths = dedupe(objects.flatMap((o) => o.paths ?? []));
+    if (!always && !patterns.some(namesProject) && !paths.some(namesProject)) return null;
+    const keptPaths = paths.filter((p) => !namesProject(p));
+    return [{ ...(keptPaths.length ? { paths: keptPaths } : {}), patterns: [...patterns.filter((p) => !namesProject(p)), parameter] }];
+  }
+  const entries = dedupe([...optionsA, ...optionsB]);
+  if (!always && !entries.some(namesProject)) return null;
+  return [...entries.filter((e) => !namesProject(e)), parameter];
+}
 
 export const PRE_RULINGS = {
   "unicorn/number-literal-case": {
@@ -606,13 +807,21 @@ export const PRE_RULINGS = {
     test: "benefit",
     note: "threshold 2 is strictest; ignoreStrings is the union because both sides exempt machine strings (MIME types, CSS variables, Tailwind classes), not code",
   },
+  // C2: the base is RENDERED, not implied. The old shape said `{ $parameter: "boundaries.allow",
+  // base: "a" }` — an attribute nothing implemented, silently dropped, so the class shipped a
+  // `default: "disallow"` policy with no allowed edges at all and every check agreed with it.
+  // `$fromSide: "a"` puts aeleos's layered policy into the row's own `chosen`, where rulings.json
+  // records it and the honesty check compares it; `withoutElementType` lifts out aeleos's own
+  // `identity` element, which is aeleos body data and comes back through its
+  // `boundaries.elements`/`boundaries.allow` at cut-over; `boundaries.allow` appends whatever a
+  // body adds on top.
   "boundaries/dependencies": {
-    chosen: ["error", { default: "disallow", rules: { $parameter: "boundaries.allow", base: "a" } }],
+    chosen: ["error", { default: "disallow", rules: [{ $fromSide: "a", withoutElementType: "identity" }, { $parameter: "boundaries.allow" }] }],
     test: "parameter",
-    note: "aeleos's layered policy (domain/application/presentation) is the class base because it is stricter; each body's extra element types and their allowed edges are parameters",
+    note: "aeleos's layered policy (domain/application/presentation) is the class base because it is stricter, with its own identity element lifted out as aeleos body data; each body's extra element types and their allowed edges are appended",
   },
   "boundaries/elements": {
-    chosen: [{ $parameter: "boundaries.elements", base: "class" }],
+    chosen: [{ $parameter: "boundaries.elements" }],
     test: "parameter",
     note: "element paths are body data on top of the class's standard app/features/shared/proxy layout",
   },
@@ -641,10 +850,10 @@ export const PRE_RULINGS = {
       { selector: "CallExpression[callee.property.name='locator'][arguments.0.value=/class/]", message: "Do not select by class attribute in E2E tests. Use getByTestId, or an attribute selector." },
       { selector: "CallExpression[callee.property.name='locator'] Literal[value=/data-testid/]", message: "Use page.getByTestId('id') rather than a raw attribute selector." },
       { selector: "NewExpression[callee.name='Promise'] CallExpression[callee.name='setTimeout']", message: "No unconditional setTimeout-based waits. Wait for a condition, or justify this exact line with eslint-disable-next-line and a comment." },
-      { $parameter: "e2e.restrictedSyntax" },
+      { $parameter: "restrictions.e2e.syntax" },
     ],
     test: "benefit",
-    note: "the union of both sides' bans is stricter than either; messages are aeleos's where both ban a selector and are rewritten to name no body file or helper elsewhere; aeleos's combined label/placeholder selector is subsumed by libra's two; libra's Supabase port and helper bans are body data and become the e2e.restrictedSyntax parameter",
+    note: "the union of both sides' bans is stricter than either; messages are aeleos's where both ban a selector and are rewritten to name no body file or helper elsewhere; aeleos's combined label/placeholder selector is subsumed by libra's two; libra's Supabase port and helper bans are body data and become the restrictions.e2e.syntax parameter",
   },
   "playwright/expect-expect": {
     chosen: ["error", { assertFunctionNames: { $parameter: "e2e.assertFunctionNames" } }],
@@ -691,16 +900,19 @@ function exemptionOrder(a, b) {
 
 const hasExemption = (o) => Object.keys(o).some((k) => EXEMPTION_KEY.test(k) || (o[k] && typeof o[k] === "object" && !Array.isArray(o[k]) && hasExemption(o[k])));
 
-function parameterise(rule, optionsA, optionsB) {
+// `rawA`/`rawB` are the two sides' options WITH their messages: `optionsOf` strips every `message`,
+// and a message that cites a project file is exactly the evidence the restriction token test reads.
+function parameterise(rule, optionsA, optionsB, surface, rawA = optionsA, rawB = optionsB) {
+  // C3: a restriction rule's conflict is never "one side is stricter" — the two donors simply ban
+  // different things. The union of what names no project stays shared; the rest goes back to the
+  // body it belongs to, per surface.
+  const restrictions = splitRestrictions(rule, surface, rawA, rawB, { always: true });
+  if (restrictions) return restrictions;
   const [oa = {}, ob = {}] = [optionsA[0], optionsB[0]];
   if (typeof oa !== "object" || typeof ob !== "object") return null;
   const keys = new Set([...Object.keys(oa), ...Object.keys(ob)]);
   const param = [...keys].find((k) => PARAMETER_KEYS.includes(k));
   if (!param) return null;
-  if (rule === "no-restricted-imports") {
-    const universal = [...(oa.patterns ?? []), ...(ob.patterns ?? [])].filter((p) => (p.group ?? []).some((g) => g.startsWith("../")));
-    return [{ patterns: [...universal, { $parameter: PARAMETER_NAME.patterns }] }];
-  }
   const merged = { ...oa, ...ob };
   merged[param] = { $parameter: PARAMETER_NAME[param] ?? param };
   for (const k of Object.keys(merged)) if (k !== param && EXEMPTION_KEY.test(k)) delete merged[k];
@@ -727,7 +939,8 @@ export function stricter(rule, a, b, surface) {
   if (sevA === "off" && optionsA.length === 0) return { chosen: [severity, ...optionsB], test: "strictest", note: "switched on" };
   if (sevB === "off" && optionsB.length === 0) return { chosen: [severity, ...optionsA], test: "strictest", note: "switched on" };
 
-  const parameterised = parameterise(rule, optionsA, optionsB);
+  const rawOptions = (value) => (Array.isArray(value) ? value.slice(1) : []);
+  const parameterised = parameterise(rule, optionsA, optionsB, surface, rawOptions(a), rawOptions(b));
   if (parameterised) return { chosen: [severity, ...parameterised], test: "parameter", note: "project data becomes a body parameter; the stricter severity is kept" };
 
   const ordinal = ORDINAL_OPTIONS[rule];
@@ -811,7 +1024,9 @@ describe("tierOf", () => {
 ```javascript
 // packages/orrery/tests/reconcile-eslint.test.mjs
 import { describe, it, expect } from "vitest";
-import { reconcileEslint } from "../src/lib/reconcile/eslint.mjs";
+import { reconcileEslint, resolveMarkers, withoutElementType } from "../src/lib/reconcile/eslint.mjs";
+import { literal } from "../src/lib/bundle/eslint.mjs";
+import { assertMarker } from "../src/lib/markers.mjs";
 
 const cfg = (rules) => ({ rules });
 
@@ -848,6 +1063,207 @@ describe("reconcileEslint", () => {
     const rows = reconcileEslint({ source: cfg({ "unicorn/x": ["error", { style: "a" }] }) }, { source: cfg({ "unicorn/x": ["error", { style: "b" }] }) });
     expect(rows[0]).toMatchObject({ test: "residue", chosen: null, tier: "physics" });
   });
+
+  it("resolves union and fromSide markers from the pre-rulings against both sides' options", () => {
+    const a = { source: cfg({ "sonarjs/no-duplicate-string": [0, { threshold: 3, ignoreStrings: "application/json" }] }) };
+    const b = { source: cfg({ "sonarjs/no-duplicate-string": [2, { threshold: 2, ignoreStrings: "var\\(--x\\)|text-[a-z-]+" }] }) };
+    const [r] = reconcileEslint(a, b);
+    expect(r.chosen).toEqual(["error", { threshold: 2, ignoreStrings: "application/json|text-[a-z-]+|var\\(--x\\)" }]);
+    expect(r.test).toBe("benefit");
+  });
+
+  it("leaves ordinary option keys named union, fromSide or parameter untouched", () => {
+    const a = { source: cfg({ "unicorn/x": ["error", { union: ["a", "b"], fromSide: "left", parameter: 1, other: 2 }] }) };
+    const b = { source: cfg({ "unicorn/x": ["warn", { union: ["a", "b"], fromSide: "left", parameter: 1, other: 2 }] }) };
+    expect(() => reconcileEslint(a, b)).not.toThrow();
+    const [r] = reconcileEslint(a, b);
+    expect(r.chosen).toEqual(["error", { union: ["a", "b"], fromSide: "left", parameter: 1, other: 2 }]);
+    expect(r.test).toBe("strictest");
+  });
+
+  describe("a pre-ruled key's adopt rows", () => {
+    it("takes the pre-ruling's resolved options from the first conflict surface, keeping its own severity and test", () => {
+      const a = { component: cfg({ "i18next/no-literal-string": [2, { mode: "jsx-text-only", "jsx-attributes": { include: ["alt", "title"] } }] }) };
+      const b = {
+        component: cfg({ "i18next/no-literal-string": [2, { mode: "all", "jsx-attributes": { include: ["alt", "label"] }, ignoreAttribute: ["className"], words: { exclude: ["y"] } }] }),
+        source: cfg({ "i18next/no-literal-string": [2, { mode: "all", ignoreAttribute: ["className"], words: { exclude: ["y"] }, callees: { exclude: ["z"] } }] }),
+      };
+      const rows = reconcileEslint(a, b);
+      const component = rows.find((r) => r.surface === "component" && r.key === "i18next/no-literal-string");
+      const source = rows.find((r) => r.surface === "source" && r.key === "i18next/no-literal-string");
+      expect(component.test).toBe("benefit");
+      expect(source.test).toBe("benefit");
+      expect(source.chosen[0]).toBe("error");
+      expect(source.chosen.slice(1)).toEqual(component.chosen.slice(1));
+      expect(source.chosen[1]).not.toHaveProperty("callees");
+      expect(source.note).toMatch(/one-sided on this surface, options from the class ruling$/);
+    });
+
+    it("stays a plain adopt row outside a surface-restricted pre-ruling's declared surfaces", () => {
+      const a = { source: cfg({ "no-restricted-syntax": [2, { selector: "Foo", message: "bar" }] }) };
+      const b = { source: cfg({}) };
+      const [r] = reconcileEslint(a, b);
+      expect(r.test).toBe("adopt");
+      expect(r.chosen).toEqual([2, { selector: "Foo", message: "bar" }]);
+    });
+
+    it("resolves markers against its own two sides when the rule never conflicts anywhere, unioning against the absent side's empty list", () => {
+      const a = { package: cfg({ "sonarjs/no-duplicate-string": [2, { threshold: 3, ignoreStrings: "abc" }] }) };
+      const b = {};
+      const [r] = reconcileEslint(a, b);
+      expect(r.test).toBe("benefit");
+      expect(r.chosen).toEqual(["error", { threshold: 2, ignoreStrings: "abc" }]);
+    });
+
+    it("falls back to the present side's own value when a fromSide marker points at the absent side", () => {
+      const a = { source: cfg({ "i18next/no-literal-string": [2, { mode: "all", ignoreAttribute: ["className"] }] }) };
+      const b = {};
+      const [r] = reconcileEslint(a, b);
+      expect(r.chosen[1].ignoreAttribute).toEqual(["className"]);
+    });
+
+    // S6: the pre-ruling is restricted to source/component/package; on script it never applies,
+    // so a one-sided rule is adopted verbatim, the same as any other rule with no pre-ruling.
+    it("does not apply the i18next pre-ruling on script; the present side's bare value is adopted verbatim", () => {
+      const a = {};
+      const b = { script: cfg({ "i18next/no-literal-string": [2] }) };
+      const [r] = reconcileEslint(a, b);
+      expect(r.test).toBe("adopt");
+      expect(r.chosen).toEqual([2]);
+    });
+
+    it("omits a fromSide key neither side has, rather than emitting null", () => {
+      const a = { package: cfg({ "i18next/no-literal-string": [2, { mode: "all" }] }) };
+      const b = {};
+      const [r] = reconcileEslint(a, b);
+      expect(r.chosen[1]).not.toHaveProperty("ignoreAttribute");
+      expect(r.chosen[1]["jsx-attributes"]).toEqual({ include: [] });
+      expect(r.chosen[1]).not.toHaveProperty("callees");
+    });
+  });
+
+  describe("lost RegExp detection", () => {
+    it("turns a row whose options still hold a RegExp lost by --print-config into residue", () => {
+      const a = { source: cfg({ "unicorn/fake-rule": [2, { exclude: [{}, "x"] }] }) };
+      const b = {};
+      const [r] = reconcileEslint(a, b);
+      expect(r.test).toBe("residue");
+      expect(r.chosen).toBeNull();
+      expect(r.note).toBe("an option holds a RegExp that --print-config serialises as {}; needs a pre-ruling");
+    });
+
+    it("does not flag a bare empty options object", () => {
+      const a = { source: cfg({ "unicorn/fake-rule": [2, {}] }) };
+      const b = {};
+      const [r] = reconcileEslint(a, b);
+      expect(r.test).toBe("adopt");
+      expect(r.chosen).toEqual([2, {}]);
+    });
+  });
+
+  // C4 — the spec's CI section: "No rule ever ships at warn." Whichever test decided the row, a
+  // decided severity of warn becomes error. An inert row has no severity to lift.
+  describe("no rule ships at warn", () => {
+    it("lifts a rule both donors agree to run at warn", () => {
+      const a = { source: cfg({ "no-console": ["warn"] }) };
+      const b = { source: cfg({ "no-console": [1] }) };
+      const [r] = reconcileEslint(a, b);
+      expect(r.chosen).toEqual(["error"]);
+      expect(r.test).toBe("strictest");
+      expect(r.note).toContain("no rule ships at warn (spec)");
+    });
+
+    it("lifts a rule adopted at warn from one donor, options and all", () => {
+      const a = { source: cfg({ "sonarjs/max-lines": [1, { maximum: 400 }] }) };
+      const b = {};
+      const [r] = reconcileEslint(a, b);
+      expect(r.chosen).toEqual(["error", { maximum: 400 }]);
+      expect(r.test).toBe("strictest");
+      expect(r.note).toContain("no rule ships at warn (spec)");
+    });
+
+    it("leaves an off rule and an inert row alone", () => {
+      const a = { source: cfg({ "no-console": ["off"], "unicorn/x": ["off"] }) };
+      const b = { source: cfg({ "no-console": ["off"] }) };
+      const rows = reconcileEslint(a, b);
+      const by = Object.fromEntries(rows.map((r) => [r.key, r]));
+      expect(by["no-console"].chosen).toEqual(["off"]);
+      expect(by["unicorn/x"]).toMatchObject({ test: "inert", chosen: null });
+    });
+  });
+
+  // C2: the boundaries base is a value in the row, not an attribute nobody reads.
+  describe("boundaries/dependencies renders aeleos's policy as the base", () => {
+    const aeleosRules = [
+      { from: { type: "app" }, allow: { to: { type: ["app", "shared", "identity"] } } },
+      { from: { type: "shared" }, allow: { to: [{ type: "shared" }, { type: "identity" }] } },
+      { from: { type: "identity" }, allow: { to: { type: "identity" } } },
+    ];
+    const a = { source: cfg({ "boundaries/dependencies": [2, { default: "disallow", rules: aeleosRules }] }) };
+    const b = { source: cfg({ "boundaries/dependencies": [2, { default: "disallow", rules: [{ from: { type: "feature" }, allow: { to: { type: ["shared"] } } }] }] }) };
+
+    it("puts the base rules in the row's own chosen, identity lifted out, body edges last", () => {
+      const [r] = reconcileEslint(a, b);
+      expect(r.test).toBe("parameter");
+      expect(r.chosen[1].rules).toEqual([
+        { from: { type: "app" }, allow: { to: { type: ["app", "shared"] } } },
+        { from: { type: "shared" }, allow: { to: [{ type: "shared" }] } },
+        { $parameter: "boundaries.allow" },
+      ]);
+    });
+
+    it("renders as a spread of the base followed by the body's own edges", () => {
+      const [r] = reconcileEslint(a, b);
+      expect(literal(r.chosen)).toContain("...body.boundaries.allow");
+      expect(literal(r.chosen)).toContain('"from": { "type": "app" }');
+    });
+  });
+
+  describe("withoutElementType", () => {
+    it("drops a rule whose from names only that type and narrows every to that mentions it", () => {
+      expect(withoutElementType([
+        { from: { type: "identity" }, allow: { to: { type: "identity" } } },
+        { from: { type: "app" }, allow: { to: { type: ["app", "identity"] } } },
+        { from: { type: "app" }, allow: { to: { type: "identity" } } },
+        { from: { type: ["app", "identity"] }, allow: { to: { type: ["shared"] } } },
+      ], "identity")).toEqual([
+        { from: { type: "app" }, allow: { to: { type: ["app"] } } },
+        { from: { type: ["app"] }, allow: { to: { type: ["shared"] } } },
+      ]);
+    });
+
+    it("returns a non-array unchanged", () => {
+      expect(withoutElementType(undefined, "identity")).toBeUndefined();
+    });
+  });
+
+  // C2/I5: a marker attribute nobody implements used to be dropped in silence — which is exactly
+  // how `{ $parameter: "boundaries.allow", base: "a" }` shipped a policy with no base at all.
+  describe("unknown marker attributes throw", () => {
+    it("assertMarker names the attribute", () => {
+      expect(() => assertMarker({ $parameter: "x", base: "a" })).toThrow(/base/);
+      expect(() => assertMarker({ $parameter: "x", base: "a" })).toThrow(/\$parameter/);
+    });
+
+    it("throws on an unknown marker key", () => {
+      expect(() => assertMarker({ $whatever: "x" })).toThrow(/unknown marker/);
+    });
+
+    it("accepts the markers and attributes that are implemented", () => {
+      expect(assertMarker({ $parameter: "a.b" })).toBe("$parameter");
+      expect(assertMarker({ $union: "k", join: "|" })).toBe("$union");
+      expect(assertMarker({ $fromSide: "a", withoutElementType: "identity" })).toBe("$fromSide");
+      expect(assertMarker({ selector: "X" })).toBeNull();
+    });
+
+    it("resolveMarkers throws", () => {
+      expect(() => resolveMarkers(["error", { x: { $parameter: "x", base: "a" } }], [], [])).toThrow(/base/);
+    });
+
+    it("literal throws", () => {
+      expect(() => literal(["error", { $parameter: "x", base: "a" }])).toThrow(/base/);
+    });
+  });
 });
 ```
 
@@ -863,8 +1279,10 @@ Expected: FAIL — cannot resolve the two modules
 // The boundary rule: physics is true for a repository that does not exist yet; a plugin that
 // needs Next.js, React, Tailwind, TanStack Query, i18n, Playwright or Vitest to make sense is class.
 // `boundaries` is class because the element layout it encodes (app/features/shared/proxy) is the
-// class's layout. `@stylistic`, `vue`, `flowtype`, `babel`, `standard` appear only as `off` from
-// eslint-config-prettier; they are placed so an explicit shared `off` has a home.
+// class's layout. `@stylistic`, `babel`, `standard` appear only as `off` from
+// eslint-config-prettier and are physics: a formatting rule turned off is true of any repository.
+// `vue` and `flowtype` reach the donors the same way, but they are class — a Vue or Flow codebase
+// is an archetype, and physics may not assume one exists.
 export const TIER_BY_PLUGIN = {
   core: "physics",
   "@typescript-eslint": "physics",
@@ -899,12 +1317,20 @@ export const TIER_BY_PLUGIN = {
   flowtype: "class",
 };
 
+// A rule the plugin alone cannot place. `no-restricted-syntax` is a core rule, so physics by
+// plugin -- but the e2e pre-ruling's chosen is the union of both donors' Playwright and
+// testing-library selector bans, which mean nothing where no browser test runs. Keyed by surface
+// first, because the same rule is physics on one surface and class on another.
+export const TIER_OVERRIDES = { e2e: { "no-restricted-syntax": "class" } };
+
 export function pluginOf(rule) {
   if (!rule.includes("/")) return "core";
   return rule.slice(0, rule.lastIndexOf("/"));
 }
 
-export function tierOf(rule) {
+export function tierOf(rule, surface) {
+  const override = TIER_OVERRIDES[surface]?.[rule];
+  if (override) return override;
   const plugin = pluginOf(rule);
   const tier = TIER_BY_PLUGIN[plugin];
   if (!tier) throw new Error(`unknown plugin "${plugin}" for rule ${rule}; add it to TIER_BY_PLUGIN with a boundary-rule justification`);
@@ -915,8 +1341,9 @@ export function tierOf(rule) {
 ```javascript
 import { diffRules } from "../rule-diff.mjs";
 import { SURFACES } from "../surfaces.mjs";
-import { stricter, optionsOf, severityOf, PRE_RULINGS, isEmptyObject } from "./ordering.mjs";
+import { stricter, optionsOf, severityOf, PRE_RULINGS, isEmptyObject, splitRestrictions, RESTRICTION_FIELD } from "./ordering.mjs";
 import { tierOf } from "./tiers.mjs";
+import { assertMarker } from "../markers.mjs";
 
 const SURFACE_ORDER = SURFACES.map((s) => s.name);
 const compare = (x, y) => (x < y ? -1 : x > y ? 1 : 0);
@@ -952,7 +1379,7 @@ function firstConflictOptions(eslintA, eslintB, surfaces) {
 // An empty object that is an element of an array nested inside an option object is a RegExp
 // that `eslint --print-config` serialised away (see effective-config.mjs); a bare `{}` sitting
 // at an options position itself just means "no options" and is not a loss.
-function hasLostRegExp(chosen) {
+export function hasLostRegExp(chosen) {
   if (!Array.isArray(chosen)) return false;
   const scan = (v) => {
     if (Array.isArray(v)) return v.some(isEmptyObject) || v.some(scan);
@@ -960,6 +1387,73 @@ function hasLostRegExp(chosen) {
     return false;
   };
   return chosen.slice(1).some(scan);
+}
+
+// C3, the agree/adopt half (the conflict half is `parameterise` in ordering.mjs): a row that copies
+// one donor's restriction rule verbatim -- or that copies a value both donors happen to share --
+// carries whatever that donor decided to ban, paths, messages and all. Split it the same way, so
+// there is one answer to "what may a restricted-* rule say in a shared tier" rather than two.
+// Rows a pre-ruling governs are left alone: their options are hand-written here, not donor data,
+// and the e2e union's own selectors legitimately contain regular expressions full of slashes.
+function parameteriseRestrictions(r) {
+  if (r.tool !== "eslint" || r.chosen === null || !RESTRICTION_FIELD[r.key]) return;
+  if (preRulingApplies(r.key, r.surface)) return;
+  // The row's OWN entries, not `optionsOf`'s: `optionsOf` strips every `message`, and a message
+  // that cites a project file ("See: shared/application/utils/featureFlagChecks.ts") is exactly
+  // the evidence the token test is looking for.
+  const split = splitRestrictions(r.key, r.surface, Array.isArray(r.chosen) ? r.chosen.slice(1) : []);
+  if (!split) return;
+  r.chosen = [severityOf(r.chosen), ...split];
+  r.test = "parameter";
+  r.note = `${r.note ? `${r.note}; ` : ""}the entries naming a project path, file or helper are that body's own and become the restrictions.${r.surface}.${RESTRICTION_FIELD[r.key]} parameter`;
+}
+
+// C4 -- the spec's CI section: "No rule ever ships at warn." A warning is a rule nobody has to
+// obey, and a shared tier full of them is a shared tier that does not bind. Every decided severity
+// of warn becomes error, whichever test decided it; an inert row (a rule one side turns off and the
+// other never names) has no severity to lift.
+function liftWarn(r) {
+  if (r.chosen === null || r.test === "inert" || severityOf(r.chosen) !== "warn") return;
+  r.chosen = Array.isArray(r.chosen) ? ["error", ...r.chosen.slice(1)] : "error";
+  r.test = "strictest";
+  r.note = r.note ? `${r.note}; no rule ships at warn (spec)` : "no rule ships at warn (spec)";
+}
+
+// C2: lift one eslint-plugin-boundaries element type out of a policy borrowed from a donor. An
+// element matcher is either a `{ type }` object (the type itself a string or a list), a bare
+// string, or an array of either, and it appears under `from`, `allow.to` and `disallow.to`.
+// Lifting a type means: drop any rule whose `from` named only that type, drop the type from every
+// `to` it appears in, and drop a rule whose `to` named nothing else.
+function narrowMatcher(matcher, type) {
+  if (Array.isArray(matcher)) {
+    const kept = matcher.map((m) => narrowMatcher(m, type)).filter((m) => m !== undefined);
+    return kept.length ? kept : undefined;
+  }
+  if (typeof matcher === "string") return matcher === type ? undefined : matcher;
+  if (!matcher || typeof matcher !== "object" || !("type" in matcher)) return matcher;
+  const narrowed = Array.isArray(matcher.type) ? matcher.type.filter((t) => t !== type) : matcher.type === type ? [] : matcher.type;
+  if (Array.isArray(narrowed) && narrowed.length === 0) return undefined;
+  return { ...matcher, type: narrowed };
+}
+
+export function withoutElementType(rules, type) {
+  if (!Array.isArray(rules)) return rules;
+  const out = [];
+  for (const rule of rules) {
+    const from = rule?.from === undefined ? undefined : narrowMatcher(rule.from, type);
+    if (rule?.from !== undefined && from === undefined) continue;
+    const next = { ...rule, ...(from === undefined ? {} : { from }) };
+    for (const side of ["allow", "disallow"]) {
+      if (next[side] === undefined) continue;
+      const hasTo = next[side] !== null && typeof next[side] === "object" && !Array.isArray(next[side]) && next[side].to !== undefined;
+      const to = narrowMatcher(hasTo ? next[side].to : next[side], type);
+      if (to === undefined) delete next[side];
+      else next[side] = hasTo ? { ...next[side], to } : to;
+    }
+    if (next.allow === undefined && next.disallow === undefined) continue;
+    out.push(next);
+  }
+  return out;
 }
 
 export function reconcileEslint(eslintA, eslintB) {
@@ -981,7 +1475,7 @@ export function reconcileEslint(eslintA, eslintB) {
     // rule; otherwise the markers resolve against this row's own two sides (the absent side
     // reading as empty).
     const adopt = (rule, value, side) => {
-      if (!preRulingApplies(rule, surface)) return row(rule, { chosen: value, test: "adopt", tier: tierOf(rule) });
+      if (!preRulingApplies(rule, surface)) return row(rule, { chosen: value, test: "adopt", tier: tierOf(rule, surface) });
       const preRuling = PRE_RULINGS[rule];
       const cached = preResolved[rule];
       const options = cached
@@ -989,16 +1483,16 @@ export function reconcileEslint(eslintA, eslintB) {
         : resolveMarkers(preRuling.chosen, optionsOf(side === "a" ? value : undefined), optionsOf(side === "b" ? value : undefined)).slice(1);
       const test = cached ? cached.test : preRuling.test;
       const note = `${cached ? cached.note : preRuling.note}; one-sided on this surface, options from the class ruling`;
-      return row(rule, { chosen: [severityOf(value), ...options], test, tier: tierOf(rule), note });
+      return row(rule, { chosen: [severityOf(value), ...options], test, tier: tierOf(rule, surface), note });
     };
 
-    for (const key of d.agree) rows.push(row(key, { chosen: a.rules[key], test: "agree", tier: tierOf(key) }));
+    for (const key of d.agree) rows.push(row(key, { chosen: a.rules[key], test: "agree", tier: tierOf(key, surface) }));
     for (const { rule, value } of d.onlyA) rows.push(adopt(rule, value, "a"));
     for (const { rule, value } of d.onlyB) rows.push(adopt(rule, value, "b"));
     for (const rule of [...d.offOnlyA, ...d.offOnlyB]) rows.push(row(rule, { chosen: null, test: "inert", tier: null }));
     for (const { rule } of d.conflict) {
       const { chosen, test, note } = stricter(rule, a.rules[rule], b.rules[rule], surface);
-      rows.push(row(rule, { chosen: resolveMarkers(chosen, optionsOf(a.rules[rule]), optionsOf(b.rules[rule])), test, tier: tierOf(rule), note }));
+      rows.push(row(rule, { chosen: resolveMarkers(chosen, optionsOf(a.rules[rule]), optionsOf(b.rules[rule])), test, tier: tierOf(rule, surface), note }));
     }
   }
 
@@ -1012,6 +1506,11 @@ export function reconcileEslint(eslintA, eslintB) {
     }
   }
 
+  for (const r of rows) {
+    liftWarn(r);
+    parameteriseRestrictions(r);
+  }
+
   return rows.sort((x, y) => SURFACE_ORDER.indexOf(x.surface) - SURFACE_ORDER.indexOf(y.surface) || compare(x.key, y.key));
 }
 
@@ -1021,14 +1520,24 @@ export function reconcileEslint(eslintA, eslintB) {
 // omitting the key entirely when neither side has it). { $parameter } markers survive: the
 // bundle writer turns them into body config reads. Markers are namespaced with a `$` prefix so a
 // plugin's own option object can never be mistaken for one — `union`, `fromSide` and `parameter`
-// are all names real ESLint rule options use.
+// are all names real ESLint rule options use. `assertMarker` (src/lib/markers.mjs) rejects a marker
+// attribute nobody implements, so a pre-ruling can never quietly mean less than it says.
 const OMIT = Symbol("omit");
 
 export function resolveMarkers(value, optionsA, optionsB) {
   const at = (options, key) => key.split(".").reduce((o, k) => o?.[k], options[0] ?? {});
   const walk = (v, keyPath) => {
-    if (Array.isArray(v)) return v.map((x) => walk(x, keyPath));
+    if (Array.isArray(v)) {
+      // A marker that resolves to a list SPLICES into the array it sits in, the same way `literal`
+      // spreads a `$parameter` marker in an array position: the boundaries base is one marker
+      // standing for nine rule entries, followed by whatever the body adds.
+      return v.flatMap((x) => {
+        const resolved = walk(x, keyPath);
+        return assertMarker(x) && Array.isArray(resolved) ? resolved : [resolved];
+      });
+    }
     if (v && typeof v === "object") {
+      assertMarker(v);
       if ("$union" in v) {
         const both = [].concat(at(optionsA, v.$union) ?? [], at(optionsB, v.$union) ?? []);
         const items = v.join ? both.flatMap((s) => String(s).split(v.join)) : both;
@@ -1038,9 +1547,9 @@ export function resolveMarkers(value, optionsA, optionsB) {
       if ("$fromSide" in v) {
         const [primarySide, fallbackSide] = v.$fromSide === "a" ? [optionsA, optionsB] : [optionsB, optionsA];
         const primary = at(primarySide, keyPath);
-        if (primary !== undefined) return primary;
-        const fallback = at(fallbackSide, keyPath);
-        return fallback !== undefined ? fallback : OMIT;
+        const taken = primary !== undefined ? primary : at(fallbackSide, keyPath);
+        if (taken === undefined) return OMIT;
+        return v.withoutElementType ? withoutElementType(taken, v.withoutElementType) : taken;
       }
       const entries = Object.entries(v)
         .map(([k, x]) => [k, walk(x, keyPath ? `${keyPath}.${k}` : k)])
@@ -1630,7 +2139,12 @@ import { describe, it, expect, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import reconcile from "../src/commands/reconcile.mjs";
+import { hasLostRegExp } from "../src/lib/reconcile/eslint.mjs";
+import { isEmptyObject, namesProject } from "../src/lib/reconcile/ordering.mjs";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 
 const quiet = () => {
   const log = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -1690,6 +2204,53 @@ describe("orrery reconcile", () => {
     expect(seen).toEqual({ source: "custom.ts", e2e: "e.spec.ts" });
     fs.rmSync(out, { recursive: true, force: true });
     q.restore();
+  });
+
+  it("guards the committed rulings.json: no eslint row's chosen options hold a RegExp lost by --print-config", () => {
+    const rulings = JSON.parse(fs.readFileSync(path.join(root, "docs/decisions/rulings.json"), "utf8"));
+    // The detector itself is the one reconcileEslint uses, imported rather than restated: a guard
+    // that re-implements what it guards can only ever prove its own copy right.
+    expect(isEmptyObject({})).toBe(true);
+    const offenders = rulings.rows.filter((r) => r.tool === "eslint" && hasLostRegExp(r.chosen)).map((r) => `${r.surface} ${r.key}`);
+    expect(offenders).toEqual([]);
+  });
+
+  // C3, the permanent guard for the one rule: nothing in `physics/` may name a path, a file, an
+  // alias or a project convention, because physics must be true for a repository that does not
+  // exist yet. The token list is `namesProject`'s (src/lib/reconcile/ordering.mjs): a path
+  // separator, a source-file extension, `@/`, or `.claude`, with purely relative specifiers
+  // (`../*`) stripped first because a parent-relative ban names a shape and not a project.
+  //
+  // Three rows carry a token and are not a project reference. Each is named here with why, so the
+  // exemption is a decision and not a hole, and an exemption that stops being needed shows up as a
+  // failure of its own:
+  const EXEMPT = new Map([
+    ["eslint sonarjs/no-duplicate-string", "the MIME type application/json and the CSS/Tailwind class patterns in ignoreStrings are machine strings, not paths"],
+    ["secretlint rules", "an npm package id (@secretlint/secretlint-rule-preset-recommend), not a path in a repository"],
+    ["ls-lint ls", "a workspace directory layout of globs (apps/*/src, packages/*/tests) that names no project's files"],
+  ]);
+
+  it("guards the committed rulings.json: no physics row names a path, a file, an alias or a project convention", () => {
+    const rulings = JSON.parse(fs.readFileSync(path.join(root, "docs/decisions/rulings.json"), "utf8"));
+    const flagged = rulings.rows.filter((r) => r.tier === "physics" && r.chosen !== null && namesProject(r.chosen));
+    const offenders = [...new Set(flagged.map((r) => `${r.tool} ${r.key}`))].filter((k) => !EXEMPT.has(k));
+    expect(offenders, "a physics row carrying a project token; parameterise it or record an exemption with its reason").toEqual([]);
+  });
+
+  it("keeps every physics-token exemption earning its place", () => {
+    const rulings = JSON.parse(fs.readFileSync(path.join(root, "docs/decisions/rulings.json"), "utf8"));
+    const flagged = new Set(rulings.rows.filter((r) => r.tier === "physics" && r.chosen !== null && namesProject(r.chosen)).map((r) => `${r.tool} ${r.key}`));
+    const stale = [...EXEMPT.keys()].filter((k) => !flagged.has(k));
+    expect(stale, "an exemption no row needs any more; delete it").toEqual([]);
+  });
+
+  // C4, the spec's CI section: "No rule ever ships at warn."
+  it("guards the committed rulings.json: no eslint row ships at warn", () => {
+    const rulings = JSON.parse(fs.readFileSync(path.join(root, "docs/decisions/rulings.json"), "utf8"));
+    const warned = rulings.rows
+      .filter((r) => r.tool === "eslint" && Array.isArray(r.chosen) && (r.chosen[0] === "warn" || r.chosen[0] === 1))
+      .map((r) => `${r.surface} ${r.key}`);
+    expect(warned).toEqual([]);
   });
 });
 ```
@@ -1900,7 +2461,17 @@ The rows become code. Physics exports rules and plugins per surface; the class a
   - `@vaoan/orrery/eslint` → `classes/next-supabase-mono/eslint.mjs` default export `(body?) => FlatConfig[]`; when `body` is omitted it calls `loadBodyConfig(process.cwd())`.
   - `@vaoan/orrery/eslint/physics` → `physics/eslint.mjs` exporting `PLUGINS` and `rules(surface, body)`.
   - `@vaoan/orrery/tsconfig` → `classes/next-supabase-mono/tsconfig.json` (extends `../../physics/tsconfig.json`).
-  - `@vaoan/orrery/stylelint`, `/jscpd`, `/cspell`, `/knip`, `/syncpack`, `/lint-staged`, `/prettier`, `/secretlint`, `/ls-lint` → functions `(body?) => object` (prettier and secretlint are constants; ls-lint returns a YAML string).
+  - `@vaoan/orrery/stylelint`, `/jscpd`, `/cspell`, `/knip`, `/syncpack`, `/lint-staged`, `/prettier`, `/secretlint`, `/ls-lint` → functions `(body?) => object`.
+    Decision: EVERY one of them returns an OBJECT, ls-lint included — the generator has one rendering
+    path (`literal`) and one contract, and a tool whose own file format is not JSON is serialised at
+    the point of use: `materialise` (src/lib/observe/scratch.mjs) turns ls-lint's `{ ls: { <dir>: {
+    <ext>: <rule> } } }` into the YAML the binary reads. Returning a pre-formatted string here would
+    put a second, hand-written renderer inside the generated bundle, where nothing could diff it
+    against the rulings.
+  - `@vaoan/orrery/prettier` is consumed through a `prettier.config.mjs` POINTER, not through
+    package.json's `"prettier"` key (C1): the export is a function, as the spec requires of every
+    export, and a package.json pointer hands prettier the module itself — an options object that is a
+    function, which prettier rejects. The pointer calls it.
   - `loadBodyConfig(cwd)`: walks up to the nearest `orrery.config.mjs`, imports it, validates it against the class schema, returns `{ root, config }`; throws naming unknown fields.
   - `resolveParameter(config, "tailwind.entryPoint")` reads a dotted path with the schema default when absent.
   - The class schema (hand-written, the only non-generated policy file in the class):
@@ -1921,9 +2492,21 @@ export default {
       allow: { type: "object[]", default: [] },      // extra { from, to } edges
     },
   },
-  imports: { type: "object", fields: { restrictedPatterns: { type: "object[]", default: [] } } },
   i18n: { type: "object", fields: { excludedWords: { type: "string[]", default: [] } } },
-  e2e: { type: "object", fields: { restrictedSyntax: { type: "object[]", default: [] }, assertFunctionNames: { type: "string[]", default: [] } } },
+  e2e: { type: "object", fields: { assertFunctionNames: { type: "string[]", default: [] } } },
+  // C3: what a body bans with no-restricted-syntax / -imports / -properties is that body's own
+  // opinion, and it differs per surface — a Supabase port ban belongs in e2e, an arbitrary-Tailwind
+  // ban in components. The shared tiers keep only the entries that name nothing project-specific
+  // and splice these in after them. A body adds bans here; it can never remove a shared one.
+  restrictions: {
+    type: "object",
+    fields: Object.fromEntries(
+      ["source", "component", "package", "unit-test", "e2e", "script"].map((surface) => [
+        surface,
+        { type: "object", fields: { syntax: { type: "object[]", default: [] }, imports: { type: "object[]", default: [] }, properties: { type: "object[]", default: [] } } },
+      ])
+    ),
+  },
   spelling: { type: "string[]", default: [] },
   ignore: { type: "object", fields: { duplication: { type: "string[]", default: [] }, secrets: { type: "string[]", default: [] }, spelling: { type: "string[]", default: [] } } },
   knip: { type: "object", fields: { apps: { type: "object", fields: { extraEntries: { type: "string[]", default: [] }, extraProjects: { type: "string[]", default: [] } } }, packages: { type: "object", fields: { extraEntries: { type: "string[]", default: [] }, extraProjects: { type: "string[]", default: [] } } }, root: { type: "object", default: {} } } },
@@ -1996,6 +2579,7 @@ import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL, fileURLToPath } from "node:url";
 import { PLUGIN_SOURCES, dependenciesFor } from "../src/lib/bundle/plugins.mjs";
 import { renderPhysicsEslint, renderClassEslint, literal } from "../src/lib/bundle/eslint.mjs";
 import { renderTsconfig, renderStylelint, renderFunction } from "../src/lib/bundle/tools.mjs";
@@ -2009,6 +2593,18 @@ describe("literal", () => {
     expect(literal(["error", { entryPoint: { $parameter: "tailwind.entryPoint" } }])).toBe('["error", { "entryPoint": body.tailwind.entryPoint }]');
     expect(literal(["error", { patterns: [{ group: ["../*"] }, { $parameter: "imports.restrictedPatterns" }] }])).toBe('["error", { "patterns": [{ "group": ["../*"] }, ...body.imports.restrictedPatterns] }]');
     expect(literal({ b: 1, a: [2] })).toBe('{ "a": [2], "b": 1 }');
+  });
+
+  // Regression: a generated tool function must satisfy `(body?) => object` — calling it with no
+  // argument must still return the schema's defaults, not throw on an intermediate undefined key
+  // and not silently return `undefined` where the schema promises `[]` or `{}`. `literal`'s
+  // `defaults` argument is what makes that true: supplied, a `$parameter` renders as an optional
+  // chain with its default embedded, both as a plain field and as an array-extending spread.
+  it("renders a $parameter as an optional chain with its embedded default when defaults are supplied", () => {
+    expect(literal({ $parameter: "hooks.preCommit" }, "", { hooks: { preCommit: [] } })).toBe("body.hooks?.preCommit ?? []");
+    expect(literal({ $parameter: "knip.root" }, "", { knip: { root: {} } })).toBe("body.knip?.root ?? {}");
+    expect(literal({ $parameter: "workspacePackages" }, "", { workspacePackages: [] })).toBe("body.workspacePackages ?? []");
+    expect(literal(["a", { $parameter: "ignore.spelling" }], "", { ignore: { spelling: [] } })).toBe('["a", ...(body.ignore?.spelling ?? [])]');
   });
 });
 
@@ -2076,6 +2672,87 @@ describe("renderTsconfig / renderStylelint / renderFunction", () => {
   });
 });
 
+describe("renderFunction — EXTENDERS collision regression", () => {
+  // knip's EXTENDERS entries "apps.entry" and "packages.entry" share a leaf name ("entry") under
+  // different parents. A textual splice keyed only on the leaf name (the brief's original
+  // regex-based implementation) finds the first "entry": [ occurrence for both, nesting
+  // packages' extension inside apps' fallback instead of extending its own field. The fix
+  // addresses each field by its full path, so each extends only its own parameter.
+  it("extends apps.entry from knip.apps.extraEntries and packages.entry from knip.packages.extraEntries, not each other", () => {
+    const rows = [
+      { tool: "knip", surface: "*", key: "apps.entry", chosen: ["src/app/**/*.ts"], tier: "class", test: "benefit" },
+      { tool: "knip", surface: "*", key: "packages.entry", chosen: ["tests/**/*.ts"], tier: "class", test: "benefit" },
+    ];
+    const src = renderFunction("knip", rows, provenance);
+    expect(src).toContain('"entry": ["src/app/**/*.ts", ...(body.knip?.apps?.extraEntries ?? [])]');
+    expect(src).toContain('"entry": ["tests/**/*.ts", ...(body.knip?.packages?.extraEntries ?? [])]');
+    expect(src).not.toContain("[, ...");
+  });
+});
+
+describe("renderFunction — EXTENDER-target rows are not also emitted as fields", () => {
+  // knip's reconciler emits a parameter row for the exact path an EXTENDERS entry targets — e.g.
+  // "apps.extraEntries" with `chosen: { $parameter: "knip.apps.extraEntries" }` — because that
+  // parameter is meaningful in its own right. In the generated bundle it is not: the parameter
+  // belongs only in the spread `applyExtenders` already adds to `entry`/`project`. Rendering it
+  // again as a field of its own is redundant data with no place in the class's knip shape.
+  it("omits extraEntries/extraProjects as fields while keeping the entry/project spreads", () => {
+    const rows = [
+      { tool: "knip", surface: "*", key: "apps.entry", chosen: ["src/app/**/*.ts"], tier: "class", test: "benefit" },
+      { tool: "knip", surface: "*", key: "apps.extraEntries", chosen: { $parameter: "knip.apps.extraEntries" }, tier: "class", test: "parameter" },
+      { tool: "knip", surface: "*", key: "apps.project", chosen: ["src/**/*.ts"], tier: "class", test: "benefit" },
+      { tool: "knip", surface: "*", key: "apps.extraProjects", chosen: { $parameter: "knip.apps.extraProjects" }, tier: "class", test: "parameter" },
+      { tool: "knip", surface: "*", key: "packages.entry", chosen: ["tests/**/*.ts"], tier: "class", test: "benefit" },
+      { tool: "knip", surface: "*", key: "packages.extraEntries", chosen: { $parameter: "knip.packages.extraEntries" }, tier: "class", test: "parameter" },
+      { tool: "knip", surface: "*", key: "packages.project", chosen: [], tier: "class", test: "benefit" },
+      { tool: "knip", surface: "*", key: "packages.extraProjects", chosen: { $parameter: "knip.packages.extraProjects" }, tier: "class", test: "parameter" },
+    ];
+    const src = renderFunction("knip", rows, provenance);
+    // "extraEntries"/"extraProjects" legitimately appear inside the spread reads
+    // (body.knip?.apps?.extraEntries); what must never appear is either as a JSON field key.
+    expect(src).not.toContain('"extraEntries":');
+    expect(src).not.toContain('"extraProjects":');
+    expect(src).toContain('"entry": ["src/app/**/*.ts", ...(body.knip?.apps?.extraEntries ?? [])]');
+    expect(src).toContain('"project": ["src/**/*.ts", ...(body.knip?.apps?.extraProjects ?? [])]');
+    expect(src).toContain('"entry": ["tests/**/*.ts", ...(body.knip?.packages?.extraEntries ?? [])]');
+    expect(src).toContain('"project": [...(body.knip?.packages?.extraProjects ?? [])]');
+  });
+});
+
+describe("generated tool functions satisfy (body?) => object", () => {
+  // Real-data regression for the same contract: build the actual bundle from the committed
+  // rulings.json and prove every generated physics/class tool function tolerates a missing
+  // argument — this is what surfaced the bug (the brief's own given tests don't exercise two
+  // EXTENDERS entries sharing a leaf, and none of them call a generated function with no body).
+  it("returns an object from every generated tool function called with no argument", async () => {
+    const rulingsPath = fileURLToPath(new URL("../../../docs/decisions/rulings.json", import.meta.url));
+    const rulings = JSON.parse(fs.readFileSync(rulingsPath, "utf8"));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-contract-"));
+    fs.mkdirSync(path.join(dir, "classes/next-supabase-mono"), { recursive: true });
+    fs.writeFileSync(path.join(dir, "classes/next-supabase-mono/schema.mjs"), "export default {};");
+    fs.writeFileSync(path.join(dir, "classes/next-supabase-mono/eslint.base.mjs"), "export default {};");
+    writeBundle(rulings, dir);
+
+    const files = [
+      "physics/hooks.mjs", "physics/syncpack.mjs", "physics/lint-staged.mjs", "physics/ls-lint.mjs", "physics/prettier.mjs", "physics/secretlint.mjs",
+      "classes/next-supabase-mono/knip.mjs", "classes/next-supabase-mono/cspell.mjs", "classes/next-supabase-mono/jscpd.mjs", "classes/next-supabase-mono/stylelint.mjs",
+    ];
+    for (const file of files) {
+      const mod = await import(pathToFileURL(path.join(dir, file)).href);
+      const result = mod.default();
+      expect(result, `${file} default()`).toBeTypeOf("object");
+      expect(result, `${file} default()`).not.toBeNull();
+      if (file === "classes/next-supabase-mono/knip.mjs") {
+        // extraEntries/extraProjects are EXTENDERS targets, consumed by the entry/project
+        // spreads — they must never surface as fields of their own on apps/packages.
+        expect(Object.keys(result.apps).sort()).toEqual(["entry", "project"]);
+        expect(Object.keys(result.packages).sort()).toEqual(["entry", "project"]);
+      }
+    }
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+});
+
 describe("writeBundle", () => {
   it("writes every generated file under the package and nothing else", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-bundle-"));
@@ -2090,6 +2767,27 @@ describe("writeBundle", () => {
     ]);
     expect(fs.readFileSync(path.join(dir, "physics/prettier.mjs"), "utf8")).toContain('"endOfLine": "auto"');
     fs.rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+describe("packages/orrery/package.json declares every dependency the bundle needs", () => {
+  // The generated physics/class eslint files import a plugin module per rule prefix they carry,
+  // and the materialised tool configs load the tools themselves. `dependenciesFor` is the single
+  // list of what that comes to; the package manifest must be a superset of it, or the bundle
+  // imports something the package never asked for — which is exactly how
+  // "@next/next/no-location-assign-relative-destination" broke every real run.
+  it("declares at least dependenciesFor(every prefix in the committed rulings.json)", () => {
+    const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+    const rulings = JSON.parse(fs.readFileSync(path.join(root, "docs/decisions/rulings.json"), "utf8"));
+    const manifest = JSON.parse(fs.readFileSync(path.join(root, "packages/orrery/package.json"), "utf8"));
+    const prefixes = [...new Set(
+      rulings.rows
+        .filter((r) => r.tool === "eslint" && r.tier && r.chosen !== null)
+        .map((r) => (r.key.includes("/") ? r.key.slice(0, r.key.lastIndexOf("/")) : "core"))
+    )].filter((p) => PLUGIN_SOURCES[p]);
+    const needed = dependenciesFor(prefixes);
+    const missing = Object.keys(needed).filter((name) => !(name in manifest.dependencies));
+    expect(missing, "packages/orrery/package.json is missing a dependency the bundle imports").toEqual([]);
   });
 });
 ```
@@ -2130,13 +2828,12 @@ export const PLUGIN_SOURCES = {
 // Prefixes that appear only as `off` (from eslint-config-prettier) and have no plugin of their own.
 export const PRETTIER_OFF_PREFIXES = ["@stylistic", "@stylistic/js", "@stylistic/ts", "@stylistic/jsx", "vue", "flowtype", "babel", "@babel", "standard"];
 
-// Versions are the HIGHER of the two donors' actually-installed copies (fix round 1, 2026-09-09):
-// the fixture surfaced that `@next/eslint-plugin-next` was pinned to libra's 16.2.4 when the
-// ruling for "no-location-assign-relative-destination" was adopted from aeleos's 16.3.0, which
-// broke every real ESLint run through the bundle. Re-measured every dependency the same way and
-// raised the floor wherever a donor was ahead of the pin, not just the one that crashed.
 export const TOOL_DEPENDENCIES = {
   eslint: "^9.39.5", "@eslint/js": "^10.0.1", "eslint-config-prettier": "^10.1.8", typescript: "^6.0.3",
+  // C2: eslint-plugin-boundaries resolves every specifier through the `import/resolver` setting the
+  // class declares; without this resolver an aliased `@/...` import is an unknown element and the
+  // dependency graph is decorative. Version: aeleos's, the only donor that had it.
+  "eslint-import-resolver-typescript": "^4.4.5",
   stylelint: "^17.14.1", "stylelint-config-standard": "^40.0.0", "stylelint-config-tailwindcss": "^1.0.1",
   knip: "^6.31.0", jscpd: "^4.2.5", cspell: "^10.0.1", syncpack: "^14.3.1", secretlint: "^12.3.1", "@secretlint/secretlint-rule-preset-recommend": "^12.3.1",
   "@ls-lint/ls-lint": "^2.3.1", "lint-staged": "^16.4.0", prettier: "^3.9.6",
@@ -2157,6 +2854,7 @@ export function dependenciesFor(prefixes) {
 import { SURFACES } from "../surfaces.mjs";
 import { PLUGIN_SOURCES, PRETTIER_OFF_PREFIXES } from "./plugins.mjs";
 import { pluginOf } from "../reconcile/tiers.mjs";
+import { assertMarker } from "../markers.mjs";
 
 const header = (p, record) => `// GENERATED by orrery reconcile from ${p.a.name} ${p.a.sha} and ${p.b.name} ${p.b.sha} on ${p.date}.\n// Record: docs/decisions/${record}. Edit by hand only through a pull request that also updates the record;\n// the donors are never consulted again.\n`;
 
@@ -2174,16 +2872,33 @@ function pathValue(source, dotted) {
   return dotted.split(".").reduce((o, k) => o?.[k], source);
 }
 
+// A parameter path's segments are not all identifiers: `restrictions.unit-test.syntax` names a
+// real surface, and `body.restrictions.unit-test.syntax` is a subtraction, not a read (it parsed,
+// ran, and threw "test is not defined" inside the generated physics file). A segment that is not a
+// valid identifier is rendered as a bracket access.
+const IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+
+function accessChain(path, optional) {
+  return path
+    .split(".")
+    .map((key, i) => {
+      const dot = i === 0 || !optional ? "." : "?.";
+      return IDENTIFIER.test(key) ? `${dot}${key}` : `${i === 0 || !optional ? "" : "?."}[${JSON.stringify(key)}]`;
+    })
+    .join("");
+}
+
 function renderParameter(path, defaults) {
-  if (defaults === undefined) return `body.${path}`;
-  const chain = `body.${path.split(".").join("?.")}`;
-  return `${chain} ?? ${literal(pathValue(defaults, path))}`;
+  if (defaults === undefined) return `body${accessChain(path, false)}`;
+  return `body${accessChain(path, true)} ?? ${literal(pathValue(defaults, path))}`;
 }
 
 export function literal(value, indent = "", defaults) {
+  assertMarker(value);
   if (value && typeof value === "object" && !Array.isArray(value) && "$parameter" in value) return renderParameter(value.$parameter, defaults);
   if (Array.isArray(value)) {
     const parts = value.map((v) => {
+      assertMarker(v);
       if (v && typeof v === "object" && !Array.isArray(v) && "$parameter" in v) {
         const rendered = renderParameter(v.$parameter, defaults);
         return defaults === undefined ? `...${rendered}` : `...(${rendered})`;
@@ -2238,7 +2953,8 @@ export function renderPhysicsEslint(rows, provenance) {
 export function renderClassEslint(rows, provenance) {
   const bySurface = rulesBySurface(rows, "class");
   const prefixes = prefixesIn(bySurface);
-  return `${header(provenance, "0004-eslint.md")}import path from "node:path";
+  return `${header(provenance, "0004-eslint.md")}import fs from "node:fs";
+import path from "node:path";
 import { pathToFileURL } from "node:url";
 import prettier from "eslint-config-prettier";
 ${imports(prefixes)}
@@ -2263,9 +2979,14 @@ const classRules = {
 ${renderRules(bySurface)}
 };
 
+// I6: "the body has no eslint.local.mjs" is a question for the filesystem, not for the module
+// loader. ERR_MODULE_NOT_FOUND is also what a local file that imports something missing throws, so
+// catching it here reported a broken local override as an absent one and lint carried on without
+// it. Existence is checked; every import error propagates.
 async function loadLocal(root) {
   const file = path.join(root, "eslint.local.mjs");
-  try { return (await import(pathToFileURL(file).href)).default ?? []; } catch (error) { if (error.code === "ERR_MODULE_NOT_FOUND") return []; throw error; }
+  if (!fs.existsSync(file)) return [];
+  return (await import(pathToFileURL(file).href)).default ?? [];
 }
 
 export default async function eslintConfig(explicitBody) {
@@ -2274,6 +2995,11 @@ export default async function eslintConfig(explicitBody) {
   const blocks = ORDER.map((surface) => ({
     name: \`orrery/next-supabase-mono/\${surface}\`,
     files: SURFACE_FILES[surface],
+    // The unit-test globs (**/*.test.{ts,tsx}, **/tests/**/*.{ts,tsx}) also match aeleos's
+    // apps/*/tests/e2e/*.spec.ts layout — a flat-config block with overlapping "files" still
+    // applies, so without this the e2e surface would additionally pick up unit-test's
+    // testing-library/vitest rules. The e2e block below (ORDER runs after unit-test) still
+    // applies its own rules to that path; this block just steps aside for it.
     ...(surface === "unit-test" ? { ignores: ["**/e2e/**"] } : {}),
     ...base(surface, body, root),
     plugins: PLUGINS,
@@ -2301,7 +3027,14 @@ const DEFAULT_BODY = withDefaults({}, schema);
 const header = (p, record) => `// GENERATED by orrery reconcile from ${p.a.name} ${p.a.sha} and ${p.b.name} ${p.b.sha} on ${p.date}. Record: docs/decisions/${record}.\n`;
 const jsonHeader = (p, record) => `GENERATED by orrery reconcile from ${p.a.name} ${p.a.sha} and ${p.b.name} ${p.b.sha} on ${p.date}. Record: docs/decisions/${record}.`;
 
-const setPath = (target, dotted, value) => { const keys = dotted.split("."); let o = target; for (const k of keys.slice(0, -1)) o = o[k] ??= {}; o[keys.at(-1)] = value; };
+// C1: a row key is a dotted path into the tool's config object — except when the key is itself a
+// glob, and lint-staged's keys always are. `*.{cjs,js,jsx,mjs,ts,tsx}` split on "." produced
+// `{ "*": { "{cjs,js,jsx,mjs,ts,tsx}": [...] } }`: a nested object where lint-staged requires a
+// command list, so the generated physics/lint-staged.mjs was a config lint-staged refuses. A key
+// carrying any glob metacharacter is one literal segment, never a path.
+const GLOB_KEY = /[*{},?[\]]/;
+const segmentsOf = (key) => (GLOB_KEY.test(key) ? [key] : key.split("."));
+const setPath = (target, dotted, value) => { const keys = segmentsOf(dotted); let o = target; for (const k of keys.slice(0, -1)) o = o[k] ??= {}; o[keys.at(-1)] = value; };
 // an $inherit ruling means: omit the key so the preset's default applies
 const toolRows = (rows, tool) => rows.filter((r) => r.tool === tool && r.chosen !== null && r.test !== "inert" && !(r.chosen && typeof r.chosen === "object" && "$inherit" in r.chosen));
 
@@ -2358,8 +3091,19 @@ export function renderStylelint(rows, provenance, defaults = DEFAULT_BODY) {
 
 const RECORD = { prettier: "0007-prettier.md", secretlint: "0008-secretlint.md", jscpd: "0009-jscpd.md", cspell: "0010-cspell.md", "ls-lint": "0011-ls-lint.md", knip: "0012-knip.md", syncpack: "0013-syncpack.md", "lint-staged": "0014-lint-staged.md", hooks: "0015-hooks.md" };
 
+// C1: a few tools want an ARRAY where the rulings address entries by a readable label. syncpack's
+// own schema (node_modules/syncpack/schema.json, and libra's committed .syncpackrc.json) declares
+// `versionGroups` as an array of group objects; the rulings key each group by what it is
+// ("versionGroups.workspace", "versionGroups.floatingPeers") so the record reads as a record and
+// each group keeps its own a/b provenance. This is the one place the two meet: the labelled map
+// collapses to the array the tool reads, in the rulings' own row order.
+const SHAPES = {
+  syncpack: (out) => (out.versionGroups ? { ...out, versionGroups: Object.values(out.versionGroups) } : out),
+};
+
 export function renderFunction(tool, rows, provenance, defaults = DEFAULT_BODY) {
-  const value = objectFromRows(tool, rows);
+  const rendered = objectFromRows(tool, rows);
+  const value = SHAPES[tool] ? SHAPES[tool](rendered) : rendered;
   applyExtenders(tool, value);
   const source = literal(value, "", defaults);
   const name = tool.replace(/-([a-z])/g, (m, c) => c.toUpperCase());
@@ -2476,30 +3220,45 @@ export async function loadBodyConfig(startDir) {
 // Hand-written: what every block needs besides rules. Language options come from the donors'
 // effective configs (both use typescript-eslint's parser with the project service); settings
 // are what the React and boundaries plugins need to resolve elements and versions.
+import { createRequire } from "node:module";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 
+// The resolver is named by ABSOLUTE PATH, not by the short name "typescript". eslint-module-utils
+// (which eslint-plugin-boundaries and eslint-plugin-import both resolve through) loads a named
+// resolver from the linted FILE's own package directory, or from its own directory inside the
+// store — never from Orrery's. Under pnpm's isolated layout that means a body which does not
+// itself depend on eslint-import-resolver-typescript silently gets no resolver at all, every
+// aliased import becomes an unplaceable element, and boundaries reports nothing while looking
+// healthy. Orrery ships the resolver, so Orrery is the one that can say where it is.
+const RESOLVER = createRequire(import.meta.url).resolve("eslint-import-resolver-typescript");
+
 const STANDARD_ELEMENTS = [
   { type: "proxy", mode: "file", pattern: "apps/*/src/proxy.ts" },
-  { type: "feature-barrel", mode: "file", pattern: "apps/*/src/features/*/{index,public}.ts" },
-  { type: "feature", pattern: "apps/*/src/features/*/*", capture: ["feature", "layer"] },
-  { type: "shared", pattern: "apps/*/src/shared/*", capture: ["layer"] },
+  // The capture list is load-bearing, not decoration. The class's boundaries policy allows a barrel
+  // to reach only into its OWN feature, written as `{{ from.captured.feature }}`, and its layered
+  // rules match on `layer`. Captures bind to the pattern's `*` groups IN ORDER, and the class's
+  // patterns lead with `apps/*` where a single body's own config names its one app — so the app
+  // wildcard must be named too, or `feature` binds to the app name and `layer` to the feature, and
+  // every layered edge matches nothing.
+  { type: "feature-barrel", mode: "file", pattern: "apps/*/src/features/*/{index,public}.ts", capture: ["app", "feature"] },
+  { type: "feature", pattern: "apps/*/src/features/*/*", capture: ["app", "feature", "layer"] },
+  { type: "shared", pattern: "apps/*/src/shared/*", capture: ["app", "layer"] },
   { type: "app", pattern: ["apps/*/src/app", "apps/*/src/app/**"] },
   { type: "package", pattern: "packages/*/src", capture: ["package"] },
 ];
 
 // Both donors turn `no-undef` off on source/component/package (rulings.json: agree, chosen
-// [0, ...]) — the TypeScript compiler catches undefined identifiers there, not eslint. It stays
-// on only for `script`, adopted from aeleos. Globals go on every surface regardless: type-aware
-// parsing still needs `window`/`process`/etc. resolvable as known identifiers rather than
-// implicit `any`-flavoured globals, and `script` needs them because `no-undef` is on there.
+// [0, ...]) — the TypeScript compiler catches undefined identifiers there, not eslint, and
+// type-aware parsing resolves `window`/`process`/etc. through TypeScript's own lib types, not
+// through eslint's `no-undef`/globals machinery. Declaring globals for those three surfaces was
+// dead weight with no rule left to consume it, so S1 (PR #31 review) drops it there. `script`
+// keeps `no-undef` on (adopted from aeleos) and so still needs `globals.node`; `unit-test`/`e2e`
+// keep both node and browser for the test-runner and DOM globals their assertions reference.
 const SURFACE_GLOBALS = {
   script: { ...globals.node },
   "unit-test": { ...globals.node, ...globals.browser },
   e2e: { ...globals.node, ...globals.browser },
-  source: { ...globals.browser, ...globals.node },
-  component: { ...globals.browser, ...globals.node },
-  package: { ...globals.browser, ...globals.node },
 };
 
 export default function base(surface, body, root) {
@@ -2509,10 +3268,20 @@ export default function base(surface, body, root) {
       ...(typescript ? { parser: tseslint.parser, parserOptions: { projectService: true, tsconfigRootDir: root } } : {}),
       ecmaVersion: 2023,
       sourceType: "module",
-      globals: SURFACE_GLOBALS[surface],
+      // ESLint's own flat-config validator requires an object here, not undefined — `?? {}` for
+      // the three surfaces S1 dropped from SURFACE_GLOBALS above, not an omitted key.
+      globals: SURFACE_GLOBALS[surface] ?? {},
     },
     settings: {
       react: { version: "detect" },
+      // C2. **Without this the boundaries graph is decorative.** eslint-plugin-boundaries asks the
+      // `import/resolver` settings where a specifier points; with none configured, every `@/...`
+      // import — which is how both donors reach anything that is not a sibling — comes back as an
+      // unknown element, and an import the rule cannot place is an import it cannot police. The
+      // TypeScript resolver reads the `paths` the compiler reads, so `@/` means the same thing to
+      // the linter that it means to the build. Only the TypeScript surfaces have a project to
+      // read; `script` is plain JavaScript.
+      ...(typescript ? { "import/resolver": { [RESOLVER]: { alwaysTryTypes: true, noWarnOnMultipleProjects: true, project: ["apps/*/tsconfig.json", "packages/*/tsconfig.json"] } } } : {}),
       "boundaries/elements": [...STANDARD_ELEMENTS, ...body.boundaries.elements],
       "boundaries/include": ["apps/*/src/**/*", "packages/*/src/**/*"],
     },
@@ -2643,7 +3412,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { readEffectiveConfig } from "../src/lib/effective-config.mjs";
-import { optionsOf, severityOf } from "../src/lib/reconcile/ordering.mjs";
+import { severityOf } from "../src/lib/reconcile/ordering.mjs";
+import { effectiveMismatches } from "../src/lib/observe/code.mjs";
+import { PLUGIN_SOURCES } from "../src/lib/bundle/plugins.mjs";
+import { withDefaults } from "../src/lib/body-config.mjs";
+import schema from "../classes/next-supabase-mono/schema.mjs";
+import { builtinRules } from "eslint/use-at-your-own-risk";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const fixture = path.join(root, "fixtures/next-supabase-mono");
@@ -2656,36 +3430,106 @@ const SAMPLES = {
   script: "scripts/build.mjs",
   package: "packages/core/src/thing.ts",
 };
-const body = (await import(path.join(fixture, "orrery.config.mjs").replace(/^([A-Za-z]):/, "file:///$1:"))).default;
+const rawBody = (await import(path.join(fixture, "orrery.config.mjs").replace(/^([A-Za-z]):/, "file:///$1:"))).default;
+// The real bundle always reads a schema-defaulted body (`withDefaults`, in body-config.mjs) — a
+// $parameter such as "e2e.assertFunctionNames" or "i18n.excludedWords" that the fixture's
+// orrery.config.mjs leaves unset resolves to the schema's default ([]), never to `undefined`.
+// Reading the raw, un-defaulted config here would make `read()` return `undefined` for anything
+// the fixture omits, which JSON.stringify then silently drops — a false "want": {} that does not
+// reflect what the generator actually renders.
+const body = withDefaults(rawBody, schema);
 
-const resolveParameters = (value) => {
-  if (Array.isArray(value)) return value.flatMap((v) => (v && typeof v === "object" && "$parameter" in v ? (read(v.$parameter) ?? []) : [resolveParameters(v)]));
-  if (value && typeof value === "object") return "$parameter" in value ? read(value.$parameter) : Object.fromEntries(Object.entries(value).map(([k, v]) => [k, resolveParameters(v)]));
-  return value;
-};
-const read = (dotted) => dotted.split(".").reduce((o, k) => o?.[k], body);
-const norm = (v) => JSON.stringify([severityOf(v), ...optionsOf(v)]);
-
+// The honesty comparison itself (canonical key-order-independent matching, the subset "actual can
+// carry a schema-filled default `want` never spelled out" slack, the eslint-config-prettier
+// exemption) lives in src/lib/observe/code.mjs's effectiveMismatches — this is the same function
+// `orrery observe` runs against a real body, so there is one comparison, not two.
 describe.each(Object.entries(SAMPLES))("surface %s", (surface, file) => {
   const effective = readEffectiveConfig(fixture, file);
-  const expected = rulings.rows.filter((r) => r.tool === "eslint" && r.surface === surface && r.chosen !== null && r.tier);
+  const mismatches = effectiveMismatches(effective.rules, rulings.rows, surface, body);
 
   it("carries every ruled rule with the ruled value", () => {
-    const misses = [];
-    for (const r of expected) {
-      const actual = effective.rules[r.key];
-      if (actual === undefined) { misses.push(`${r.key}: missing`); continue; }
-      const want = resolveParameters(r.chosen);
-      if (norm(actual) !== norm(want)) misses.push(`${r.key}: got ${norm(actual)} want ${norm(want)}`);
-    }
-    expect(misses).toEqual([]);
+    expect(mismatches.filter((m) => !m.endsWith("not in the rulings and not off"))).toEqual([]);
   }, 120_000);
 
   it("carries no rule the rulings do not name, except eslint-config-prettier's offs", () => {
-    const named = new Set(expected.map((r) => r.key));
-    const extras = Object.entries(effective.rules).filter(([k, v]) => !named.has(k) && severityOf(v) !== "off").map(([k]) => k);
-    expect(extras).toEqual([]);
+    expect(mismatches.filter((m) => m.endsWith("not in the rulings and not off"))).toEqual([]);
   }, 120_000);
+});
+
+// T3: aeleos's own e2e layout nests under apps/*/tests/e2e/, not apps/*/e2e/ — and the
+// unit-test surface's own globs (**/*.test.{ts,tsx}, **/tests/**/*.{ts,tsx}) match that path too.
+// A flat-config block with overlapping "files" still applies regardless of "ignores" on another
+// block, so without the unit-test block's own "ignores": ["**/e2e/**"] (SURFACE_FILES /
+// renderClassEslint in src/lib/bundle/eslint.mjs) this file would carry both the e2e surface's
+// rules and the unit-test surface's testing-library/vitest ones. Checked as its own surface
+// sample, separately from SAMPLES.e2e above, specifically because it is the layout that broke.
+describe("surface e2e (aeleos's nested apps/*/tests/e2e/ layout)", () => {
+  const file = "apps/web/tests/e2e/smoke.spec.ts";
+  const effective = readEffectiveConfig(fixture, file);
+  const mismatches = effectiveMismatches(effective.rules, rulings.rows, "e2e", body);
+
+  it("carries every ruled rule with the ruled value", () => {
+    expect(mismatches.filter((m) => !m.endsWith("not in the rulings and not off"))).toEqual([]);
+  }, 120_000);
+
+  it("carries no rule the rulings do not name, except eslint-config-prettier's offs", () => {
+    expect(mismatches.filter((m) => m.endsWith("not in the rulings and not off"))).toEqual([]);
+  }, 120_000);
+
+  it("carries no testing-library/* or vitest/* rule that is on", () => {
+    const on = Object.entries(effective.rules)
+      .filter(([key, value]) => (key.startsWith("testing-library/") || key.startsWith("vitest/")) && severityOf(value) !== "off")
+      .map(([key]) => key);
+    expect(on).toEqual([]);
+  }, 120_000);
+});
+
+// Regression pre-check: a ruling can name a rule that does not exist in the plugin version the
+// bundle actually ships (this is exactly how "@next/next/no-location-assign-relative-destination"
+// broke every real ESLint run before packages/orrery/package.json caught up to the version the
+// ruling was measured against). This checks rule *existence* against the installed plugins
+// directly — no fixture, no --print-config — so it fails fast and names the exact rule and plugin,
+// rather than surfacing as an opaque `eslint --print-config` crash inside the surface tests above.
+const coreRules = builtinRules;
+const pluginRulesCache = new Map();
+async function rulesForPrefix(prefix) {
+  if (pluginRulesCache.has(prefix)) return pluginRulesCache.get(prefix);
+  const source = PLUGIN_SOURCES[prefix];
+  if (!source) { pluginRulesCache.set(prefix, undefined); return undefined; }
+  // import.meta.resolve, not a bare `import(source.module)`: Vite/Vitest's SSR module graph
+  // intercepts bare specifiers under "@vitest/*" (colliding with its own internal packages) and
+  // resolves them against the workspace root instead of this file's real location, throwing
+  // MODULE_NOT_FOUND for "@vitest/eslint-plugin" even though it is genuinely installed.
+  // import.meta.resolve follows real Node ESM resolution from this file's own path and sidesteps it.
+  const mod = await import(import.meta.resolve(source.module));
+  const base = mod.default ?? mod;
+  const memberPath = source.member === source.name ? [] : source.member.slice(source.name.length + 1).split(".");
+  let plugin = base;
+  for (const part of memberPath) plugin = plugin?.[part];
+  const rules = plugin?.rules;
+  pluginRulesCache.set(prefix, rules);
+  return rules;
+}
+
+const ruledKeys = [...new Set(
+  rulings.rows
+    .filter((r) => r.tool === "eslint" && r.tier && r.chosen !== null && severityOf(r.chosen) !== "off")
+    .map((r) => r.key)
+)];
+
+describe("every ruled, non-off eslint rule exists in the plugin the bundle ships", () => {
+  it.each(ruledKeys)("%s", async (key) => {
+    const slash = key.lastIndexOf("/");
+    if (slash === -1) {
+      expect(coreRules.has(key), `core rule "${key}" does not exist in the installed eslint`).toBe(true);
+      return;
+    }
+    const prefix = key.slice(0, slash);
+    const ruleName = key.slice(slash + 1);
+    const rules = await rulesForPrefix(prefix);
+    expect(rules, `"${key}": no plugin mapping (or no rules export) for prefix "${prefix}" in PLUGIN_SOURCES`).toBeTruthy();
+    expect(ruleName in rules, `"${key}": "${ruleName}" does not exist in plugin "${prefix}" (module "${PLUGIN_SOURCES[prefix]?.module}")`).toBe(true);
+  });
 });
 ```
 
@@ -2760,7 +3604,11 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { versionDrift, installedCommit } from "../src/lib/observe/version.mjs";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+const fixture = path.join(root, "fixtures/next-supabase-mono");
 
 let dir;
 beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-ver-")); });
@@ -2799,6 +3647,9 @@ describe("versionDrift", () => {
     versionDrift(dir, { run: (c, a) => { args = [c, ...a]; return run(); } });
     expect(args).toEqual(["git", "ls-remote", "https://github.com/vaoan/Orrery.git", "refs/heads/main"]);
   });
+  it("reports not installed for the real fixture body, which predates the cut-over", () => {
+    expect(versionDrift(fixture, { run })).toEqual({ installed: null, latest, behind: false, note: "body does not depend on @vaoan/orrery yet" });
+  });
 });
 ```
 
@@ -2808,8 +3659,13 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { pointerDrift, localOverrideViolations } from "../src/lib/observe/pointers.mjs";
 import schema from "../classes/next-supabase-mono/schema.mjs";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+const realTemplates = path.join(root, "packages/orrery/templates/next-supabase-mono");
+const fixture = path.join(root, "fixtures/next-supabase-mono");
 
 let body, templates;
 const put = (root, rel, text) => { fs.mkdirSync(path.join(root, path.dirname(rel)), { recursive: true }); fs.writeFileSync(path.join(root, rel), text); };
@@ -2845,6 +3701,12 @@ describe("pointerDrift", () => {
     expect(r.files.every((f) => f.state === "missing")).toBe(true);
     expect(r.config).toEqual(["missing"]);
     expect(r.local).toEqual([]);
+  });
+  it("reports the real fixture body as fully current against the real templates", async () => {
+    const r = await pointerDrift(fixture, realTemplates, schema);
+    expect(r.files.every((f) => f.state === "identical")).toBe(true);
+    expect(r.local).toEqual([]);
+    expect(r.config).toEqual([]);
   });
 });
 ```
@@ -2902,11 +3764,15 @@ async function importDefault(file) {
   return (await import(pathToFileURL(file).href + `?t=${Date.now()}`)).default;
 }
 
+// This machine checks out CRLF (core.autocrlf=true; see CLAUDE.md), so a byte-for-byte
+// comparison would report drift on line endings alone. Normalise before comparing.
+const normalizeLineEndings = (buf) => buf.toString("utf8").replace(/\r\n/g, "\n");
+
 export async function pointerDrift(bodyDir, templatesDir, schema) {
   const files = listFiles(templatesDir).map((rel) => {
     const target = path.join(bodyDir, rel);
     if (!fs.existsSync(target)) return { path: rel, state: "missing" };
-    const same = fs.readFileSync(target).equals(fs.readFileSync(path.join(templatesDir, rel)));
+    const same = normalizeLineEndings(fs.readFileSync(target)) === normalizeLineEndings(fs.readFileSync(path.join(templatesDir, rel)));
     return { path: rel, state: same ? "identical" : "differs" };
   });
   const localFile = path.join(bodyDir, "eslint.local.mjs");
@@ -2964,8 +3830,23 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { materialise } from "../src/lib/observe/scratch.mjs";
-import { effectiveMismatches, violationsByRule, compareToPrediction } from "../src/lib/observe/code.mjs";
+import { effectiveMismatches, violationsByRule, compareToPrediction, binField, codeDrift, tightenedFor, matches } from "../src/lib/observe/code.mjs";
+import { resolveEslintBin } from "../src/lib/effective-config.mjs";
+
+// Every path used in these tests is derived from the test file's own location (never a literal
+// drive path): CI runs on Linux, where a hard-coded "Z:/..." string is not absolute at all —
+// `path.resolve` silently prepends the runner's cwd to it instead of erroring, producing a
+// plausible-looking but wrong path that only fails once something tries to load a module there.
+const PACKAGE_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const PACKAGE_DIR_POSIX = PACKAGE_DIR.split(path.sep).join("/");
+// A body directory that need not exist: every test below either fully overrides the tool
+// functions materialise would otherwise import (so it never touches bodyDir on disk) or mocks
+// `run`/`codeDrift`'s subprocess calls outright. `path.resolve("fake-body")` is absolute and
+// cross-platform on both Windows and Linux, unlike a literal drive path.
+const FAKE_BODY = path.resolve("fake-body");
+const FAKE_BODY_POSIX = FAKE_BODY.split(path.sep).join("/");
 
 describe("materialise", () => {
   let scratch;
@@ -2973,15 +3854,86 @@ describe("materialise", () => {
   afterEach(() => fs.rmSync(scratch, { recursive: true, force: true }));
 
   it("writes one config per tool that imports the bundle by absolute path and passes the body config", async () => {
-    const bundleDir = "Z:/Github/Orrery/packages/orrery";
-    const files = await materialise("Z:/Github/x", { class: "next-supabase-mono", tailwind: { entryPoint: "g.css" } }, scratch, { bundleDir, functions: { stylelint: () => ({ rules: {} }), jscpd: () => ({ threshold: 4 }), cspell: () => ({ words: [] }), lsLint: () => "ls:\n", syncpack: () => ({ versionGroups: [] }), tsconfigInclude: ["apps/*/src"] } });
+    const bundleDir = PACKAGE_DIR;
+    const files = await materialise(FAKE_BODY, { class: "next-supabase-mono", tailwind: { entryPoint: "g.css" } }, scratch, { bundleDir, functions: { stylelint: () => ({ rules: {} }), jscpd: () => ({ threshold: 4 }), cspell: () => ({ words: [] }), lsLint: () => "ls:\n", syncpack: () => ({ versionGroups: [] }), tsconfigInclude: ["apps/*/src"] } });
     const eslint = fs.readFileSync(files.eslint, "utf8");
-    expect(eslint).toContain('import orrery from "file:///Z:/Github/Orrery/packages/orrery/classes/next-supabase-mono/eslint.mjs"');
-    expect(eslint).toContain('"root": "Z:/Github/x"');
+    const eslintEntryUrl = pathToFileURL(`${PACKAGE_DIR_POSIX}/classes/next-supabase-mono/eslint.mjs`).href;
+    expect(eslint).toContain(`import orrery from ${JSON.stringify(eslintEntryUrl)}`);
+    expect(eslint).toContain(`"root": ${JSON.stringify(FAKE_BODY_POSIX)}`);
     expect(eslint).toContain('"entryPoint": "g.css"');
-    expect(JSON.parse(fs.readFileSync(files.tsconfig, "utf8"))).toEqual({ extends: "Z:/Github/Orrery/packages/orrery/classes/next-supabase-mono/tsconfig.json", include: ["Z:/Github/x/apps/*/src"], compilerOptions: { noEmit: true } });
+    expect(JSON.parse(fs.readFileSync(files.tsconfig, "utf8"))).toEqual({
+      extends: `${PACKAGE_DIR_POSIX}/classes/next-supabase-mono/tsconfig.json`,
+      include: [`${FAKE_BODY_POSIX}/apps/*/src`],
+      compilerOptions: { noEmit: true },
+    });
     expect(JSON.parse(fs.readFileSync(files.jscpd, "utf8")).threshold).toBe(4);
     expect(fs.readFileSync(files.lsLint, "utf8")).toBe("ls:\n");
+  });
+
+  // A real body's tree carries generated build output the bundle itself never excludes (real
+  // usage only ever runs it through lint-staged, against staged files). observe's own
+  // violations pass is the one caller that sweeps the whole tree; found against libra, where
+  // omitting this OOM-crashed the eslint child process parsing `.next`'s generated webpack
+  // chunks (see task-9-report.md "Real runs").
+  it("ignores generated/build directories in the materialised eslint config", async () => {
+    const bundleDir = PACKAGE_DIR;
+    const files = await materialise(FAKE_BODY, { class: "next-supabase-mono", tailwind: { entryPoint: "g.css" } }, scratch, { bundleDir, functions: { stylelint: () => ({}), jscpd: () => ({}), cspell: () => ({}), lsLint: () => "ls:\n", syncpack: () => ({}), tsconfigInclude: [] } });
+    const eslint = fs.readFileSync(files.eslint, "utf8");
+    for (const pattern of ["**/.next/**", "**/.turbo/**", "**/dist/**", "**/build/**", "**/coverage/**", "**/node_modules/**"]) {
+      expect(eslint).toContain(JSON.stringify(pattern));
+    }
+    expect(eslint).toMatch(/export default \[\{ ignores: \[/);
+  });
+
+  // Regression for the bug fixed in this round: bodyRoot used to be `posix(bodyDir)` without a
+  // `path.resolve` first. A relative bodyDir then flowed, unresolved, into the eslint scratch
+  // config's `root` and the tsconfig's `include` paths — root becomes `tsconfigRootDir` in
+  // parserOptions (eslint.base.mjs), which typescript-eslint's project service needs absolute;
+  // relative, it silently fails to associate any file with a TS project (a parse-level "fatal"
+  // message per file, not a config error — see task-9-report.md's "Why this is blocked" #1).
+  it("resolves a relative bodyDir to absolute before writing it as root / into tsconfig include", async () => {
+    const bundleDir = PACKAGE_DIR;
+    const absoluteBody = FAKE_BODY;
+    const relativeBody = path.relative(process.cwd(), absoluteBody);
+    const files = await materialise(relativeBody, { class: "next-supabase-mono", tailwind: { entryPoint: "g.css" } }, scratch, {
+      bundleDir,
+      functions: { stylelint: () => ({}), jscpd: () => ({}), cspell: () => ({}), lsLint: () => "ls:\n", syncpack: () => ({}), tsconfigInclude: ["apps/*/src"] },
+    });
+    const eslint = fs.readFileSync(files.eslint, "utf8");
+    const rootMatch = /"root": "([^"]+)"/.exec(eslint);
+    expect(rootMatch, "eslint scratch config has no root field").toBeTruthy();
+    expect(path.isAbsolute(rootMatch[1])).toBe(true);
+    expect(rootMatch[1]).toBe(absoluteBody.split(path.sep).join("/"));
+
+    const tsconfig = JSON.parse(fs.readFileSync(files.tsconfig, "utf8"));
+    for (const include of tsconfig.include) expect(path.isAbsolute(include)).toBe(true);
+  });
+
+  // Minor: exercise the YAML emitter against the real physics/ls-lint.mjs object, not a stub.
+  it("serialises the real physics ls-lint config to nested YAML", async () => {
+    const bundleDir = PACKAGE_DIR;
+    const lsLintModule = await import(pathToFileURL(path.join(bundleDir, "physics/ls-lint.mjs")).href);
+    const real = lsLintModule.default();
+    const files = await materialise(FAKE_BODY, { class: "next-supabase-mono", tailwind: { entryPoint: "g.css" } }, scratch, { bundleDir });
+    const yaml = fs.readFileSync(files.lsLint, "utf8");
+    expect(yaml.startsWith("ls:\n")).toBe(true);
+    for (const [pattern, rules] of Object.entries(real.ls)) {
+      expect(yaml).toContain(`  ${pattern}:`);
+      for (const [ext, rule] of Object.entries(rules)) expect(yaml).toContain(`    ${ext}: ${rule}`);
+    }
+  });
+
+  // S3: both donors' per-app tsconfigs include `**/*.ts`, so tests and e2e files sit inside
+  // their own project — the fixture's e2e/unit-test files were "not found by the project
+  // service" until the default (and the template's own include list) covered those directories
+  // too. A body that does not override `tsconfig.include` gets this default.
+  it("defaults tsconfig include to source, tests and e2e for both apps and packages when the body does not override it", async () => {
+    const bundleDir = PACKAGE_DIR;
+    const files = await materialise(FAKE_BODY, { class: "next-supabase-mono", tailwind: { entryPoint: "g.css" } }, scratch, { bundleDir });
+    const tsconfig = JSON.parse(fs.readFileSync(files.tsconfig, "utf8"));
+    expect(tsconfig.include).toEqual(
+      ["apps/*/src", "apps/*/tests", "apps/*/e2e", "packages/*/src", "packages/*/tests"].map((i) => `${FAKE_BODY_POSIX}/${i}`)
+    );
   });
 });
 
@@ -3004,6 +3956,61 @@ describe("effectiveMismatches", () => {
   });
 });
 
+// S4: tightenedFor must use the same comparison as effectiveMismatches (severity + options
+// matching, with the eslint-config-prettier carve-out), not a raw norm(own) !== norm(chosen)
+// check — a body whose own value for a prettier-off rule merely differs from `chosen` (the
+// bundle can never actually enforce that rule; eslint-config-prettier always turns it off last)
+// must never be reported as tightened.
+describe("tightenedFor", () => {
+  const body = {};
+  it("never reports a rule eslint-config-prettier always turns off as tightened, even when the body's own value differs from chosen", () => {
+    const rows = [{ tool: "eslint", surface: "source", key: "quotes", chosen: ["error", "single"], tier: "physics", test: "agree" }];
+    const bodyEffective = { source: { rules: { quotes: ["error", "double"] } } };
+    expect(tightenedFor(rows, bodyEffective, body)).toEqual([]);
+  });
+
+  it("still reports tightened for a non-prettier rule whose body value differs from chosen", () => {
+    const rows = [{ tool: "eslint", surface: "source", key: "no-var", chosen: ["error"], tier: "physics", test: "agree" }];
+    const bodyEffective = { source: { rules: { "no-var": ["off"] } } };
+    expect(tightenedFor(rows, bodyEffective, body)).toEqual(["no-var"]);
+  });
+
+  it("reports nothing when the body's own value already matches chosen", () => {
+    const rows = [{ tool: "eslint", surface: "source", key: "no-var", chosen: ["error"], tier: "physics", test: "agree" }];
+    const bodyEffective = { source: { rules: { "no-var": ["error"] } } };
+    expect(tightenedFor(rows, bodyEffective, body)).toEqual([]);
+  });
+});
+
+// T4b: a boundaries/* rule reads settings["boundaries/elements"] to know what an "element" is —
+// not its own rule options — so two sides can carry an identical `chosen` value and still behave
+// differently. `classEffectiveBySurface` (the class bundle's own real effective config, the same
+// object codeDrift's eslint pass already computes per surface via readEffectiveConfig) lets
+// tightenedFor catch that case too.
+describe("tightenedFor / boundaries settings-awareness (T4b)", () => {
+  const body = {};
+  const rows = [{ tool: "eslint", surface: "source", key: "boundaries/no-unknown", chosen: ["error"], tier: "class", test: "agree" }];
+
+  it("reports a boundaries/* rule tightened when the class's settings differ from the body's own, even though the rule value already matches", () => {
+    const bodyEffective = { source: { rules: { "boundaries/no-unknown": ["error"] }, settings: { "boundaries/elements": [{ type: "app" }] } } };
+    const classEffective = { source: { settings: { "boundaries/elements": [{ type: "app" }, { type: "package" }] } } };
+    expect(tightenedFor(rows, bodyEffective, body, classEffective)).toEqual(["boundaries/no-unknown"]);
+  });
+
+  it("does not report a boundaries/* rule tightened when the settings are the same modulo key order (canonicalised)", () => {
+    const bodyEffective = { source: { rules: { "boundaries/no-unknown": ["error"] }, settings: { "boundaries/elements": [{ type: "app", capture: ["x"] }] } } };
+    const classEffective = { source: { settings: { "boundaries/elements": [{ capture: ["x"], type: "app" }] } } };
+    expect(tightenedFor(rows, bodyEffective, body, classEffective)).toEqual([]);
+  });
+
+  it("ignores settings entirely for a non-boundaries rule", () => {
+    const nonBoundaryRows = [{ tool: "eslint", surface: "source", key: "no-var", chosen: ["error"], tier: "physics", test: "agree" }];
+    const bodyEffective = { source: { rules: { "no-var": ["error"] }, settings: { "boundaries/elements": [{ type: "app" }] } } };
+    const classEffective = { source: { settings: { "boundaries/elements": [{ type: "package" }] } } };
+    expect(tightenedFor(nonBoundaryRows, bodyEffective, body, classEffective)).toEqual([]);
+  });
+});
+
 describe("violationsByRule / compareToPrediction", () => {
   const output = JSON.stringify([{ filePath: "a.ts", messages: [{ ruleId: "no-var" }, { ruleId: "no-var" }, { ruleId: "sonarjs/max-lines" }] }, { filePath: "b.ts", messages: [{ ruleId: null, fatal: true, message: "parse" }] }]);
   it("counts violations per rule and parse errors separately", () => {
@@ -3017,6 +4024,300 @@ describe("violationsByRule / compareToPrediction", () => {
     expect(r.newRules).toEqual([]);
     expect(r.resolved).toEqual(["unicorn/x"]);
   });
+
+  // T4a: baseline semantics. A rule with violations that the prediction did not tighten is only
+  // "unexplained" when it is new (absent from prediction.counts) or worse (more violations now
+  // than predicted); at or below its predicted count, it is "baseline" — known, informational,
+  // not a failure.
+  describe("baseline semantics (T4a)", () => {
+    it("a baseline rule (violated, not tightened) at its predicted count is baseline, not unexplained", () => {
+      const prediction = { tightened: [], counts: { "sonarjs/prefer-read-only-props": 10 } };
+      const r = compareToPrediction({ "sonarjs/prefer-read-only-props": 10 }, prediction);
+      expect(r.unexplained).toEqual([]);
+      expect(r.baseline).toEqual(["sonarjs/prefer-read-only-props"]);
+    });
+
+    it("a baseline rule below its predicted count is baseline, not unexplained", () => {
+      const prediction = { tightened: [], counts: { "sonarjs/prefer-read-only-props": 10 } };
+      const r = compareToPrediction({ "sonarjs/prefer-read-only-props": 4 }, prediction);
+      expect(r.unexplained).toEqual([]);
+      expect(r.baseline).toEqual(["sonarjs/prefer-read-only-props"]);
+    });
+
+    it("a baseline rule above its predicted count is unexplained, not baseline", () => {
+      const prediction = { tightened: [], counts: { "sonarjs/prefer-read-only-props": 10 } };
+      const r = compareToPrediction({ "sonarjs/prefer-read-only-props": 11 }, prediction);
+      expect(r.unexplained).toEqual(["sonarjs/prefer-read-only-props"]);
+      expect(r.baseline).toEqual([]);
+    });
+
+    it("a rule with no predicted count at all is unexplained", () => {
+      const prediction = { tightened: [], counts: {} };
+      const r = compareToPrediction({ "boundaries/no-unknown": 1 }, prediction);
+      expect(r.unexplained).toEqual(["boundaries/no-unknown"]);
+      expect(r.baseline).toEqual([]);
+    });
+
+    it("a tightened rule is neither baseline nor unexplained, no matter its count", () => {
+      const prediction = { tightened: ["no-var"], counts: { "no-var": 2 } };
+      const r = compareToPrediction({ "no-var": 50 }, prediction);
+      expect(r.unexplained).toEqual([]);
+      expect(r.baseline).toEqual([]);
+    });
+  });
+});
+
+// Each of these packages' bin field points somewhere different in its own tree (stylelint:
+// "bin/stylelint.mjs", syncpack: "./index.cjs", @ls-lint/ls-lint's bin key is the short
+// "ls-lint", not its scoped package name): binField must read the field, not assume a layout.
+describe("binField", () => {
+  it.each([
+    ["eslint", "eslint"],
+    ["typescript", "tsc"],
+    ["stylelint", "stylelint"],
+    ["jscpd", "jscpd"],
+    ["cspell", "cspell"],
+    ["@ls-lint/ls-lint", "ls-lint"],
+    ["syncpack", "syncpack"],
+  ])("%s resolves to an existing file", (pkg, binName) => {
+    const resolved = binField(pkg, binName);
+    expect(fs.existsSync(resolved), `${resolved} does not exist`).toBe(true);
+  });
+});
+
+describe("codeDrift", () => {
+  // F1: eslint is the one binary the rulings and the honesty comparison are measured against,
+  // so it is resolved the mandated way — resolveEslintBin, from packages/orrery — not through
+  // the generic binField used for the other six tools.
+  it("resolves eslint via resolveEslintBin from packages/orrery, not binField", async () => {
+    const calls = [];
+    const run = (command, args) => { calls.push(args); return { stdout: "[]", stderr: "", status: 0 }; };
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-test-"));
+    try {
+      await codeDrift(FAKE_BODY, { rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: ["eslint"], run, scratchDir: scratch });
+    } finally {
+      fs.rmSync(scratch, { recursive: true, force: true });
+    }
+    expect(calls.length).toBeGreaterThan(0);
+    expect(calls[0]).toContain(resolveEslintBin(PACKAGE_DIR));
+  });
+
+  // F2: a tool crashing must never take the whole observation down. Inject a `run` that throws
+  // (as a subprocess spawn failure would) for one tool only.
+  it("catches a tool crash as { crashed: true, message }, and the other tools still run", async () => {
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-test-"));
+    try {
+      const run = (command, args) => {
+        if (args.some((a) => typeof a === "string" && a.endsWith("stylelint.config.mjs"))) {
+          throw new Error("boom");
+        }
+        return { stdout: "[]", stderr: "", status: 0 };
+      };
+      const result = await codeDrift(FAKE_BODY, { rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: ["stylelint", "cspell"], run, scratchDir: scratch });
+      expect(result.stylelint).toEqual({ crashed: true, message: "boom" });
+      expect(result.cspell).toEqual({ issues: 0 });
+    } finally {
+      fs.rmSync(scratch, { recursive: true, force: true });
+    }
+  });
+
+  // T1 regression: the installed stylelint and @ls-lint/ls-lint write their real report to
+  // stderr, not stdout, even on a non-zero exit with real findings — the old stdout-only read
+  // (`defaultRun`'s execFileSync catch) turned every one of those findings into a false
+  // "crashed". A `run` stub standing in for that real shape (status 1, the report on stderr,
+  // nothing on stdout) must still produce counts.
+  it("reads stylelint's report from stderr, not stdout, even at a non-zero exit", async () => {
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-test-"));
+    try {
+      const run = () => ({ stdout: "", stderr: JSON.stringify([{ warnings: [{}, {}] }, { warnings: [{}] }]), status: 2 });
+      const result = await codeDrift(FAKE_BODY, { rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: ["stylelint"], run, scratchDir: scratch });
+      expect(result.stylelint).toEqual({ count: 3 });
+    } finally {
+      fs.rmSync(scratch, { recursive: true, force: true });
+    }
+  });
+
+  it("reads ls-lint's report from stderr, not stdout, even at a non-zero exit", async () => {
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-test-"));
+    try {
+      const stderr = "apps/web/src/BadName.ts failed for `.ts` rules: kebabcase\napps/web/src/Other.ts failed for `.ts` rules: kebabcase\n";
+      const run = () => ({ stdout: "", stderr, status: 1 });
+      const result = await codeDrift(FAKE_BODY, { rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: ["ls-lint"], run, scratchDir: scratch });
+      expect(result["ls-lint"]).toEqual({ errors: 2 });
+    } finally {
+      fs.rmSync(scratch, { recursive: true, force: true });
+    }
+  });
+
+  // T1 regression, the other direction: eslint's report stays on stdout, as before — this must
+  // not regress when the other tools move to stderr.
+  it("still reads eslint's violations report from stdout", async () => {
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-test-"));
+    try {
+      const eslintJson = JSON.stringify([{ filePath: "a.ts", messages: [{ ruleId: "no-var" }] }]);
+      const run = () => ({ stdout: eslintJson, stderr: "some unrelated plugin warning\n", status: 1 });
+      const result = await codeDrift(FAKE_BODY, { rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: ["eslint"], run, scratchDir: scratch });
+      expect(result.eslint.violations).toEqual({ "no-var": 1 });
+    } finally {
+      fs.rmSync(scratch, { recursive: true, force: true });
+    }
+  });
+
+  // Minor: a scratch directory codeDrift creates itself (no scratchDir passed) is its own to
+  // clean up; one the caller passed in is the caller's to keep (tests read its files).
+  it("removes a scratch directory it creates itself, but not one the caller passed", async () => {
+    const calls = [];
+    const run = (command, args) => { calls.push(args); return { stdout: "[]", stderr: "", status: 0 }; };
+    await codeDrift(FAKE_BODY, { rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: ["eslint"], run });
+    const ownScratchDir = path.dirname(calls[0][calls[0].indexOf("-c") + 1]);
+    expect(fs.existsSync(ownScratchDir)).toBe(false);
+
+    const passedScratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-owned-"));
+    try {
+      await codeDrift(FAKE_BODY, { rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: ["eslint"], run, scratchDir: passedScratch });
+      expect(fs.existsSync(passedScratch)).toBe(true);
+    } finally {
+      fs.rmSync(passedScratch, { recursive: true, force: true });
+    }
+  });
+
+  // T2: the installed syncpack (packages/orrery/node_modules/syncpack, a Rust binary) panics on
+  // every `--config` invocation that has real work to do — reproduced directly against the
+  // binary, not just through this code path (see this fix's report). The adopted shape drops
+  // --config and relies on cosmiconfig-style discovery from the body's own root, exactly how
+  // both donors' own package.json scripts invoke it. This is the one real (non-stubbed) run in
+  // this file: it proves the fixture gets a parseable result through codeDrift's actual
+  // invocation, not a mocked stand-in for one.
+  it("runs the real syncpack against the fixture through codeDrift's own invocation and gets a parseable result, not crashed", async () => {
+    const fixture = path.resolve(PACKAGE_DIR, "../../fixtures/next-supabase-mono");
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-test-"));
+    try {
+      const result = await codeDrift(fixture, {
+        rows: [],
+        bodyConfig: { class: "next-supabase-mono", tailwind: { entryPoint: "apps/web/src/app/globals.css" } },
+        samples: {},
+        bodyEffective: {},
+        tools: ["syncpack"],
+        scratchDir: scratch,
+      });
+      expect(result.syncpack).toBeTruthy();
+      expect(result.syncpack.crashed).toBeFalsy();
+      expect(typeof result.syncpack.mismatches).toBe("number");
+    } finally {
+      fs.rmSync(scratch, { recursive: true, force: true });
+    }
+  }, 30_000);
+});
+
+// C5: crash detection is status-aware for EVERY tool, not just the two whose parser happens to
+// throw. Each of these tools exits non-zero on findings as well as on a crash, and each parser
+// answers "no findings" when handed something that is not its report — so a panic, an OOM kill or
+// a bad config used to be recorded as a clean run. One pair per tool: an empty-stream exit 2 is a
+// crash; a real report at exit 1 is findings.
+describe("codeDrift: a non-zero exit with no report is a crash, not a clean run", () => {
+  const withScratch = async (fn) => {
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-crash-"));
+    try {
+      return await fn(scratch);
+    } finally {
+      fs.rmSync(scratch, { recursive: true, force: true });
+    }
+  };
+
+  const drift = (tool, run, scratch) =>
+    codeDrift(FAKE_BODY, { rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: [tool], run, scratchDir: scratch });
+
+  const CRASHED = { stdout: "", stderr: "", status: 2 };
+
+  // The real report each tool writes when it really did find something, at its own exit code 1 and
+  // on its own stream — measured shapes, the same ones the T1 stream tests above use.
+  const REPORTS = {
+    eslint: { run: () => ({ stdout: JSON.stringify([{ filePath: "a.ts", messages: [{ ruleId: "no-var" }] }]), stderr: "", status: 1 }), expect: (r) => expect(r.eslint.violations).toEqual({ "no-var": 1 }) },
+    tsc: { run: () => ({ stdout: "apps/web/src/a.ts(1,1): error TS2307: Cannot find module.\n", stderr: "", status: 1 }), expect: (r) => expect(r.tsc).toEqual({ errors: { TS2307: 1 } }) },
+    stylelint: { run: () => ({ stdout: "", stderr: JSON.stringify([{ warnings: [{}, {}] }]), status: 1 }), expect: (r) => expect(r.stylelint).toEqual({ count: 2 }) },
+    cspell: { run: () => ({ stdout: "apps/web/src/a.ts:3:5 - Unknown word (teh)\n", stderr: "", status: 1 }), expect: (r) => expect(r.cspell).toEqual({ issues: 1 }) },
+    "ls-lint": { run: () => ({ stdout: "", stderr: "apps/web/src/BadName.ts failed for `.ts` rules: kebabcase\n", status: 1 }), expect: (r) => expect(r["ls-lint"]).toEqual({ errors: 1 }) },
+    syncpack: { run: () => ({ stdout: "", stderr: "\u2718 react 18.0.0 != 19.0.0\n", status: 1 }), expect: (r) => expect(r.syncpack).toEqual({ mismatches: 1 }) },
+  };
+
+  it.each(Object.keys(REPORTS))("%s: exit 2 with empty streams is crashed", async (tool) => {
+    await withScratch(async (scratch) => {
+      const result = await drift(tool, () => CRASHED, scratch);
+      expect(result[tool].crashed, JSON.stringify(result[tool])).toBe(true);
+      expect(result[tool].message).toContain(tool);
+    });
+  });
+
+  it.each(Object.keys(REPORTS))("%s: a real report at exit 1 is findings", async (tool) => {
+    await withScratch(async (scratch) => {
+      const result = await drift(tool, REPORTS[tool].run, scratch);
+      expect(result[tool].crashed, JSON.stringify(result[tool])).toBeUndefined();
+      REPORTS[tool].expect(result);
+    });
+  });
+
+  // jscpd is the one tool whose report is a FILE (-o), not a stream: the file is the evidence.
+  it("jscpd: exit 2 with no report file written is crashed", async () => {
+    await withScratch(async (scratch) => {
+      const result = await drift("jscpd", () => CRASHED, scratch);
+      expect(result.jscpd.crashed, JSON.stringify(result.jscpd)).toBe(true);
+      expect(result.jscpd.message).toContain("jscpd");
+    });
+  });
+
+  it("jscpd: a report file at exit 1 is findings", async () => {
+    await withScratch(async (scratch) => {
+      const run = () => {
+        fs.writeFileSync(path.join(scratch, "jscpd-report.json"), JSON.stringify({ statistics: { total: { clones: 4 } } }));
+        return { stdout: "", stderr: "", status: 1 };
+      };
+      const result = await drift("jscpd", run, scratch);
+      expect(result.jscpd).toEqual({ clones: 4 });
+    });
+  });
+
+  // The other direction: a clean run is a clean run, whatever its streams hold.
+  it("reads exit 0 as clean for every tool", async () => {
+    await withScratch(async (scratch) => {
+      const result = await codeDrift(FAKE_BODY, {
+        rows: [], bodyConfig: {}, samples: {}, bodyEffective: {},
+        tools: ["eslint", "tsc", "stylelint", "cspell", "ls-lint", "syncpack"],
+        run: () => ({ stdout: "", stderr: "", status: 0 }),
+        scratchDir: scratch,
+      });
+      expect(Object.values(result).some((r) => r?.crashed)).toBe(false);
+      expect(result.eslint.violations).toEqual({});
+      expect(result.syncpack).toEqual({ mismatches: 0 });
+    });
+  });
+});
+
+// Minor: `apps packages scripts` is the class's shape, not every body's.
+describe("codeDrift: eslint's sweep tolerates a directory the body does not have", () => {
+  it("passes --no-error-on-unmatched-pattern", async () => {
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-unmatched-"));
+    const calls = [];
+    try {
+      await codeDrift(FAKE_BODY, {
+        rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: ["eslint"],
+        run: (command, args) => { calls.push(args); return { stdout: "[]", stderr: "", status: 0 }; },
+        scratchDir: scratch,
+      });
+    } finally {
+      fs.rmSync(scratch, { recursive: true, force: true });
+    }
+    const sweep = calls.find((a) => a.includes("apps") && a.includes("packages") && a.includes("scripts"));
+    expect(sweep).toBeTruthy();
+    expect(sweep).toContain("--no-error-on-unmatched-pattern");
+  });
+});
+
+// C2/I5: `matches` is the third reader of a marker, and it used to ignore an attribute it did not
+// understand exactly as the other two did.
+describe("matches rejects an unknown marker attribute", () => {
+  it("throws naming the attribute", () => {
+    expect(() => matches({ a: 1 }, { $parameter: "x", base: "a" })).toThrow(/base/);
+  });
 });
 ```
 
@@ -3026,7 +4327,12 @@ import { describe, it, expect, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import observe from "../src/commands/observe.mjs";
+import observe, { pointerFailures } from "../src/commands/observe.mjs";
+
+// Cross-platform, and its basename is literally "x" (what every assertion below expects the
+// command to derive) — a hard-coded "Z:/..." string is not absolute on the Linux CI runner, and
+// path.basename on it there would not give "x" the way it does on Windows.
+const FAKE_BODY = path.resolve("x");
 
 const quiet = () => { const log = vi.spyOn(console, "log").mockImplementation(() => {}); const error = vi.spyOn(console, "error").mockImplementation(() => {}); return { out: () => [...log.mock.calls, ...error.mock.calls].flat().join("\n"), restore: () => { log.mockRestore(); error.mockRestore(); } }; };
 
@@ -3053,7 +4359,7 @@ describe("orrery observe", () => {
   it("writes a report and exits 0 when nothing is unexplained", async () => {
     const q = quiet();
     const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
-    const code = await observe(["Z:/Github/x", "--report", report], fakeDeps());
+    const code = await observe([FAKE_BODY, "--report", report], fakeDeps());
     expect(code).toBe(0);
     const files = fs.readdirSync(report);
     expect(files.some((f) => f.endsWith("-tooling.md"))).toBe(true);
@@ -3067,7 +4373,7 @@ describe("orrery observe", () => {
     const q = quiet();
     const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
     // The command computes the comparison itself from the violations: react/x is not in the prediction's tightened set.
-    const code = await observe(["Z:/Github/x", "--report", report], fakeDeps({ codeDrift: async () => ({ eslint: { mismatches: ["no-var: missing"], violations: { "react/x": 3 } } }) }));
+    const code = await observe([FAKE_BODY, "--report", report], fakeDeps({ codeDrift: async () => ({ eslint: { mismatches: ["no-var: missing"], violations: { "react/x": 3 } } }) }));
     expect(code).toBe(1);
     expect(q.out()).toMatch(/mismatch.*no-var: missing/s);
     expect(q.out()).toMatch(/unexplained.*react\/x/s);
@@ -3079,7 +4385,7 @@ describe("orrery observe", () => {
     const q = quiet();
     const deps = fakeDeps({ loadPrediction: () => null });
     const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
-    expect(await observe(["Z:/Github/x", "--predict", "--report", report], deps)).toBe(0);
+    expect(await observe([FAKE_BODY, "--predict", "--report", report], deps)).toBe(0);
     expect(deps.writePrediction).toHaveBeenCalledWith("x", expect.objectContaining({ tightened: expect.any(Array), counts: { "no-var": 2 } }));
     fs.rmSync(report, { recursive: true, force: true });
     q.restore();
@@ -3088,10 +4394,147 @@ describe("orrery observe", () => {
   it("without a prediction and without --predict exits 1 saying so", async () => {
     const q = quiet();
     const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
-    expect(await observe(["Z:/Github/x", "--report", report], fakeDeps({ loadPrediction: () => null }))).toBe(1);
+    expect(await observe([FAKE_BODY, "--report", report], fakeDeps({ loadPrediction: () => null }))).toBe(1);
     expect(q.out()).toMatch(/no prediction for x; run with --predict/);
     fs.rmSync(report, { recursive: true, force: true });
     q.restore();
+  });
+
+  // F2: codeDrift catches a tool crash per tool (tested directly in observe-code.test.mjs); the
+  // command must still surface it — fail the exit code, print which tool crashed and why, and
+  // write the report regardless, with the other tools' results intact.
+  it("exits 1 and still writes the report when a tool crashed, with the other tools' results present", async () => {
+    const q = quiet();
+    const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
+    const code = await observe(
+      [FAKE_BODY, "--report", report],
+      fakeDeps({ codeDrift: async () => ({ eslint: { crashed: true, message: "boom" }, stylelint: { count: 0 } }) })
+    );
+    expect(code).toBe(1);
+    expect(q.out()).toMatch(/x: eslint crashed: boom/);
+    const files = fs.readdirSync(report);
+    const reportFile = files.find((f) => f.endsWith("-tooling.json"));
+    expect(reportFile).toBeTruthy();
+    const written = JSON.parse(fs.readFileSync(path.join(report, reportFile), "utf8"));
+    expect(written[0].code.eslint).toEqual({ crashed: true, message: "boom" });
+    expect(written[0].code.stylelint).toEqual({ count: 0 });
+    const md = fs.readFileSync(path.join(report, files.find((f) => f.endsWith("-tooling.md"))), "utf8");
+    expect(md).toContain("eslint: crashed — boom");
+    fs.rmSync(report, { recursive: true, force: true });
+    q.restore();
+  });
+
+  // I1: pointer drift is drift. A body whose eslint.config.mjs no longer matches the template it
+  // points at, whose eslint.local.mjs breaks the named-files rule, or whose orrery.config.mjs the
+  // schema rejects, is a body that has drifted — the run must fail, not mention it in a report
+  // nobody reads. `config: ["missing"]` alone stays a pass: that is a body before adoption.
+  it("exits 1 when orrery.config.mjs is present but invalid", async () => {
+    const q = quiet();
+    const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
+    const code = await observe([FAKE_BODY, "--report", report], fakeDeps({
+      pointerDrift: async () => ({ files: [{ path: "eslint.config.mjs", state: "missing" }], local: [], config: ["unknown field nonsense"] }),
+    }));
+    expect(code).toBe(1);
+    expect(q.out()).toMatch(/orrery\.config\.mjs is invalid: unknown field nonsense/);
+    fs.rmSync(report, { recursive: true, force: true });
+    q.restore();
+  });
+
+  it("exits 1 on any eslint.local.mjs violation", async () => {
+    const q = quiet();
+    const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
+    const code = await observe([FAKE_BODY, "--report", report], fakeDeps({
+      pointerDrift: async () => ({ files: [{ path: "eslint.config.mjs", state: "missing" }], local: ["entry 0: has no files; a local entry must name the files it applies to"], config: ["missing"] }),
+    }));
+    expect(code).toBe(1);
+    expect(q.out()).toMatch(/eslint\.local\.mjs: entry 0/);
+    fs.rmSync(report, { recursive: true, force: true });
+    q.restore();
+  });
+
+  it("exits 1 on a pointer that differs once the body has any pointer file", async () => {
+    const q = quiet();
+    const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
+    const code = await observe([FAKE_BODY, "--report", report], fakeDeps({
+      pointerDrift: async () => ({ files: [{ path: "eslint.config.mjs", state: "identical" }, { path: "tsconfig.json", state: "differs" }], local: [], config: ["missing"] }),
+    }));
+    expect(code).toBe(1);
+    expect(q.out()).toMatch(/tsconfig\.json differs from the template/);
+    fs.rmSync(report, { recursive: true, force: true });
+    q.restore();
+  });
+
+  // Both donors are pre-adoption bodies with an eslint.config.mjs and a .husky/pre-commit of their
+  // own at exactly the template's paths: every pointer reads `differs`, none reads `identical`.
+  // That is not drift, it is a body that has not adopted Orrery yet.
+  it("does not fail a body with its own files at the template paths and no adopted pointer", async () => {
+    const q = quiet();
+    const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
+    const code = await observe([FAKE_BODY, "--report", report], fakeDeps({
+      pointerDrift: async () => ({ files: [{ path: "eslint.config.mjs", state: "differs" }, { path: ".husky/pre-commit", state: "differs" }, { path: "tsconfig.json", state: "missing" }], local: [], config: ["missing"] }),
+    }));
+    expect(code).toBe(0);
+    fs.rmSync(report, { recursive: true, force: true });
+    q.restore();
+  });
+
+  it("does not fail an un-adopted body whose pointer files are all simply missing", async () => {
+    const q = quiet();
+    const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
+    const code = await observe([FAKE_BODY, "--report", report], fakeDeps({
+      pointerDrift: async () => ({ files: [{ path: "eslint.config.mjs", state: "missing" }, { path: "tsconfig.json", state: "missing" }], local: [], config: ["missing"] }),
+    }));
+    expect(code).toBe(0);
+    fs.rmSync(report, { recursive: true, force: true });
+    q.restore();
+  });
+
+  // I2: a body's own config wins over the prediction's record of what it used to be.
+  it("prefers the body's own orrery.config.mjs over the prediction's bodyConfig", async () => {
+    const q = quiet();
+    const body = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-body-"));
+    const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
+    fs.writeFileSync(path.join(body, "orrery.config.mjs"), 'export default { class: "next-supabase-mono", spelling: ["fromthebody"] };\n');
+    let seen;
+    const deps = fakeDeps({
+      loadPrediction: () => ({ tightened: ["no-var"], counts: { "no-var": 2 }, bodyConfig: { class: "next-supabase-mono", spelling: ["fromtheprediction"] } }),
+      codeDrift: async (dir, options) => { seen = options.bodyConfig; return { eslint: { mismatches: [], violations: { "no-var": 2 } } }; },
+    });
+    expect(await observe([body, "--report", report], deps)).toBe(0);
+    expect(seen.spelling).toEqual(["fromthebody"]);
+    fs.rmSync(report, { recursive: true, force: true });
+    fs.rmSync(body, { recursive: true, force: true });
+    q.restore();
+  });
+
+  it("records a failure to read the body's own effective config and fails the run", async () => {
+    const q = quiet();
+    const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
+    const code = await observe([FAKE_BODY, "--report", report], fakeDeps({
+      readEffectiveConfig: () => { throw new Error("eslint --print-config failed"); },
+    }));
+    expect(code).toBe(1);
+    expect(q.out()).toMatch(/could not read the body's own effective config/);
+    const files = fs.readdirSync(report);
+    const written = JSON.parse(fs.readFileSync(path.join(report, files.find((f) => f.endsWith("-tooling.json"))), "utf8"));
+    expect(written[0].bodyEffectiveError[0]).toContain("eslint --print-config failed");
+    fs.rmSync(report, { recursive: true, force: true });
+    q.restore();
+  });
+});
+
+describe("pointerFailures", () => {
+  it("treats an un-adopted body as no failure at all", () => {
+    expect(pointerFailures({ files: [{ path: "a", state: "missing" }], local: [], config: ["missing"] })).toEqual([]);
+    expect(pointerFailures({ files: [{ path: "a", state: "differs" }], local: [], config: ["missing"] })).toEqual([]);
+  });
+  it("names every kind of drift at once", () => {
+    const failures = pointerFailures({
+      files: [{ path: "a", state: "identical" }, { path: "b", state: "differs" }],
+      local: ["entry 0: bad"],
+      config: ["missing", "tailwind.entryPoint is required"],
+    });
+    expect(failures).toHaveLength(3);
   });
 });
 ```
@@ -3194,12 +4637,13 @@ Amendments folded into the block above (previously undocumented drift from the l
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import prettierConfig from "eslint-config-prettier";
 import { optionsOf, severityOf } from "../reconcile/ordering.mjs";
 import { readEffectiveConfig, resolveEslintBin } from "../effective-config.mjs";
 import { materialise } from "./scratch.mjs";
+import { assertMarker } from "../markers.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const packageDir = path.resolve(here, "../../..");
@@ -3233,11 +4677,18 @@ const prettierOffKeys = new Set(Object.keys(prettierConfig.rules));
 
 const read = (body, dotted) => dotted.split(".").reduce((o, k) => o?.[k], body);
 
+// C2/I5: `assertMarker` rejects a marker attribute nobody implements. This function and `matches`
+// below are two of the three readers that used to drop `base: "a"` in silence, which is how the
+// class shipped a boundaries policy with no base and every check agreed with it.
 function resolveParameters(value, body) {
   if (Array.isArray(value)) {
-    return value.flatMap((v) => (v && typeof v === "object" && !Array.isArray(v) && "$parameter" in v ? (read(body, v.$parameter) ?? []) : [resolveParameters(v, body)]));
+    return value.flatMap((v) => {
+      assertMarker(v);
+      return v && typeof v === "object" && !Array.isArray(v) && "$parameter" in v ? (read(body, v.$parameter) ?? []) : [resolveParameters(v, body)];
+    });
   }
   if (value && typeof value === "object") {
+    assertMarker(value);
     return "$parameter" in value ? read(body, value.$parameter) : Object.fromEntries(Object.entries(value).map(([k, v]) => [k, resolveParameters(v, body)]));
   }
   return value;
@@ -3261,9 +4712,12 @@ const norm = (v) => JSON.stringify(canonical([severityOf(v), ...optionsOf(v)]));
 // never had to spell out once ESLint validates the option object, so the fully-resolved `actual`
 // is a superset of the minimal `chosen` literal by construction, not by the bundle misrendering
 // the ruling.
-function matches(actual, want) {
+export function matches(actual, want) {
   if (Array.isArray(want)) return Array.isArray(actual) && actual.length === want.length && want.every((w, i) => matches(actual[i], w));
-  if (want && typeof want === "object") return !!actual && typeof actual === "object" && !Array.isArray(actual) && Object.entries(want).every(([k, v]) => matches(actual[k], v));
+  if (want && typeof want === "object") {
+    assertMarker(want);
+    return !!actual && typeof actual === "object" && !Array.isArray(actual) && Object.entries(want).every(([k, v]) => matches(actual[k], v));
+  }
   return Object.is(actual, want);
 }
 
@@ -3274,7 +4728,8 @@ function matches(actual, want) {
 // does, so only severity is checked for these keys, never options. Every comparison against
 // "what the bundle produces" — the honesty check against a real effective config, and observe's
 // own "did the bundle tighten this rule" check against a body's own pre-bundle effective
-// config — must agree on that carve-out, or they drift apart. (They did: see the S4 note below.)
+// config — must agree on that carve-out, or they drift apart. (They did: see `tightenedFor`
+// below — S4.)
 function ruledValueMatches(actualValue, row, body) {
   if (actualValue === undefined) return false;
   if (prettierOffKeys.has(row.key)) return severityOf(actualValue) === "off";
@@ -3364,26 +4819,62 @@ export function tightenedFor(rows, bodyEffectiveBySurface, body, classEffectiveB
   return [...out].sort();
 }
 
+// T1: every tool here exits non-zero on findings (not just on a real crash), and which stream
+// carries the report is a per-tool fact, not a universal one — measured against the installed
+// binaries (see code.mjs's callers below and the report this fix shipped with): eslint, tsc,
+// jscpd and cspell write to stdout; stylelint, ls-lint and syncpack write to stderr, even on a
+// clean, zero-exit run. `defaultRun` no longer picks a stream itself (execFileSync's old
+// stdout-only catch silently dropped every stylelint/ls-lint finding into a "crashed" report,
+// since neither ever had anything on stdout to fall back to) — it hands the caller both streams
+// plus the exit status and lets each tool's own attempt block read the one that is actually its
+// report. `spawnSync` never throws on a non-zero exit (only on a real spawn failure, e.g. a
+// missing binary), so a genuine crash is: `result.error` (thrown here), or a tool's own parser
+// failing to make sense of the stream it reads (JSON.parse throwing on a panic trace, for
+// instance) — `attempt` below still catches either as `{ crashed: true, message }`.
 function defaultRun(command, args, cwd) {
-  try {
-    return execFileSync(command, args, { cwd, encoding: "utf8", maxBuffer: 256 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] });
-  } catch (error) {
-    // Linters exit non-zero on findings; their report is still on stdout.
-    if (typeof error.stdout === "string" && error.stdout.length) return error.stdout;
-    throw error;
-  }
+  const result = spawnSync(command, args, { cwd, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+  if (result.error) throw result.error;
+  return { stdout: result.stdout ?? "", stderr: result.stderr ?? "", status: result.status };
 }
 
 // Runs Orrery's own tool binaries — never the body's — against the body, read-only: `cwd` is the
 // body directory, every `--config`/`-c` points into `scratchDir`. The ruling made in planning is
 // that this proves the bundle against the plugins it actually ships, which is exactly a body's
 // situation after adoption (the plugins live in Orrery's devDependencies, not the body's).
+// syncpack is the one exception (T2): its installed binary panics on `--config` whenever there is
+// real work to do, on every version tried, so it runs against whatever config the body's own root
+// discovers (its own `.syncpackrc*` if it has one, syncpack's built-in defaults if it does not) —
+// the same invocation both donors' own `package.json` scripts use, not the class-rendered one.
 //
 // Every tool runs inside its own try/catch: observe's job is to report drift across every tool
 // and every body, and a single tool crashing (a bad rule config, a missing binary, a body file
 // eslint chokes on) must not take the rest of the run down with it. A caught failure becomes
 // `{ crashed: true, message }` for that tool's entry — the caller (the observe command) is the
 // one that prints it and fails the run, since it is the one that knows which body this was.
+// C5: every tool here exits non-zero on FINDINGS as well as on a crash, so the exit status alone
+// cannot tell the two apart — and every parser here answers "no findings" when handed something
+// that is not its report at all (a panic trace, an empty stream after an OOM), which observe then
+// recorded as a clean run. Six of the seven tools read that way.
+//
+// The rule, per tool: status 0 is a clean run and its report — empty or not — is parsed as it
+// stands. A non-zero status is findings ONLY if the tool's own stream really carries its own
+// report: it parses, and `evidence` recognises at least one finding in it. Anything else throws,
+// and `attempt` turns that into `{ crashed: true, message }` for that tool's entry.
+function statusAware(tool, result, { stream, parse, evidence }) {
+  const text = result?.[stream] ?? "";
+  if (result?.status === 0) return parse(text);
+  let parsed;
+  try {
+    parsed = parse(text);
+  } catch (error) {
+    throw new Error(`${tool} exited ${result?.status} and its ${stream} is not a ${tool} report: ${error.message}`);
+  }
+  if (!evidence(text, parsed)) {
+    throw new Error(`${tool} exited ${result?.status} with no findings on its ${stream}; that is a crash, not a report`);
+  }
+  return parsed;
+}
+
 function attempt(results, tool, fn) {
   try {
     results[tool] = fn();
@@ -3409,10 +4900,14 @@ export async function codeDrift(bodyDir, { rows, bodyConfig, samples, bodyEffect
         // measured against, so it is resolved the mandated way (resolveEslintBin), not through
         // the generic binField used for the other tools below.
         const eslintBin = resolveEslintBin(packageDir);
-        const execWithScratch = exec ?? ((execDir, file) => run(node, [eslintBin, "-c", files.eslint, "--no-config-lookup", "--print-config", file], execDir));
+        // eslint's own report — --print-config here, -f json below — is on stdout (measured
+        // against the installed binary; see this fix's report).
+        const execWithScratch = exec ?? ((execDir, file) => run(node, [eslintBin, "-c", files.eslint, "--no-config-lookup", "--print-config", file], execDir).stdout);
         const mismatches = [];
+        const classEffective = {};
         for (const [surface, file] of Object.entries(samples)) {
           const effective = readEffectiveConfig(bodyDir, file, execWithScratch);
+          classEffective[surface] = effective;
           mismatches.push(...effectiveMismatches(effective.rules ?? {}, rows, surface, bodyConfig).map((m) => `${surface} ${m}`));
         }
         // Type-aware linting loads the body's whole TypeScript program into memory; a real
@@ -3420,53 +4915,121 @@ export async function codeDrift(bodyDir, { rows, bodyConfig, samples, bodyEffect
         // during this one full-tree sweep (found running this against libra: an OOM crash, not
         // a lint finding). The per-surface --print-config calls above are single small files
         // and do not need it.
-        const json = run(node, ["--max-old-space-size=6144", eslintBin, "-c", files.eslint, "--no-config-lookup", "-f", "json", "apps", "packages", "scripts"], bodyDir);
-        return { mismatches, violations: violationsByRule(json), tightened: tightenedFor(rows, bodyEffective ?? {}, bodyConfig) };
+        // Minor: `apps packages scripts` is the class's shape, not every body's — a body with no
+        // scripts/ directory is not an error, it is a body with no scripts.
+        const result = run(node, ["--max-old-space-size=6144", eslintBin, "-c", files.eslint, "--no-config-lookup", "--no-error-on-unmatched-pattern", "-f", "json", "apps", "packages", "scripts"], bodyDir);
+        const violations = statusAware("eslint", result, {
+          stream: "stdout",
+          parse: (text) => violationsByRule(text || "[]"),
+          evidence: (text, counts) => Object.keys(counts).length > 0,
+        });
+        return { mismatches, violations, tightened: tightenedFor(rows, bodyEffective ?? {}, bodyConfig, classEffective) };
       });
     }
 
     if (tools.includes("tsc")) {
       attempt(results, "tsc", () => {
-        const out = run(node, [binField("typescript", "tsc"), "-p", files.tsconfig, "--pretty", "false"], bodyDir);
-        const counts = {};
-        for (const m of out.matchAll(/error (TS\d+):/g)) counts[m[1]] = (counts[m[1]] ?? 0) + 1;
-        return { errors: counts };
+        // tsc's own report is on stdout.
+        const result = run(node, [binField("typescript", "tsc"), "-p", files.tsconfig, "--pretty", "false"], bodyDir);
+        const errors = statusAware("tsc", result, {
+          stream: "stdout",
+          parse: (text) => {
+            const counts = {};
+            for (const m of text.matchAll(/error (TS\d+):/g)) counts[m[1]] = (counts[m[1]] ?? 0) + 1;
+            return counts;
+          },
+          evidence: (text, counts) => Object.keys(counts).length > 0,
+        });
+        return { errors };
       });
     }
 
     if (tools.includes("stylelint")) {
       attempt(results, "stylelint", () => {
-        const out = run(node, [binField("stylelint"), "--config", files.stylelint, "-f", "json", "**/*.css"], bodyDir);
-        return { count: JSON.parse(out || "[]").reduce((n, f) => n + f.warnings.length, 0) };
+        // The installed stylelint (packages/orrery/node_modules/stylelint) writes its `-f json`
+        // report to stderr, even on a clean, zero-exit run — never stdout. The old stdout-only
+        // read silently turned every real stylelint finding into a false "crashed".
+        const result = run(node, [binField("stylelint"), "--config", files.stylelint, "-f", "json", "**/*.css"], bodyDir);
+        return {
+          count: statusAware("stylelint", result, {
+            stream: "stderr",
+            parse: (text) => JSON.parse(text || "[]").reduce((n, f) => n + f.warnings.length, 0),
+            evidence: (text, count) => count > 0,
+          }),
+        };
       });
     }
 
     if (tools.includes("jscpd")) {
       attempt(results, "jscpd", () => {
-        run(node, [binField("jscpd"), "-c", files.jscpd, "-r", "json", "-o", dir, "."], bodyDir);
+        // jscpd's own report is the file it writes via -o; the console text run() returns is
+        // only ever used to prove the process itself didn't crash.
+        const result = run(node, [binField("jscpd"), "-c", files.jscpd, "-r", "json", "-o", dir, "."], bodyDir);
         const reportFile = path.join(dir, "jscpd-report.json");
-        return { clones: fs.existsSync(reportFile) ? (JSON.parse(fs.readFileSync(reportFile, "utf8")).statistics?.total?.clones ?? 0) : 0 };
+        // jscpd's own report is the file it writes via -o, so that file IS the evidence: a
+        // non-zero exit with no report written is a crash, not a duplication finding.
+        return {
+          clones: statusAware("jscpd", result, {
+            stream: "stdout",
+            parse: () => (fs.existsSync(reportFile) ? (JSON.parse(fs.readFileSync(reportFile, "utf8")).statistics?.total?.clones ?? 0) : 0),
+            evidence: () => fs.existsSync(reportFile),
+          }),
+        };
       });
     }
 
     if (tools.includes("cspell")) {
       attempt(results, "cspell", () => {
-        const out = run(node, [binField("cspell"), "lint", "-c", files.cspell, "--no-progress", "--no-summary", "**/*.{ts,tsx,md}"], bodyDir);
-        return { issues: out.split(/\r?\n/).filter((l) => /:\d+:\d+ - /.test(l)).length };
+        // cspell's own report is on stdout.
+        const result = run(node, [binField("cspell"), "lint", "-c", files.cspell, "--no-progress", "--no-summary", "**/*.{ts,tsx,md}"], bodyDir);
+        return {
+          issues: statusAware("cspell", result, {
+            stream: "stdout",
+            parse: (text) => text.split(/\r?\n/).filter((l) => /:\d+:\d+ - /.test(l)).length,
+            evidence: (text, issues) => issues > 0,
+          }),
+        };
       });
     }
 
     if (tools.includes("ls-lint")) {
       attempt(results, "ls-lint", () => {
-        const out = run(node, [binField("@ls-lint/ls-lint", "ls-lint"), "-config", files.lsLint], bodyDir);
-        return { errors: out.split(/\r?\n/).filter((l) => l.includes("kebab-case")).length };
+        // The installed @ls-lint/ls-lint writes its findings to stderr ("<path> failed for
+        // `<ext>` rules: <rule>", one per line — no hyphen in the rule name despite the rule
+        // being configured as "kebab-case"), not stdout; matched against "failed for" rather
+        // than a specific rule name so any rule this config ever turns on is counted, not just
+        // kebab-case.
+        const result = run(node, [binField("@ls-lint/ls-lint", "ls-lint"), "-config", files.lsLint], bodyDir);
+        return {
+          errors: statusAware("ls-lint", result, {
+            stream: "stderr",
+            parse: (text) => text.split(/\r?\n/).filter((l) => l.includes("failed for")).length,
+            evidence: (text, errors) => errors > 0,
+          }),
+        };
       });
     }
 
     if (tools.includes("syncpack")) {
       attempt(results, "syncpack", () => {
-        const out = run(node, [binField("syncpack"), "lint", "--config", files.syncpack], bodyDir);
-        return { mismatches: (out.match(/✘/g) ?? []).length };
+        // T2: the installed syncpack (a Rust binary wrapped by a thin Node launcher — packages/
+        // orrery/node_modules/syncpack) panics with a clap arg-definition mismatch ("Mismatch
+        // between definition and access of `config`") whenever --config is combined with any
+        // invocation that actually has a package.json to process — reproduced on both the
+        // installed 14.3.1 and a from-npm 15.3.3, with a trivial config and with the real
+        // rendered one, so no --config shape works and no version fixes it (see this fix's
+        // report). Both donors' own package.json scripts invoke it the same way this now does:
+        // plain `syncpack lint`, cwd at the body's own root, config found by cosmiconfig-style
+        // discovery from there. The report — real findings and the clean "no issues" banner
+        // alike — is on stderr.
+        const result = run(node, [binField("syncpack"), "lint"], bodyDir);
+        return {
+          mismatches: statusAware("syncpack", result, {
+            stream: "stderr",
+            parse: (text) => (text.match(/✘/g) ?? []).length,
+            evidence: (text, mismatches) => mismatches > 0,
+          }),
+        };
       });
     }
 
@@ -3560,13 +5123,42 @@ const defaults = {
   today: () => new Date().toISOString().slice(0, 10),
 };
 
-// Before adoption a body has no orrery.config.mjs of its own: observe falls back to the body's
-// parameters recorded in docs/predictions/<name>.json when a prediction already exists, else the
-// schema defaults with a placeholder tailwind entry point good enough to run the bundle against.
-function fallbackBodyConfig(bodyDir) {
+// I2: a body that HAS an orrery.config.mjs is governed by it, full stop. The prediction's
+// `bodyConfig` is a record of what a body's parameters were when the prediction was taken —
+// useful before adoption, when the body has no config of its own, and wrong the moment it does:
+// observing a body against parameters it no longer holds proves nothing about the body.
+// Before adoption the order is: the prediction's recorded parameters, else the schema defaults
+// with a placeholder tailwind entry point good enough to run the bundle against.
+async function resolveBodyConfig(bodyDir, prediction) {
   const configFile = path.join(bodyDir, "orrery.config.mjs");
-  if (fs.existsSync(configFile)) return loadBodyConfig(bodyDir).then((c) => c.config);
-  return Promise.resolve({ class: "next-supabase-mono", tailwind: { entryPoint: "apps/*/src/app/globals.css" } });
+  if (fs.existsSync(configFile)) return { config: (await loadBodyConfig(bodyDir)).config, source: "the body's own orrery.config.mjs" };
+  if (prediction?.bodyConfig) return { config: prediction.bodyConfig, source: "the prediction's recorded bodyConfig" };
+  return { config: { class: "next-supabase-mono", tailwind: { entryPoint: "apps/*/src/app/globals.css" } }, source: "the schema defaults" };
+}
+
+// I1: a pointer file that a body has but that no longer matches the template, a local override
+// that breaks the "named files only" rule, and an orrery.config.mjs the schema rejects are all
+// drift the run must FAIL on, not merely mention in the report. The one state that is not a
+// failure is `["missing"]` — a body before adoption has no config of its own and no pointer files
+// yet, and observing it is exactly what `--predict` is for. A `differs` only counts once the body
+// has at least one pointer file the template actually placed there, which is what separates "has
+// not adopted Orrery" from "adopted Orrery and drifted": a body before adoption has an
+// eslint.config.mjs and a .husky/pre-commit of its very own, at exactly the paths the templates
+// use, and every one of them reads as `differs` — measured against both donors, where nothing is
+// `identical` at all. One identical pointer is the evidence that the body was adopted, and from
+// then on a pointer that stops matching is drift the run must fail on. The remaining hole is small
+// and deliberate: a body that drifts EVERY pointer at once reads as un-adopted again.
+export function pointerFailures(pointers) {
+  const failures = [];
+  const config = pointers?.config ?? [];
+  const configErrors = config.filter((e) => e !== "missing");
+  if (configErrors.length > 0) failures.push(`orrery.config.mjs is invalid: ${configErrors.join("; ")}`);
+  for (const violation of pointers?.local ?? []) failures.push(`eslint.local.mjs: ${violation}`);
+  const files = pointers?.files ?? [];
+  if (files.some((f) => f.state === "identical")) {
+    for (const f of files.filter((f) => f.state === "differs")) failures.push(`${f.path} differs from the template it points at`);
+  }
+  return failures;
 }
 
 export default async function observe(argv, deps = {}) {
@@ -3610,23 +5202,40 @@ export default async function observe(argv, deps = {}) {
     const pointers = await d.pointerDrift(bodyDir, templates, schema);
 
     const prediction = d.loadPrediction(name);
-    const bodyConfig = withDefaults(prediction?.bodyConfig ?? (await fallbackBodyConfig(bodyDir)), schema);
+    const resolved = await resolveBodyConfig(bodyDir, prediction);
+    const bodyConfig = withDefaults(resolved.config, schema);
+
+    const pointerProblems = pointerFailures(pointers);
+    if (pointerProblems.length > 0) {
+      failed = true;
+      console.error(`${name}: pointer drift:\n  ${pointerProblems.join("\n  ")}`);
+    }
 
     const samples = values.surface
       ? Object.fromEntries(Object.entries(d.findSurfaceSamples(bodyDir)).filter(([s]) => s === values.surface))
       : d.findSurfaceSamples(bodyDir);
 
+    // I2: the body's own effective config is what "did the bundle tighten this rule" is measured
+    // against. Swallowing a failure to read it and substituting `{ rules: {} }` does not degrade
+    // gracefully — it reports every ruled rule as tightened, which reads as a clean run with a
+    // large prediction, so the failure disappears into a number nobody can check.
     const bodyEffective = {};
+    const bodyEffectiveError = [];
     for (const [surface, file] of Object.entries(samples)) {
       try {
         bodyEffective[surface] = d.readEffectiveConfig(bodyDir, file);
-      } catch {
+      } catch (error) {
         bodyEffective[surface] = { rules: {} };
+        bodyEffectiveError.push(`${surface} (${file}): ${error.message}`);
       }
+    }
+    if (bodyEffectiveError.length > 0) {
+      failed = true;
+      console.error(`${name}: could not read the body's own effective config:\n  ${bodyEffectiveError.join("\n  ")}`);
     }
 
     const code = await d.codeDrift(bodyDir, { rows: rulings.rows, bodyConfig, samples, bodyEffective, tools: values.tools?.split(",") });
-    const entry = { name, dir: bodyDir, sha, version, pointers, code };
+    const entry = { name, dir: bodyDir, sha, version, pointers, code, bodyConfigSource: resolved.source, ...(bodyEffectiveError.length ? { bodyEffectiveError } : {}) };
 
     // A tool crashing (codeDrift catches per tool) never aborts the run: report it, fail the
     // exit code, and keep going — the report below is written regardless, crash included.
@@ -3638,13 +5247,21 @@ export default async function observe(argv, deps = {}) {
     }
 
     if (values.predict) {
+      const tightened = code.eslint?.tightened ?? [];
+      const counts = code.eslint?.violations ?? {};
+      // T4a: everything violated but not tightened is recorded as this run's baseline —
+      // informational, not a failure — so a later, non-predict run can tell "already known, no
+      // worse than this" (baseline) from "new, or got worse" (unexplained).
+      const tightenedSet = new Set(tightened);
+      const baseline = Object.fromEntries(Object.entries(counts).filter(([r]) => r !== "(fatal)" && !tightenedSet.has(r)));
       d.writePrediction(name, {
         body: name,
         sha,
         generatedAt: d.today(),
         bodyConfig,
-        tightened: code.eslint?.tightened ?? [],
-        counts: code.eslint?.violations ?? {},
+        tightened,
+        counts,
+        baseline,
         tools: Object.fromEntries(Object.entries(code).filter(([t]) => t !== "eslint")),
       });
       console.log(`${name}: prediction written`);
@@ -3794,6 +5411,488 @@ git push -u origin HEAD && gh pr create --base develop --title "feat(observe): d
 ```
 
 ---
+
+### Task 11: the close-wave fixes (amended 2026-09-11)
+
+The whole-branch review found five Critical defects and the controller ruled on each. Every one is
+the spec asserting itself against what the first pass actually shipped, so they are amendments to
+this plan rather than new scope. The blocks above are already rewritten to the fixed code; this
+section carries the files the wave ADDED and the reasoning behind each ruling.
+
+**C1 — a generated tool file must be usable by its own tool.** Three were not. `setPath` split a
+lint-staged key on its own `.` (`*.{cjs,js,…}` became `{ "*": { "{cjs,js,…}": […] } }`, a nested
+object where lint-staged wants a command list), syncpack's `versionGroups` rendered as an object
+where syncpack's own schema — and libra's committed `.syncpackrc.json` — says array, and prettier
+was pointed at through package.json's `"prettier"` key, which resolves to the generated MODULE
+whose default export is a function. The fixes: a key carrying a glob metacharacter is one literal
+segment; a per-tool `SHAPES` step collapses the rulings' labelled `versionGroups` map into the
+array the tool reads, in row order, so the record keeps each group's own a/b provenance; and the
+prettier pointer becomes a `prettier.config.mjs` template file that CALLS the function. The
+standing guard is a test that hands each generated file to the tool's own loader or validator.
+
+**C2 — boundaries must be real.** Four things each made `boundaries/dependencies` report nothing
+while looking healthy, and all four were true at once: the pre-ruling's `base: "a"` attribute was
+read by nothing and silently dropped, so the class shipped `default: "disallow"` with no allowed
+edges at all; there was no `import/resolver`, so every `@/…` specifier was an unplaceable
+"external" element the rule skips by design; the resolver, once added, is loaded by
+eslint-module-utils from the LINTED FILE's package directory, which under pnpm cannot see Orrery's
+copy — so it is named by absolute path; and the element `capture` lists bound `feature`/`layer` to
+the `apps/*` wildcard, so every layered edge matched nothing. The base is now a `$fromSide: "a"`
+marker with `withoutElementType: "identity"`, which puts aeleos's nine layered rules into the row's
+own `chosen` where `rulings.json` records them and the honesty check compares them, and lifts
+aeleos's own `identity` element out as aeleos body data. Result, measured: 5 violations on aeleos,
+496 on libra — the rule working.
+
+**C3 — physics carries no body-named opinion.** `no-restricted-syntax` / `-imports` /
+`-properties` are core rules, so physics by plugin, and their whole content is whatever a project
+decided to ban. See `namesProject` and `splitRestrictions` in `ordering.mjs` for the token test and
+`parameteriseRestrictions` in `reconcile/eslint.mjs` for the agree/adopt half. The e2e
+`no-restricted-syntax` union is Playwright-shaped, so `TIER_OVERRIDES` in `tiers.mjs` places it in
+the class. A permanent guard over `rulings.json` fails on any physics row carrying a project token,
+with three named exemptions and their reasons.
+
+**C4 — no rule ships at warn** (the spec's CI section). 156 rows did. `liftWarn` in
+`reconcile/eslint.mjs` lifts every decided warn to error; inert rows have no severity to lift.
+
+**C5 — crash detection is status-aware for every tool.** Each of the seven exits non-zero on
+findings as well as on a crash, and each parser answers "no findings" when handed something that is
+not its report, so six of them read a panic or an OOM kill as a clean run. `statusAware` in
+`observe/code.mjs` is the rule: status 0 parses as it stands; a non-zero status is findings only if
+the tool's own stream carries its own report AND that report shows at least one finding; anything
+else throws into `attempt`'s `{ crashed: true, message }`.
+
+- [ ] **Step 1: The marker contract**
+
+Markers used to be read by four functions that each ignored an attribute they did not understand.
+That is how `base: "a"` shipped. `assertMarker` is the one definition of what a marker may say, and
+`literal`, `resolveParameters`, `matches` and `resolveMarkers` all call it.
+
+```javascript
+// packages/orrery/src/lib/markers.mjs
+// Markers are the hand-written stand-ins a ruling's `chosen` carries where a real value cannot be
+// written down at reconcile time: `{ $parameter }` (body data, resolved by the bundle writer and
+// by observe), `{ $union }` (both donors' arrays merged, resolved in reconcile), `{ $fromSide }`
+// (one donor's value, likewise). Every marker key is `$`-prefixed so a plugin's own option object
+// can never be mistaken for one — `union`, `parameter` and `fromSide` are all names real ESLint
+// rule options use.
+//
+// C2/I5: a marker attribute nobody implements used to be dropped in silence. `boundaries/
+// dependencies` carried `{ $parameter: "boundaries.allow", base: "a" }`, meaning "aeleos's layered
+// policy is the base"; `literal`, `resolveParameters` and `matches` all ignored `base`, so the
+// generated class shipped a boundaries policy with NO base rules at all and every check agreed
+// with it, because they agreed with each other. Every consumer of a marker now runs `assertMarker`
+// first, so an attribute no one implements is a loud error at the first place it is read rather
+// than a silently narrower policy.
+export const MARKER_ATTRIBUTES = {
+  // The body-config path this value is read from. No further attributes.
+  $parameter: [],
+  // The option key whose arrays both donors contribute to. `join` turns the union back into one
+  // delimited string (sonarjs/no-duplicate-string's `ignoreStrings`).
+  $union: ["join"],
+  // The named donor's own value for the key this marker sits at. `withoutElementType` strips one
+  // eslint-plugin-boundaries element type out of the borrowed policy — the donor's own element
+  // (aeleos's `identity`) is body data, so it leaves the class base and returns as that body's
+  // `boundaries.elements`/`boundaries.allow`.
+  $fromSide: ["withoutElementType"],
+};
+
+const MARKER_KEYS = Object.keys(MARKER_ATTRIBUTES);
+
+// Throws on any `$`-prefixed key that is not a known marker, on two markers in one object, and on
+// any extra key beside a marker that the marker does not define. Returns the marker key, or null
+// when `value` is an ordinary object (or not an object at all).
+export function assertMarker(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const keys = Object.keys(value);
+  const dollar = keys.filter((k) => k.startsWith("$"));
+  if (dollar.length === 0) return null;
+  if (dollar.length > 1) throw new Error(`marker object carries more than one marker key: ${dollar.join(", ")}`);
+  const [marker] = dollar;
+  if (!MARKER_KEYS.includes(marker)) throw new Error(`unknown marker "${marker}"; known markers are ${MARKER_KEYS.join(", ")}`);
+  const extra = keys.filter((k) => k !== marker && !MARKER_ATTRIBUTES[marker].includes(k));
+  if (extra.length > 0) {
+    throw new Error(`marker ${marker} carries unknown attribute${extra.length > 1 ? "s" : ""} ${extra.map((k) => `"${k}"`).join(", ")}; ${marker} understands ${MARKER_ATTRIBUTES[marker].length ? MARKER_ATTRIBUTES[marker].join(", ") : "no other attribute"}`);
+  }
+  return marker;
+}
+```
+
+
+- [ ] **Step 2: The shape tests (C1)**
+
+```javascript
+// packages/orrery/tests/bundle-shapes.test.mjs
+// C1: every generated tool file must be usable BY ITS OWN TOOL. The bundle tests next door prove
+// the generator renders what the rulings say; they cannot see that the rendered shape is one the
+// tool refuses — a `prettier` pointer that resolves to a function, a lint-staged key split on its
+// own "." into a nested object, a syncpack `versionGroups` object where the schema says array.
+// Each case here hands the committed generated output to the tool's own loader or validator, or
+// (where a tool exposes neither) to the exact structural contract its documentation states.
+import { describe, it, expect } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { pathToFileURL, fileURLToPath } from "node:url";
+import prettierApi from "prettier";
+import stylelintApi from "stylelint";
+
+import prettierConfig from "../physics/prettier.mjs";
+import lintStagedConfig from "../physics/lint-staged.mjs";
+import syncpackConfig from "../physics/syncpack.mjs";
+import lsLintConfig from "../physics/ls-lint.mjs";
+import secretlintConfig from "../physics/secretlint.mjs";
+import hooksConfig from "../physics/hooks.mjs";
+import stylelintConfigFn from "../classes/next-supabase-mono/stylelint.mjs";
+import cspellConfigFn from "../classes/next-supabase-mono/cspell.mjs";
+import jscpdConfigFn from "../classes/next-supabase-mono/jscpd.mjs";
+import knipConfigFn from "../classes/next-supabase-mono/knip.mjs";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const packageDir = path.resolve(here, "..");
+
+const tempDir = (name) => fs.mkdtempSync(path.join(os.tmpdir(), "orrery-shape-" + name + "-"));
+
+describe("prettier", () => {
+  // prettier.resolveConfig is prettier's own loader: it discovers the config the way the CLI and
+  // every editor integration do, and it is what a `prettier.config.mjs` pointer has to satisfy.
+  // A bare `"prettier": "@vaoan/orrery/prettier"` package.json pointer resolves to the generated
+  // MODULE — whose default export is a function, per the spec's "every export is a function" —
+  // and prettier then has an options object that is a function, which it does not accept.
+  it("accepts the generated config through prettier.resolveConfig", async () => {
+    const dir = tempDir("prettier");
+    try {
+      const target = pathToFileURL(path.join(packageDir, "physics/prettier.mjs")).href;
+      fs.writeFileSync(path.join(dir, "prettier.config.mjs"), "import prettier from " + JSON.stringify(target) + ";\nexport default prettier();\n");
+      fs.writeFileSync(path.join(dir, "sample.ts"), "export const a = 1;\n");
+      const resolved = await prettierApi.resolveConfig(path.join(dir, "sample.ts"), { editorconfig: false });
+      expect(resolved, "prettier.resolveConfig returned no options object").toBeTypeOf("object");
+      expect(resolved).not.toBeNull();
+      expect(typeof resolved).not.toBe("function");
+      expect(resolved).toMatchObject(prettierConfig());
+      // And the options it resolved must actually drive a format call.
+      await expect(prettierApi.format("export  const a=1", { ...resolved, parser: "typescript" })).resolves.toBeTypeOf("string");
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  // The pointer file is the deliverable, not the module: it is what `orrery init` copies into a
+  // body, so it is a template file and the fixture carries it byte-identically.
+  it("ships a prettier.config.mjs pointer that calls the function", () => {
+    const pointer = fs.readFileSync(path.join(packageDir, "templates/next-supabase-mono/prettier.config.mjs"), "utf8");
+    expect(pointer).toContain('import prettier from "@vaoan/orrery/prettier"');
+    expect(pointer).toContain("export default prettier();");
+  });
+});
+
+describe("lint-staged", () => {
+  // lint-staged exposes no public validator, so this is its documented contract: the config is a
+  // flat map of one glob to one command or a list of commands. A key split on "." (the old
+  // setPath) produces `{ "*": { "{cjs,js,…}": [...] } }` — a nested object value, which
+  // lint-staged reports as an invalid configuration and refuses to run.
+  it("is a flat map of glob strings to a command or list of commands", () => {
+    const config = lintStagedConfig();
+    expect(Object.keys(config).length).toBeGreaterThan(0);
+    for (const [glob, commands] of Object.entries(config)) {
+      expect(typeof glob, "key " + JSON.stringify(glob)).toBe("string");
+      expect(glob, "a lint-staged key is a whole glob, never a fragment of one split on a dot").toMatch(/\./);
+      expect(Array.isArray(commands) || typeof commands === "string", "value of " + glob + " must be a string or string[]").toBe(true);
+      for (const command of Array.isArray(commands) ? commands : [commands]) expect(typeof command, "command under " + glob).toBe("string");
+    }
+    expect(Object.keys(config), "the '*' fragment key is the split-on-dot bug").not.toContain("*");
+  });
+});
+
+describe("syncpack", () => {
+  // syncpack ships its own JSON schema (node_modules/syncpack/schema.json, the one a .syncpackrc's
+  // "$schema" points at). Read the declared type of each top-level key from it and check the
+  // generated config against that, rather than restating the shape here.
+  const schema = JSON.parse(fs.readFileSync(path.join(packageDir, "node_modules/syncpack/schema.json"), "utf8"));
+  const rcFile = schema.definitions[schema.$ref.split("/").pop()];
+
+  it("renders every key with the type syncpack's own schema declares", () => {
+    const config = syncpackConfig();
+    for (const [key, value] of Object.entries(config)) {
+      const declared = rcFile.properties[key];
+      expect(declared, 'syncpack\'s schema has no property "' + key + '"').toBeTruthy();
+      if (declared.type === "array") expect(Array.isArray(value), key + " must be an array").toBe(true);
+      if (declared.type === "object") expect(Array.isArray(value), key + " must be an object").toBe(false);
+    }
+  });
+
+  it("renders versionGroups as an array of group objects, libra's own .syncpackrc shape", () => {
+    const config = syncpackConfig();
+    expect(Array.isArray(config.versionGroups)).toBe(true);
+    expect(config.versionGroups.length).toBeGreaterThan(0);
+    for (const group of config.versionGroups) {
+      expect(group).toBeTypeOf("object");
+      expect(Array.isArray(group)).toBe(false);
+      expect(Array.isArray(group.dependencies), "every group names the dependencies it governs").toBe(true);
+    }
+  });
+});
+
+describe("stylelint", () => {
+  it("lints a trivial stylesheet with the generated config without throwing", async () => {
+    const config = stylelintConfigFn({ tailwind: { entryPoint: "apps/web/src/app/globals.css" } });
+    const result = await stylelintApi.lint({ code: "a {\n  color: red;\n}\n", config, cwd: packageDir });
+    expect(result.results).toHaveLength(1);
+    expect(result.results[0].invalidOptionWarnings, JSON.stringify(result.results[0].invalidOptionWarnings)).toEqual([]);
+  }, 60_000);
+});
+
+describe("cspell", () => {
+  // cspell's documented config shape: a "version" string, "language" string, and array fields.
+  it("renders the documented cspell config keys with their documented types", () => {
+    const config = cspellConfigFn();
+    expect(config.version).toBeTypeOf("string");
+    expect(config.language).toBeTypeOf("string");
+    expect(Array.isArray(config.words)).toBe(true);
+    expect(Array.isArray(config.ignorePaths)).toBe(true);
+    expect(config.allowCompoundWords).toBeTypeOf("boolean");
+  });
+});
+
+describe("jscpd", () => {
+  it("renders the documented jscpd config keys with their documented types", () => {
+    const config = jscpdConfigFn();
+    expect(config.threshold).toBeTypeOf("number");
+    expect(Array.isArray(config.format)).toBe(true);
+    expect(Array.isArray(config.reporters)).toBe(true);
+    expect(Array.isArray(config.ignore)).toBe(true);
+  });
+});
+
+describe("ls-lint", () => {
+  // ls-lint's documented shape: a top-level "ls" map of directory glob to { extension: rule }.
+  it("renders a top-level ls map of directory glob to extension rules", () => {
+    const config = lsLintConfig();
+    expect(Object.keys(config)).toEqual(["ls"]);
+    for (const [dir, rules] of Object.entries(config.ls)) {
+      expect(dir).toBeTypeOf("string");
+      expect(rules).toBeTypeOf("object");
+      for (const [ext, rule] of Object.entries(rules)) {
+        expect(ext.startsWith("."), dir + " rule key " + ext + " must be a file extension").toBe(true);
+        expect(rule).toBeTypeOf("string");
+      }
+    }
+  });
+});
+
+describe("secretlint and knip and hooks", () => {
+  it("renders secretlint's documented rules array", () => {
+    const config = secretlintConfig();
+    expect(Array.isArray(config.rules)).toBe(true);
+    for (const rule of config.rules) expect(rule.id).toBeTypeOf("string");
+  });
+  it("renders knip's workspace shape with entry/project arrays", () => {
+    const config = knipConfigFn();
+    for (const key of ["apps", "packages"]) {
+      expect(Array.isArray(config[key].entry), key + ".entry").toBe(true);
+      expect(Array.isArray(config[key].project), key + ".project").toBe(true);
+    }
+  });
+  it("renders the hooks map with a pre-commit entry", () => {
+    const config = hooksConfig();
+    expect(config["pre-commit"]).toBeTypeOf("object");
+    expect(Array.isArray(config["pre-commit"].checks)).toBe(true);
+  });
+});
+```
+
+
+- [ ] **Step 3: The boundaries test (C2)**
+
+Deliberately NOT in `fixtures/next-supabase-mono`: the fixture is the body every other check
+observes and predicts against, and a permanent violation living in it would have to be carried as a
+known entry in its prediction forever, where it would look exactly like a real regression the day
+one appeared.
+
+```javascript
+// packages/orrery/tests/boundaries-policy.test.mjs
+// C2: the boundaries graph must actually place an aliased import and actually refuse a forbidden
+// edge. Three things could each make `boundaries/dependencies` report nothing while looking
+// healthy, and all three were true at once: a policy with no base rules (the `base: "a"` attribute
+// nothing read), no `import/resolver` at all (so every `@/...` specifier was an unplaceable
+// "external" element the rule skips), and capture lists that bound `feature`/`layer` to the wrong
+// wildcard (so every layered edge matched nothing). The rule reported zero on both donors and
+// every check agreed with it.
+//
+// This runs the real ESLint binary over a temporary body — rather than putting the forbidden
+// import into fixtures/next-supabase-mono. The fixture is the body every other check observes and
+// predicts against, and it is meant to be clean: a deliberate violation living in it would have to
+// be carried as a "known" entry in the fixture's prediction forever, where it would look exactly
+// like a real regression the day one appeared. A temporary body says the same thing louder and
+// leaves the fixture honest.
+//
+// It is a SPAWNED run, with the body as the child's cwd, exactly as `orrery observe` invokes it:
+// eslint-import-resolver-typescript globs its `project` option against `process.cwd()`, so an
+// in-process ESLint API call (whose `cwd` option does not change the process's own) finds no
+// tsconfig and resolves no alias — which is the very failure this test exists to catch.
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+import { pathToFileURL, fileURLToPath } from "node:url";
+import { resolveEslintBin } from "../src/lib/effective-config.mjs";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const packageDir = path.resolve(here, "..");
+
+let dir;
+
+const write = (rel, text) => {
+  const file = path.join(dir, rel);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, text);
+};
+
+beforeAll(() => {
+  dir = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-boundaries-"));
+  // eslint-plugin-import's `order` rule walks up for the nearest package.json to classify an
+  // import as external; a directory with none crashes it before boundaries ever runs.
+  write("package.json", JSON.stringify({ name: "boundaries-probe", private: true, type: "module" }, null, 2));
+  const compilerOptions = { module: "esnext", moduleResolution: "bundler", target: "es2022", strict: true, noEmit: true };
+  write("tsconfig.json", JSON.stringify({ compilerOptions, include: ["apps/*/src"] }, null, 2));
+  // The per-app tsconfig is what `import/resolver`'s `project: ["apps/*/tsconfig.json", ...]`
+  // reads, and its `paths` is what makes `@/` mean anything at all.
+  write("apps/web/tsconfig.json", JSON.stringify({ compilerOptions: { ...compilerOptions, baseUrl: ".", paths: { "@/*": ["src/*"] } }, include: ["src"] }, null, 2));
+  write("apps/web/src/features/thing/application/use-thing.ts", "export const useThing = () => 1;\n");
+  write("apps/web/src/shared/domain/helper.ts", "export const helper = () => 2;\n");
+  write("apps/web/src/shared/application/allowed.ts", 'import { helper } from "@/shared/domain/helper";\nexport const allowed = () => helper();\n');
+  // aeleos's layered policy, which the class carries as its base, allows shared -> shared and
+  // never shared -> feature: a shared module that reaches into a feature inverts the layering.
+  write("apps/web/src/shared/application/forbidden.ts", 'import { useThing } from "@/features/thing/application/use-thing";\nexport const forbidden = () => useThing();\n');
+  const klass = pathToFileURL(path.join(packageDir, "classes/next-supabase-mono/eslint.mjs")).href;
+  const body = { class: "next-supabase-mono", root: dir.split(path.sep).join("/"), tailwind: { entryPoint: "apps/web/src/app/globals.css" } };
+  write(
+    "eslint.config.mjs",
+    `import orrery from ${JSON.stringify(klass)};\nexport default await orrery(${JSON.stringify(body, null, 2)});\n`
+  );
+});
+
+afterAll(() => {
+  if (dir) fs.rmSync(dir, { recursive: true, force: true });
+});
+
+const boundariesMessages = (file) => {
+  const result = spawnSync(
+    process.execPath,
+    [resolveEslintBin(packageDir), "-c", path.join(dir, "eslint.config.mjs"), "--no-config-lookup", "-f", "json", file],
+    { cwd: dir, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }
+  );
+  if (result.error) throw result.error;
+  if (!result.stdout.trim()) throw new Error(`eslint produced no report (status ${result.status}): ${result.stderr}`);
+  return JSON.parse(result.stdout)
+    .flatMap((r) => r.messages)
+    .filter((m) => m.ruleId === "boundaries/dependencies");
+};
+
+describe("boundaries/dependencies against the generated class config", () => {
+  it("reports exactly one violation for a shared module importing a feature through @/", () => {
+    const messages = boundariesMessages("apps/web/src/shared/application/forbidden.ts");
+    expect(messages.map((m) => m.message)).toHaveLength(1);
+    expect(messages[0].message).toMatch(/"shared"/);
+    expect(messages[0].message).toMatch(/"feature"/);
+  }, 180_000);
+
+  it("reports none for an allowed shared -> shared import through @/", () => {
+    expect(boundariesMessages("apps/web/src/shared/application/allowed.ts")).toEqual([]);
+  }, 180_000);
+});
+```
+
+
+- [ ] **Step 4: The bundle command's own exit codes**
+
+```javascript
+// packages/orrery/tests/bundle-command.test.mjs
+import { describe, it, expect, vi } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import bundle from "../src/commands/bundle.mjs";
+
+const quiet = () => {
+  const log = vi.spyOn(console, "log").mockImplementation(() => {});
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  return { out: () => [...log.mock.calls, ...error.mock.calls].flat().join("\n"), restore: () => { log.mockRestore(); error.mockRestore(); } };
+};
+
+const provenance = { date: "2026-09-09", a: { name: "aeleos", sha: "aaa1111" }, b: { name: "libra", sha: "bbb2222" } };
+const row = (extra) => ({ tool: "eslint", surface: "source", key: "no-var", a: null, b: null, chosen: ["error"], test: "agree", tier: "physics", note: "", ...extra });
+
+const packageDir = () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-bundle-cmd-"));
+  fs.mkdirSync(path.join(dir, "classes/next-supabase-mono"), { recursive: true });
+  fs.writeFileSync(path.join(dir, "classes/next-supabase-mono/schema.mjs"), "export default {};");
+  fs.writeFileSync(path.join(dir, "classes/next-supabase-mono/eslint.base.mjs"), "export default {};");
+  return dir;
+};
+
+describe("orrery bundle", () => {
+  it("exits 0 and lists every file it wrote", async () => {
+    const q = quiet();
+    const dir = packageDir();
+    const rulings = path.join(dir, "rulings.json");
+    fs.writeFileSync(rulings, JSON.stringify({ provenance, rows: [row({})] }));
+    expect(await bundle(["--rulings", rulings, "--package", dir])).toBe(0);
+    expect(q.out()).toContain("physics/eslint.mjs");
+    expect(fs.existsSync(path.join(dir, "physics/eslint.mjs"))).toBe(true);
+    fs.rmSync(dir, { recursive: true, force: true });
+    q.restore();
+  });
+
+  // The residue refusal: a rulings file with an unresolved row is not something to bundle around.
+  // Generating from it would ship a shared tier that quietly omits whatever nobody ruled on.
+  it("exits 1 and refuses to write anything when a row is residue", async () => {
+    const q = quiet();
+    const dir = packageDir();
+    const rulings = path.join(dir, "rulings.json");
+    fs.writeFileSync(rulings, JSON.stringify({ provenance, rows: [row({}), row({ key: "unicorn/x", chosen: null, test: "residue", tier: "physics" })] }));
+    expect(await bundle(["--rulings", rulings, "--package", dir])).toBe(1);
+    expect(q.out()).toMatch(/carries 1 residue row\(s\); resolve them before bundling/);
+    expect(fs.existsSync(path.join(dir, "physics/eslint.mjs"))).toBe(false);
+    fs.rmSync(dir, { recursive: true, force: true });
+    q.restore();
+  });
+
+  it("exits 1 when the rulings file cannot be read", async () => {
+    const q = quiet();
+    const dir = packageDir();
+    expect(await bundle(["--rulings", path.join(dir, "nope.json"), "--package", dir])).toBe(1);
+    expect(q.out().length).toBeGreaterThan(0);
+    fs.rmSync(dir, { recursive: true, force: true });
+    q.restore();
+  });
+
+  it("exits 2 on an unknown flag", async () => {
+    const q = quiet();
+    expect(await bundle(["--nonsense"])).toBe(2);
+    expect(q.out()).toContain("usage: orrery bundle");
+    q.restore();
+  });
+});
+```
+
+
+- [ ] **Step 5: The pointer file prettier now needs (C1)**
+
+`packages/orrery/templates/next-supabase-mono/prettier.config.mjs`, carried byte-identically by the
+fixture, with the `"prettier": "@vaoan/orrery/prettier"` key dropped from the fixture's
+`package.json`:
+
+```javascript
+import prettier from "@vaoan/orrery/prettier";
+export default prettier();
+```
+
+- [ ] **Step 6: Rerun the pipeline**
+
+`reconcile` → `bundle` → the bundle/honesty/shape/pointer tests → the fixture's `observe --predict`
+and check run → both donors' `observe --predict` and check run. The records, `rulings.json`, the
+generated tiers, the predictions and the observation are all committed from that rerun.
 
 ## Done when
 
