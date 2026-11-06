@@ -1,12 +1,12 @@
 {
   "date": "2026-11-06",
   "label": "after",
-  "command": "orrery instructions libra eclipse-con --touching libra=apps/store/src/features/cart/presentation/components/CartDrawer.tsx --touching libra=apps/store/src/features/cart/application/groupBySeller.ts --touching libra=apps/store/src/features/cart/domain/constants.ts --touching libra=apps/admin/tests/ActivityRow.test.tsx --touching libra=apps/admin/e2e/audit-log.spec.ts --touching eclipse-con=apps/moonfest2026/src/features/analytics/domain/consent.ts --touching eclipse-con=apps/links/src/App.test.tsx --touching eclipse-con=apps/sunfest2027/src/components/AmenityCard.tsx --label after",
+  "command": "orrery instructions libra eclipse-con --touching libra=apps/store/src/features/cart/presentation/components/CartDrawer.tsx --touching libra=apps/store/src/features/cart/application/groupBySeller.ts --touching libra=apps/store/src/features/cart/domain/constants.ts --touching libra=apps/admin/tests/ActivityRow.test.tsx --touching libra=apps/admin/e2e/audit-log.spec.ts --touching eclipse-con=apps/moonfest2026/src/features/analytics/domain/consent.ts --touching eclipse-con=apps/links/src/App.test.tsx --touching eclipse-con=apps/sunfest2027/src/components/AmenityCard.tsx --base libra=b5ca551 --base eclipse-con=da72c48 --allow-lost libra-allow-lost.json --label after",
   "lostCount": 0,
   "bodies": [
     {
       "body": "libra",
-      "sha": "5b34eb8",
+      "sha": "d15770d",
       "startup": {
         "tokens": 2869,
         "files": [
@@ -18,11 +18,11 @@
         ]
       },
       "task": {
-        "tokens": 9697,
+        "tokens": 9813,
         "added": [
           {
             "path": ".claude/rules/checkout-stock-integrity.md",
-            "bytes": 1864,
+            "bytes": 2171,
             "reason": "path-rule"
           },
           {
@@ -57,7 +57,7 @@
           },
           {
             "path": ".claude/rules/testing.md",
-            "bytes": 4174,
+            "bytes": 4215,
             "reason": "path-rule"
           },
           {
@@ -73,11 +73,12 @@
         "task": false
       },
       "oversize": [],
+      "skippedRules": [],
       "skills": {
         "count": 40,
         "descriptionTokens": 1891
       },
-      "lostCount": null
+      "lostCount": 0
     },
     {
       "body": "eclipse-con",
@@ -143,11 +144,12 @@
         "task": false
       },
       "oversize": [],
+      "skippedRules": [],
       "skills": {
         "count": 1,
         "descriptionTokens": 133
       },
-      "lostCount": null
+      "lostCount": 0
     }
   ]
 }
