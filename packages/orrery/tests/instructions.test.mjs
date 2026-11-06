@@ -46,13 +46,29 @@ describe("parseRule", () => {
     expect(parseRule("no frontmatter").paths).toBeNull();
   });
   it("parses paths from a CRLF file, a YAML list, and a comma string", () => {
-    expect(parseRule("---\r\npaths:\r\n  - a/**\r\n---\r\n").paths).toEqual(["a/**"]);
-    expect(parseRule("---\npaths: a/**, b/**\n---\n").paths).toEqual(["a/**", "b/**"]);
-    expect(parseRule("---\npaths: [a/**, \"b/**\"]\n---\n").paths).toEqual(["a/**", "b/**"]);
-    expect(parseRule("---\npaths: src/**/*.{ts,tsx}\n---\n").paths).toEqual(["src/**/*.{ts,tsx}"]);
+    expect(parseRule("---\r\npaths:\r\n  - a/*.ts\r\n---\r\n").paths).toEqual(["a/*.ts"]);
+    expect(parseRule("---\npaths: a/*.ts, b/*.ts\n---\n").paths).toEqual(["a/*.ts", "b/*.ts"]);
+    expect(parseRule("---\npaths: [a/*.ts, \"b/*.ts\"]\n---\n").paths).toEqual(["a/*.ts", "b/*.ts"]);
   });
   it("treats frontmatter without paths as unscoped", () => {
     expect(parseRule("---\ndescription: x\n---\n").paths).toBeNull();
+  });
+  it("expands braces and trims a trailing /**, as Claude Code's loader does", () => {
+    expect(parseRule("---\npaths: src/**/*.{ts,tsx}\n---\n").paths).toEqual(["src/**/*.ts", "src/**/*.tsx"]);
+    expect(parseRule("---\npaths:\n  - \"{a,b}/{c,d}.ts\"\n---\n").paths).toEqual(["a/c.ts", "a/d.ts", "b/c.ts", "b/d.ts"]);
+    expect(parseRule("---\npaths:\n  - a/**\n  - b/**/*.ts\n---\n").paths).toEqual(["a", "b/**/*.ts"]);
+  });
+  it("splits a comma inside a list item, as the loader does", () => {
+    expect(parseRule("---\npaths:\n  - \"a.ts, b.ts\"\n---\n").paths).toEqual(["a.ts", "b.ts"]);
+  });
+  it("treats globs that all reduce to ** or to nothing as unscoped", () => {
+    expect(parseRule("---\npaths: \"**\"\n---\n").paths).toBeNull();
+    expect(parseRule("---\npaths:\n  - \"**/**\"\n  - \"**\"\n---\n").paths).toBeNull();
+    expect(parseRule("---\npaths: \"/**\"\n---\n").paths).toBeNull();
+  });
+  it("leaves a brace pattern unexpanded rather than expanding it without limit", () => {
+    const bomb = "{a,b}".repeat(30);
+    expect(parseRule(`---\npaths: "${bomb}"\n---\n`).paths).toEqual([bomb]);
   });
 });
 
@@ -186,5 +202,59 @@ describe("measureBody", () => {
     const m = measureBody(missing, {});
     expect(m.error).toMatch(/CLAUDE\.md/);
     expect(m.body).toBe(path.basename(missing).toLowerCase());
+  });
+
+  // The globs below are the cases where gitignore semantics, which Claude Code uses, differ from
+  // a shell glob. Each fixture carries cold files so that the rule stays under the wide threshold.
+  const COLD = Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`cold/f${i}.ts`, ""]));
+  const shareOf = (glob, files) => {
+    const m = measureBody(fixture({ "CLAUDE.md": "x", ".claude/rules/r.md": rule([glob]), ...files, ...COLD }), { touching: Object.keys(files) });
+    return (m.task?.added ?? []).map((f) => f.path);
+  };
+  it("matches files under a directory that tests/* matches", () => {
+    expect(shareOf("tests/*", { "tests/legacy/deep/a.ts": "" })).toEqual([".claude/rules/r.md"]);
+  });
+  it("counts those deeper files toward the wide share", () => {
+    const files = { "CLAUDE.md": "x", ".claude/rules/r.md": rule(["tests/*"]) };
+    for (let i = 0; i < 5; i++) files[`tests/legacy/f${i}.ts`] = "";
+    for (let i = 0; i < 5; i++) files[`src/f${i}.ts`] = "";
+    const m = measureBody(fixture(files), {});
+    expect(m.wideRules).toEqual([{ path: ".claude/rules/r.md", share: 0.5 }]);
+  });
+  it("matches foo/** at any depth, since the trimmed glob has no slash left", () => {
+    expect(shareOf("foo/**", { "pkg/foo/a.ts": "" })).toEqual([".claude/rules/r.md"]);
+  });
+  it("keeps a/b/** anchored at the root", () => {
+    expect(shareOf("a/b/**", { "pkg/a/b/c.ts": "" })).toEqual([]);
+    expect(shareOf("a/b/**", { "a/b/c.ts": "" })).toEqual([".claude/rules/r.md"]);
+  });
+  it("matches a bare filename at any depth", () => {
+    expect(shareOf("turbo.json", { "apps/web/turbo.json": "" })).toEqual([".claude/rules/r.md"]);
+  });
+  it("expands braces before matching", () => {
+    expect(shareOf("src/*.{ts,css}", { "src/a.css": "" })).toEqual([".claude/rules/r.md"]);
+    expect(shareOf("src/*.{ts,css}", { "src/a.mjs": "" })).toEqual([]);
+  });
+  it("counts a rule whose globs are all ** at start, as the loader does", () => {
+    const m = measureBody(fixture({ "CLAUDE.md": "x", ".claude/rules/r.md": rule(["**"]), ...COLD }), {});
+    expect(m.startup.files.map((f) => [f.path, f.reason])).toContainEqual([".claude/rules/r.md", "unscoped-rule"]);
+  });
+  it("drops a glob the matcher cannot compile and keeps the rest of the rule", () => {
+    const dir = fixture({ "CLAUDE.md": "x", ".claude/rules/r.md": rule(["]\\(", "src/*.ts"]), "src/a.ts": "", ...COLD });
+    expect(measureBody(dir, { touching: ["src/a.ts"] }).task.added.map((f) => f.path)).toEqual([".claude/rules/r.md"]);
+  });
+  it("does not fail on a touching path that names the body's root", () => {
+    const dir = fixture({ "CLAUDE.md": "x", ".claude/rules/r.md": rule(["src/*.ts"]), "src/a.ts": "", ...COLD });
+    expect(measureBody(dir, { touching: ["."] }).task.added).toEqual([]);
+    expect(measureBody(dir, { touching: ["./"] }).task.added).toEqual([]);
+  });
+
+  it("skips and notes a broken symlink in the rules directory", () => {
+    const dir = fixture({ "CLAUDE.md": "x", ".claude/rules/good.md": "unscoped" });
+    fs.symlinkSync("does-not-exist.md", path.join(dir, ".claude/rules/broken.md"));
+    const m = measureBody(dir, {});
+    expect(m.error).toBeUndefined();
+    expect(m.skippedRules).toEqual([".claude/rules/broken.md"]);
+    expect(m.startup.files.map((f) => f.path)).toEqual(["CLAUDE.md", ".claude/rules/good.md"]);
   });
 });
