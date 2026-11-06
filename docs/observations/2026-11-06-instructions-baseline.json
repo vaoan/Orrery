@@ -1,0 +1,463 @@
+{
+  "date": "2026-11-06",
+  "label": "baseline",
+  "command": "orrery instructions libra eclipse-con --touching libra=apps/store/src/features/cart/presentation/components/CartDrawer.tsx --touching libra=apps/store/src/features/cart/application/groupBySeller.ts --touching libra=apps/store/src/features/cart/domain/constants.ts --touching libra=apps/admin/tests/ActivityRow.test.tsx --touching libra=apps/admin/e2e/audit-log.spec.ts --touching eclipse-con=apps/moonfest2026/src/features/analytics/domain/consent.ts --touching eclipse-con=apps/links/src/App.test.tsx --touching eclipse-con=apps/sunfest2027/src/components/AmenityCard.tsx --label baseline",
+  "lostCount": 0,
+  "bodies": [
+    {
+      "body": "libra",
+      "sha": "b5ca551",
+      "startup": {
+        "tokens": 88619,
+        "files": [
+          {
+            "path": "CLAUDE.md",
+            "bytes": 13356,
+            "reason": "root"
+          },
+          {
+            "path": ".claude/rules/ai-docs-dry.md",
+            "bytes": 7367,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/architecture.md",
+            "bytes": 11425,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/build-checks.md",
+            "bytes": 5746,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/checkout-stock-integrity.md",
+            "bytes": 1483,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/code-review-standards.md",
+            "bytes": 20679,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/commit-policy.md",
+            "bytes": 339,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/component-patterns.md",
+            "bytes": 9483,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/css-consistency.md",
+            "bytes": 4309,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/dry-principle.md",
+            "bytes": 12582,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/e2e-selectors.md",
+            "bytes": 9688,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/generated-code-policy.md",
+            "bytes": 1117,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/git-safety.md",
+            "bytes": 7908,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/git-workflow.md",
+            "bytes": 12674,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/kiss-principle.md",
+            "bytes": 1306,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/libraries-over-manual-code.md",
+            "bytes": 3400,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/mcp-first.md",
+            "bytes": 4128,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/mcp-standards.md",
+            "bytes": 6534,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/monorepo-architecture.md",
+            "bytes": 16812,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/multi-agent-persistence.md",
+            "bytes": 5255,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/naming-conventions.md",
+            "bytes": 5616,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/no-hardcoding.md",
+            "bytes": 10299,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/one-component-per-file.md",
+            "bytes": 8869,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/portability.md",
+            "bytes": 7417,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/single-source-of-truth.md",
+            "bytes": 7544,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/solid-principles.md",
+            "bytes": 11782,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/storybook.md",
+            "bytes": 10770,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/supabase-wipe.md",
+            "bytes": 6280,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/tailwind.md",
+            "bytes": 9895,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/telegram-notifications.md",
+            "bytes": 3309,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/testing.md",
+            "bytes": 22555,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/url-state.md",
+            "bytes": 5930,
+            "reason": "unscoped-rule"
+          }
+        ]
+      },
+      "task": {
+        "tokens": 88619,
+        "added": []
+      },
+      "wideRules": [],
+      "over": {
+        "startup": true,
+        "task": true
+      },
+      "oversize": [
+        {
+          "path": "CLAUDE.md",
+          "lines": 314,
+          "limit": 200
+        },
+        {
+          "path": ".claude/rules/ai-docs-dry.md",
+          "lines": 293,
+          "limit": 100
+        },
+        {
+          "path": ".claude/rules/architecture.md",
+          "lines": 305,
+          "limit": 100
+        },
+        {
+          "path": ".claude/rules/build-checks.md",
+          "lines": 269,
+          "limit": 100
+        },
+        {
+          "path": ".claude/rules/code-review-standards.md",
+          "lines": 547,
+          "limit": 100
+        },
+        {
+          "path": ".claude/rules/component-patterns.md",
+          "lines": 435,
+          "limit": 100
+        },
+        {
+          "path": ".claude/rules/css-consistency.md",
+          "lines": 162,
+          "limit": 100
+        },
+        {
+          "path": ".claude/rules/dry-principle.md",
+          "lines": 496,
+          "limit": 100
+        },
+        {
+          "path": ".claude/rules/e2e-selectors.md",
+          "lines": 341,
+          "limit": 100
+        },
+        {
+          "path": ".claude/rules/git-safety.md",
+          "lines": 217,
+          "limit": 100
+        },
+        {
+          "path": ".claude/rules/git-workflow.md",
+          "lines": 413,
+          "limit": 100
+        },
+        {
+          "path": ".claude/rules/mcp-first.md",
+          "lines": 161,
+          "limit": 100
+        },
+        {
+          "path": ".claude/rules/mcp-standards.md",
+          "lines": 299,
+          "limit": 100
+        },
+        {
+          "path": ".claude/rules/monorepo-architecture.md",
+          "lines": 542,
+          "limit": 100
+        },
+        {
+          "path": ".claude/rules/multi-agent-persistence.md",
+          "lines": 176,
+          "limit": 100
+        },
+        {
+          "path": ".claude/rules/naming-conventions.md",
+          "lines": 214,
+          "limit": 100
+        },
+        {
+          "path": ".claude/rules/no-hardcoding.md",
+          "lines": 330,
+          "limit": 100
+        },
+        {
+          "path": ".claude/rules/one-component-per-file.md",
+          "lines": 343,
+          "limit": 100
+        },
+        {
+          "path": ".claude/rules/portability.md",
+          "lines": 277,
+          "limit": 100
+        },
+        {
+          "path": ".claude/rules/single-source-of-truth.md",
+          "lines": 272,
+          "limit": 100
+        },
+        {
+          "path": ".claude/rules/solid-principles.md",
+          "lines": 469,
+          "limit": 100
+        },
+        {
+          "path": ".claude/rules/storybook.md",
+          "lines": 514,
+          "limit": 100
+        },
+        {
+          "path": ".claude/rules/supabase-wipe.md",
+          "lines": 174,
+          "limit": 100
+        },
+        {
+          "path": ".claude/rules/tailwind.md",
+          "lines": 356,
+          "limit": 100
+        },
+        {
+          "path": ".claude/rules/testing.md",
+          "lines": 835,
+          "limit": 100
+        },
+        {
+          "path": ".claude/rules/url-state.md",
+          "lines": 195,
+          "limit": 100
+        }
+      ],
+      "skills": {
+        "count": 37,
+        "descriptionTokens": 1699
+      },
+      "lostCount": null
+    },
+    {
+      "body": "eclipse-con",
+      "sha": "da72c48",
+      "startup": {
+        "tokens": 16746,
+        "files": [
+          {
+            "path": "CLAUDE.md",
+            "bytes": 16693,
+            "reason": "root"
+          },
+          {
+            "path": ".claude/rules/analytics-tracking.md",
+            "bytes": 2672,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/architecture.md",
+            "bytes": 2104,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/build-checks.md",
+            "bytes": 947,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/code-review-standards.md",
+            "bytes": 1453,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/component-patterns.md",
+            "bytes": 1950,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/dry-principle.md",
+            "bytes": 1305,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/e2e-selectors.md",
+            "bytes": 1225,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/git-safety.md",
+            "bytes": 1058,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/git-workflow.md",
+            "bytes": 1715,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/i18n-testing.md",
+            "bytes": 1880,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/i18n.md",
+            "bytes": 1400,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/jsdoc.md",
+            "bytes": 1658,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/kiss-principle.md",
+            "bytes": 1443,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/naming-conventions.md",
+            "bytes": 1957,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/no-hardcoding.md",
+            "bytes": 1019,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/one-component-per-file.md",
+            "bytes": 1222,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/portability.md",
+            "bytes": 1441,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/single-source-of-truth.md",
+            "bytes": 1488,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/solid-principles.md",
+            "bytes": 2013,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/tailwind.md",
+            "bytes": 1672,
+            "reason": "unscoped-rule"
+          },
+          {
+            "path": ".claude/rules/testing.md",
+            "bytes": 1922,
+            "reason": "unscoped-rule"
+          }
+        ]
+      },
+      "task": {
+        "tokens": 16746,
+        "added": []
+      },
+      "wideRules": [],
+      "over": {
+        "startup": true,
+        "task": false
+      },
+      "oversize": [
+        {
+          "path": "CLAUDE.md",
+          "lines": 340,
+          "limit": 200
+        }
+      ],
+      "skills": {
+        "count": 1,
+        "descriptionTokens": 133
+      },
+      "lostCount": null
+    }
+  ]
+}
