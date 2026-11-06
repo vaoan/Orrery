@@ -129,4 +129,115 @@ describe("orrery instructions", () => {
     expect(await instructions([dir, "--touching", "body=a/../../x.ts"], deps)).toBe(2);
     expect(q.err()).toContain("must be relative");
   });
+
+  const readJson = (report, stem = "2026-11-06-instructions") => JSON.parse(fs.readFileSync(path.join(report, `${stem}.json`), "utf8"));
+  const readMd = (report, stem = "2026-11-06-instructions") => norm(fs.readFileSync(path.join(report, `${stem}.md`), "utf8"));
+
+  it("reports a null lostCount when no body was measured for it", async () => {
+    quiet();
+    const report = tmp();
+    await instructions([body({ "CLAUDE.md": "x" }), "--report", report], deps);
+    expect(readJson(report).lostCount).toBeNull();
+  });
+
+  it("totals lostCount across the bodies that were measured for it", async () => {
+    quiet();
+    const report = tmp();
+    const gone = "a deleted paragraph that is long enough to be measured as a paragraph here";
+    const a = body({ "CLAUDE.md": `# t\n\n${gone}\n` }, { commit: true });
+    fs.writeFileSync(path.join(a, "CLAUDE.md"), "# t\n");
+    git(a, "add", "-A");
+    await instructions([a, "--base", "HEAD", "--report", report], deps);
+    expect(readJson(report).lostCount).toBe(1);
+  });
+
+  // Two committed bodies, each with a paragraph deleted since its first commit, named by directory.
+  function named(name) {
+    const parent = tmp();
+    const dir = path.join(parent, name);
+    fs.mkdirSync(dir);
+    git(dir, "init", "-q");
+    fs.writeFileSync(path.join(dir, "CLAUDE.md"), `# ${name}\n\na paragraph of ${name} that is long enough to be measured here\n`);
+    git(dir, "add", "-A");
+    git(dir, "commit", "-q", "-m", "i");
+    fs.writeFileSync(path.join(dir, "CLAUDE.md"), `# ${name}\n`);
+    git(dir, "add", "-A");
+    return dir;
+  }
+
+  it("takes --base body=ref per body, and leaves a body without one unmeasured for loss", async () => {
+    quiet();
+    const report = tmp();
+    const a = named("one");
+    const b = named("two");
+    const code = await instructions([a, b, "--base", "one=HEAD", "--report", report], deps);
+    expect(code).toBe(1);
+    const json = readJson(report);
+    expect(json.bodies.map((x) => [x.body, x.lostCount])).toEqual([["one", 1], ["two", null]]);
+    expect(json.command).toBe("orrery instructions one two --base one=HEAD");
+  });
+
+  it("takes a different --base for each body in one run", async () => {
+    const q = quiet();
+    const report = tmp();
+    const a = named("one");
+    const b = named("two");
+    await instructions([a, b, "--base", "one=HEAD", "--base", "two=HEAD~0", "--report", report], deps);
+    expect(readJson(report).bodies.map((x) => x.lostCount)).toEqual([1, 1]);
+    expect(q.err()).toContain("one: 1 paragraph(s) lost since HEAD");
+    expect(q.err()).toContain("two: 1 paragraph(s) lost since HEAD~0");
+    expect(readJson(report).command).toContain("--base one=HEAD --base two=HEAD~0");
+  });
+
+  it("applies a bare --base to every body, and lets body=ref override it", async () => {
+    quiet();
+    const report = tmp();
+    const a = named("one");
+    const b = named("two");
+    await instructions([a, b, "--base", "HEAD", "--base", "two=does-not-exist", "--report", report], deps);
+    const [one, two] = readJson(report).bodies;
+    expect(one.lostCount).toBe(1);
+    expect(two.error).toContain("does-not-exist");
+  });
+
+  it("refuses a --base naming no given body, an empty one, and two bare ones", async () => {
+    const q = quiet();
+    const report = tmp();
+    const dir = body({ "CLAUDE.md": "x" });
+    expect(await instructions([dir, "--base", "libra=HEAD", "--report", report], deps)).toBe(2);
+    expect(q.err()).toContain("libra");
+    expect(await instructions([dir, "--base", "body=", "--report", report], deps)).toBe(2);
+    expect(await instructions([dir, "--base", "HEAD", "--base", "main", "--report", report], deps)).toBe(2);
+    expect(await instructions([dir, "--base", "body=HEAD", "--base", "body=main", "--report", report], deps)).toBe(2);
+    expect(fs.readdirSync(report)).toEqual([]);
+  });
+
+  it("says in the header what the start and task figures leave out", async () => {
+    quiet();
+    const report = tmp();
+    await instructions([body({ "CLAUDE.md": "x" }), "--report", report], deps);
+    const md = readMd(report);
+    const line = md.split("\n").find((l) => l.startsWith("Start excludes"));
+    expect(line).toBeDefined();
+    for (const part of ["skill descriptions (shown separately)", "`.claude/agents` descriptions", "plugin and user-level injections", "MCP servers", "lessons Claude follows a link to"]) expect(line).toContain(part);
+    expect(md.indexOf(line)).toBeLessThan(md.indexOf("## body"));
+  });
+
+  it("keeps going past a broken rule symlink, and still reports the other body", async () => {
+    const q = quiet();
+    const report = tmp();
+    const broken = body({ "CLAUDE.md": "x", ".claude/rules/good.md": "unscoped" });
+    fs.symlinkSync("gone.md", path.join(broken, ".claude/rules/broken.md"));
+    const other = path.join(tmp(), "other");
+    fs.mkdirSync(other);
+    git(other, "init", "-q");
+    fs.writeFileSync(path.join(other, "CLAUDE.md"), "x");
+    git(other, "add", "-A");
+    expect(await instructions([broken, other, "--report", report], deps)).toBe(0);
+    expect(q.err()).toContain("body: skipped .claude/rules/broken.md");
+    const json = readJson(report);
+    expect(json.bodies.map((b) => b.body)).toEqual(["body", "other"]);
+    expect(json.bodies[0].skippedRules).toEqual([".claude/rules/broken.md"]);
+    expect(readMd(report)).toContain("- .claude/rules/broken.md");
+  });
 });

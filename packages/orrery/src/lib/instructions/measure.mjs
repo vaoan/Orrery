@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import picomatch from "picomatch";
+import ignore from "ignore";
 
 export const BUDGET = { startup: 10000, task: 25000 };
 export const WIDE_GLOB_SHARE = 0.4;
@@ -11,6 +11,7 @@ const ROOT_LINE_LIMIT = 200;
 const RULE_LINE_LIMIT = 100;
 const MAX_IMPORT_HOPS = 4;
 const MIN_PARAGRAPH = 40;
+const MAX_BRACE_RESULTS = 1000;
 const SOURCE_EXT = new Set(["ts", "tsx", "js", "jsx", "mjs", "cjs", "css", "java", "py", "go", "rs"]);
 
 const lf = (text) => text.replace(/\r\n?/g, "\n");
@@ -31,6 +32,10 @@ const unquote = (s) => {
   return t.length >= 2 && (t[0] === '"' || t[0] === "'") && t.at(-1) === t[0] ? t.slice(1, -1) : t;
 };
 
+// The steps below follow Claude Code's rule loader (2.1.311). It matches with
+// `ignore().add(globs).ignores(path)`, which is gitignore semantics and not a shell glob: `tests/*`
+// reaches everything under a directory it matches, and a glob with no inner slash matches at any depth.
+
 // Split on commas that sit outside {braces}, so `*.{ts,tsx}` stays one glob.
 function splitGlobs(s) {
   const out = [];
@@ -44,7 +49,32 @@ function splitGlobs(s) {
   return out.map(unquote).filter(Boolean);
 }
 
-// Returns { paths } where null means "unscoped": no frontmatter, no `paths:`, or any malformation.
+// A pattern past the limit stays unexpanded, as in the loader.
+function expandBraces(glob) {
+  const out = [], stack = [glob];
+  while (stack.length) {
+    const g = stack.pop();
+    const m = /^([^{]*)\{([^}]+)\}(.*)$/.exec(g);
+    if (!m) { out.push(g); continue; }
+    const alternatives = m[2].split(",").map((a) => a.trim());
+    if (out.length + stack.length + alternatives.length > MAX_BRACE_RESULTS) return [glob];
+    for (const a of alternatives.reverse()) stack.push(m[1] + a + m[3]);
+  }
+  return out;
+}
+
+const compiles = (glob) => {
+  try { ignore().add([glob]).test("probe"); return true; } catch { return false; }
+};
+
+// Files under a matched directory match too. The loader drops a glob that does not compile.
+function matcher(globs) {
+  const ig = ignore().add(globs.filter(compiles));
+  return (file) => file !== "" && file !== "." && ig.ignores(file);
+}
+
+// Returns { paths } where null means "unscoped": no frontmatter, no `paths:`, any malformation, or
+// globs that all reduce to `**` or to nothing. Otherwise the globs as the loader holds them.
 export function parseRule(text) {
   const fm = frontmatter(text);
   if (!fm) return { paths: null };
@@ -55,7 +85,7 @@ export function parseRule(text) {
   if (inline === "") {
     list = [];
     for (const l of fm.slice(i + 1)) {
-      if (/^\s*-\s+/.test(l)) list.push(unquote(l.replace(/^\s*-\s+/, "")));
+      if (/^\s*-\s+/.test(l)) list.push(l.replace(/^\s*-\s+/, ""));
       else if (l.trim() === "" || /^\s*#/.test(l)) continue;
       else break;
     }
@@ -63,10 +93,16 @@ export function parseRule(text) {
     if (!inline.endsWith("]")) return { paths: null };
     list = splitGlobs(inline.slice(1, -1));
   } else {
-    list = splitGlobs(inline);
+    list = [inline];
   }
-  list = list.filter(Boolean);
-  return { paths: list.length ? list : null };
+  const globs = list
+    .flatMap((g) => splitGlobs(unquote(g)))
+    .map((g) => g.trim())
+    .filter(Boolean)
+    .flatMap(expandBraces)
+    .map((g) => (g.endsWith("/**") ? g.slice(0, -3) : g))
+    .filter(Boolean);
+  return { paths: globs.length && !globs.every((g) => g === "**") ? globs : null };
 }
 
 function skillText(text) {
@@ -141,7 +177,7 @@ const paragraphs = (text) => lf(text).split(/\n[ \t]*\n/).map(norm).filter((p) =
 
 export function measureBody(dir, { touching, base, allowLost = [] } = {}) {
   const body = path.basename(path.resolve(dir)).toLowerCase();
-  const fail = (error, sha = null) => ({ body, sha, startup: { tokens: 0, files: [] }, task: null, wideRules: [], over: { startup: false, task: false }, oversize: [], skills: { count: 0, descriptionTokens: 0 }, lost: null, error });
+  const fail = (error, sha = null) => ({ body, sha, startup: { tokens: 0, files: [] }, task: null, wideRules: [], over: { startup: false, task: false }, oversize: [], skippedRules: [], skills: { count: 0, descriptionTokens: 0 }, lost: null, error });
 
   let tracked, sha;
   try {
@@ -182,7 +218,10 @@ export function measureBody(dir, { touching, base, allowLost = [] } = {}) {
     }
   }
 
-  const ruleFiles = walkMd(dir, ".claude/rules");
+  // A broken symlink or an unreadable entry costs nothing to load, and is noted rather than fatal.
+  const ruleEntries = walkMd(dir, ".claude/rules");
+  const skippedRules = ruleEntries.filter((rel) => rawOf(rel) === null);
+  const ruleFiles = ruleEntries.filter((rel) => rawOf(rel) !== null);
   const scoped = [];
   const wideRules = [];
   const startupFiles = [];
@@ -192,7 +231,7 @@ export function measureBody(dir, { touching, base, allowLost = [] } = {}) {
   for (const rel of ruleFiles) {
     const { paths: globs } = parseRule(rawOf(rel));
     if (!globs) { load(rel, "unscoped-rule", startupFiles); continue; }
-    const match = picomatch(globs, { dot: true });
+    const match = matcher(globs);
     const hits = sources.filter((f) => match(f)).length;
     const share = sources.length ? hits / sources.length : 0;
     if (share > WIDE_GLOB_SHARE) { wideRules.push({ path: rel, share }); load(rel, "wide-rule", startupFiles); }
@@ -245,6 +284,6 @@ export function measureBody(dir, { touching, base, allowLost = [] } = {}) {
   return {
     body, sha, startup, task, wideRules,
     over: { startup: startup.tokens > BUDGET.startup, task: task ? task.tokens > BUDGET.task : false },
-    oversize, skills, lost,
+    oversize, skippedRules, skills, lost,
   };
 }
