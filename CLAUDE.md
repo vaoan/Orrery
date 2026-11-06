@@ -11,10 +11,10 @@ some, you are in the wrong repository.
 
 - **The design (the authority):** `docs/specs/2026-09-06-orrery-design.md`
 - **Decisions already made:** `docs/decisions/`
-- **What to build next:** `docs/plans/` — Phase 2 is the current work
+- **What to build next:** `docs/plans/`
 
-Nothing in this repository is implemented yet. The design is approved; Phases 0
-and 1 happen in other repos. This repo is Phase 2 onward.
+Current work is the AI layer: `docs/specs/2026-11-06-ai-layer-design.md`, starting
+with `docs/plans/2026-11-06-stage-0-instruction-load.md` (ADR 0019).
 
 ## The one rule that keeps this honest
 
