@@ -9,6 +9,7 @@ Usage:
   orrery reconcile <repoA> <repoB> [--sample surface=path]... [--out <dir>]
   orrery bundle [--rulings docs/decisions/rulings.json] [--package packages/orrery]
   orrery observe <bodyDir>... [--predict] [--report <dir>]
+  orrery instructions <bodyDir>... [--touching body=path]... [--base <ref>] [--allow-lost <file.json>] [--report <dir>] [--label <name>]
 
 Commands:
   diff-eslint   compare two repositories' effective ESLint configurations
@@ -19,6 +20,7 @@ Commands:
   reconcile     generate the ruling records and rulings.json from two donor repositories
   bundle        generate the physics and class tiers from rulings.json
   observe       version, pointer and code drift of a body against the bundle, read-only
+  instructions  what a body's CLAUDE.md, rules and imports load at session start and across a task, read-only
 `;
 
 const COMMANDS = {
@@ -30,6 +32,7 @@ const COMMANDS = {
   reconcile: async (argv) => (await import("./commands/reconcile.mjs")).default(argv),
   bundle: async (argv) => (await import("./commands/bundle.mjs")).default(argv),
   observe: async (argv) => (await import("./commands/observe.mjs")).default(argv),
+  instructions: async (argv) => (await import("./commands/instructions.mjs")).default(argv),
 };
 
 export async function run(argv) {
