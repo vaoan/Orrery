@@ -21,7 +21,7 @@ All measured 2026-11-06 on this machine. Figures are claims about that day.
 
 | Finding | Evidence |
 |---|---|
-| Libra loads about 60,000 tokens of rules per session | 31 rule files, none with `paths:`, 252,501 bytes, plus a 314-line root `CLAUDE.md` |
+| Libra loads far over budget per session; the figure is in `docs/observations/2026-11-06-instructions-baseline.md` | 31 rule files, none with `paths:`, 252,501 bytes, plus a 314-line root `CLAUDE.md` |
 | eclipse-con has the same shape, smaller | 21 rule files, none with `paths:`, 33,544 bytes, plus a 340-line root |
 | AeleOS already solved loading | 11 of 12 rules scoped, 146-line root, skills, invariant re-injection, load logging. Its spec projected 80,200 → ~8,000 tokens at session start |
 | Orrery has none of it | One `CLAUDE.md`, no rules, no skills, no hooks. Its root also says "Nothing in this repository is implemented yet" beside a table of built commands |
@@ -300,7 +300,7 @@ Each stage is usable alone and has its own acceptance. The owner can stop at any
 | 0 | Record the baseline first. Then Libra and eclipse-con: scope rules, move incidents to lessons, root under 200 lines. Knowledge is kept; duplicates may be deleted, listed in the PR | Those repos | Budget met when measured, and every removed paragraph is either elsewhere or listed as a duplicate |
 | 1 | Orrery on itself: trim root, fix stale claims, add `packages/orrery/CLAUDE.md`, rules, invariants | This repo | Budget met; a fresh session answers "how do I add a command" correctly from what loads |
 | 2 | `orrery-verify`, the gate, and the reminder. Built here, trialled in unichat, where the owner actually works | This repo, unichat | All branches tested and sabotage-verified; a week of real use in unichat with no disabling |
-| 3 | `/lesson`, `orrery corrections`, `orrery instructions` | This repo | A real mistake goes from capture to a failing check |
+| 3 | `/lesson`, `orrery corrections`, the log half of `orrery instructions` (its static half shipped in stage 0) | This repo | A real mistake goes from capture to a failing check |
 | 4 | Plugin: rule-delivery test, reconcile shared content, move stages 1–3's generic parts out | This repo | A scratch repository, and one with no `package.json`, get hooks and skills by enabling the plugin alone |
 | 5 | `init`, `check`, `status`, `promote`, git install path, reusable `ci.yml`. AI-layer adoption in order: AeleOS, Libra, eclipse-con, unichat, InstaTray. Puck and Janus when cloned on this machine | This repo, then bodies | `init` on the fixture passes `check`, lint, and typecheck; each adoption PR meets the budget; AeleOS drops its local copies of hooks and keeps its tier 3 |
 | 6 | The starter, after its own brainstorm and design | New repo | Its own design decides |

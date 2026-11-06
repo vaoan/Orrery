@@ -68,7 +68,7 @@ orrery bundle                            render the rulings into physics/ and cl
 orrery observe <body>...                 on-demand drift of a body against the bundle and
                                           its prediction (built, 2b; no schedule, ADR 0017)
 orrery instructions <body>...             what a body loads at session start and across a task,
-                                          against 10,000 and 25,000 token budgets (built, stage 0)
+                                          against 10,000 and 25,000 token budgets (static half built, stage 0)
 ```
 
 `diff-eslint` was built first. It sized the reconciliation: see
