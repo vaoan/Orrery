@@ -148,7 +148,7 @@ export function measureBody(dir, { touching, base, allowLost = [] } = {}) {
     tracked = lines(git(dir, ["ls-files"]));
     sha = git(dir, ["rev-parse", "--short", "HEAD"]).trim();
   } catch {
-    try { tracked = lines(git(dir, ["ls-files"])); sha = null; } catch { return fail(`${dir} is not a git checkout`); }
+    try { tracked = lines(git(dir, ["ls-files"])); sha = null; } catch { return fail("not a git checkout"); }
   }
   if (readFile(dir, "CLAUDE.md") === null) return fail("no CLAUDE.md at the root", sha);
 
@@ -238,7 +238,7 @@ export function measureBody(dir, { touching, base, allowLost = [] } = {}) {
       }
       lost = [...out];
     } catch (e) {
-      return fail(`cannot read base ${base}: ${String(e.stderr || e.message).trim()}`, sha);
+      return fail(`cannot read base ${base}: ${String(e.stderr || e.message).trim().split(dir).join(body)}`, sha);
     }
   }
 

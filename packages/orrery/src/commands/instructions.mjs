@@ -35,6 +35,7 @@ export default async function instructions(argv, deps = {}) {
     return 2;
   }
 
+  const names = positionals.map((p) => path.basename(path.resolve(p)).toLowerCase());
   const touching = {};
   for (const t of values.touching) {
     const eq = t.indexOf("=");
@@ -42,7 +43,17 @@ export default async function instructions(argv, deps = {}) {
       console.error(`--touching expects body=path, got ${t}\n${USAGE}`);
       return 2;
     }
-    (touching[t.slice(0, eq).toLowerCase()] ??= []).push(t.slice(eq + 1));
+    const key = t.slice(0, eq).toLowerCase();
+    const file = t.slice(eq + 1);
+    if (!names.includes(key)) {
+      console.error(`--touching names ${key}, which is not one of the bodies given (${names.join(", ")})\n${USAGE}`);
+      return 2;
+    }
+    if (path.isAbsolute(file) || path.win32.isAbsolute(file) || file.split(/[\\/]/).includes("..")) {
+      console.error(`--touching path for ${key} must be relative to the body and stay inside it, got ${file}\n${USAGE}`);
+      return 2;
+    }
+    (touching[key] ??= []).push(file);
   }
 
   let allowLost = [];
@@ -58,8 +69,8 @@ export default async function instructions(argv, deps = {}) {
 
   let failed = false;
   const measures = [];
-  for (const bodyDir of positionals) {
-    const name = path.basename(path.resolve(bodyDir)).toLowerCase();
+  for (const [i, bodyDir] of positionals.entries()) {
+    const name = names[i];
     const m = d.measureBody(bodyDir, { touching: touching[name], base: values.base, allowLost });
     measures.push(m);
     if (m.error) {
@@ -81,7 +92,9 @@ export default async function instructions(argv, deps = {}) {
 
   if (values.report) {
     const date = d.today();
-    const { md, json } = renderInstructions(measures, { date, label: values.label, command: `orrery instructions ${argv.join(" ")}` });
+    // Named by body, never by directory: the report is committed, and a local path is not for it.
+    const command = ["orrery instructions", ...names, ...values.touching.map((t) => `--touching ${t}`), ...(values.base ? [`--base ${values.base}`] : []), ...(values["allow-lost"] ? [`--allow-lost ${path.basename(values["allow-lost"])}`] : []), ...(values.label ? [`--label ${values.label}`] : [])].join(" ");
+    const { md, json } = renderInstructions(measures, { date, label: values.label, command });
     fs.mkdirSync(values.report, { recursive: true });
     const stem = path.join(values.report, `${date}-instructions${values.label ? `-${values.label}` : ""}`);
     fs.writeFileSync(`${stem}.md`, md + "\n");

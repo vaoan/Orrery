@@ -96,4 +96,37 @@ describe("orrery instructions", () => {
     quiet();
     expect(await instructions([body({ "CLAUDE.md": "x" }), "--touching", "nope"], deps)).toBe(2);
   });
+
+  it("keeps local paths out of both report files, command and errors included", async () => {
+    quiet();
+    const report = tmp();
+    const good = body({ "CLAUDE.md": "x" });
+    const plain = path.join(tmp(), "plain");
+    fs.mkdirSync(plain);
+    await instructions([good, plain, "--touching", "body=src/a.ts", "--report", report, "--label", "l"], deps);
+    for (const f of fs.readdirSync(report)) {
+      const text = fs.readFileSync(path.join(report, f), "utf8");
+      expect(text).not.toContain(path.dirname(good));
+      expect(text).not.toContain(path.dirname(plain));
+    }
+    const json = JSON.parse(fs.readFileSync(path.join(report, "2026-11-06-instructions-l.json"), "utf8"));
+    expect(json.command).toBe("orrery instructions body plain --touching body=src/a.ts --label l");
+  });
+
+  it("refuses a --touching key naming no given body, and writes no report", async () => {
+    const q = quiet();
+    const report = tmp();
+    expect(await instructions([body({ "CLAUDE.md": "x" }), "--touching", "libra=src/a.ts", "--report", report], deps)).toBe(2);
+    expect(q.err()).toContain("libra");
+    expect(fs.readdirSync(report)).toEqual([]);
+  });
+
+  it("refuses an absolute or escaping --touching path", async () => {
+    const q = quiet();
+    const dir = body({ "CLAUDE.md": "x" });
+    expect(await instructions([dir, "--touching", "body=/etc/passwd"], deps)).toBe(2);
+    expect(await instructions([dir, "--touching", "body=../x.ts"], deps)).toBe(2);
+    expect(await instructions([dir, "--touching", "body=a/../../x.ts"], deps)).toBe(2);
+    expect(q.err()).toContain("must be relative");
+  });
 });
