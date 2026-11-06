@@ -1,6 +1,6 @@
 # Orrery — constellation governance
 
-**Status:** approved design, not yet implemented
+**Status:** approved; amended by ADR 0019, partly implemented
 **Date:** 2026-09-06
 
 An orrery is a clockwork model of a solar system: brass gears showing how every
