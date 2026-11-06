@@ -1,6 +1,6 @@
 # The AI layer — making Claude competent in every body
 
-**Status:** draft, awaiting the owner's approval
+**Status:** approved by the owner on 2026-11-06
 **Date:** 2026-11-06
 **Amends:** `docs/specs/2026-09-06-orrery-design.md` (see "What this changes")
 
