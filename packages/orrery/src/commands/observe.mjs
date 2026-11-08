@@ -105,7 +105,7 @@ export default async function observe(argv, deps = {}) {
     const name = path.basename(bodyDir).toLowerCase();
     let sha = null;
     try {
-      sha = execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: bodyDir, encoding: "utf8" }).trim();
+      sha = execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: bodyDir, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
     } catch {
       // Not a git checkout (e.g. a test fixture path) — sha stays null.
     }
