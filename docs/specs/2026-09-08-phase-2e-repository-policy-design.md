@@ -14,6 +14,9 @@ protection, merge methods, naming, titles, and the checks that enforce them
 are the same everywhere, from a project's first commit onward. Drift in any of
 them is observed nightly from Orrery and corrected.
 
+*Amended by ADR 0017 (2026-09-10): no nightly run; `repo apply` stays an
+on-demand command from Orrery.*
+
 Orrery is a template for new projects. A project born through `orrery init`
 is on the flow and protected before its second commit exists.
 
@@ -41,7 +44,8 @@ libra's flow is adopted everywhere, tightened.
 | `develop` | the default branch; where all work lands | yes |
 | `type/short-kebab-description` | one branch per change; deleted on merge | no |
 | `release/vYYYY.MM.DD.N` | cut from develop by `orrery release`; the only planned route into main | no |
-| `fix/short-kebab-description` | a hotfix; the only unplanned route into main | no |
+| `hotfix/short-kebab-description` | a hotfix; the only unplanned route into main; its title type is fix | no |
+| `back-merge/<main-sha7>` | cut from main by the back-merge workflow; the only branch that carries main into develop; created by automation only | no |
 
 `type` is one of `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `chore`,
 `revert`. The description is kebab-case. Any other name is rejected by the
@@ -53,22 +57,22 @@ pre-push hook and again by CI, so a bad name never reaches a pull request.
 |---|---|---|---|
 | `type/*` | `develop` | squash | one commit per change; its message is the PR title; develop reads as a changelog |
 | `release/*` | `main` | merge commit | main keeps develop's squashed commits intact; a release is one mergeable point |
-| `fix/*` | `main` | squash | a hotfix is one commit |
-| `main` | `develop` | merge commit, automatic | the back-merge; a squash would create a different commit and main would stay "ahead" forever |
+| `hotfix/*` | `main` | squash | a hotfix is one commit; its title carries type fix |
+| `back-merge/*` | `develop` | merge commit, automatic | the back-merge; a squash would leave main's commits outside develop's ancestry and `branch-sync` would never return to zero |
 
 Rebase merging is disabled everywhere: it rewrites history and defeats the
-freshness rule. A `type/*` branch targeting `main`, or a `release/*` branch
-targeting `develop`, fails the Branch Target check.
+freshness rule. A `type/*` branch targeting `main`, or a `release/*` or
+`hotfix/*` branch targeting `develop`, fails the Branch Target check.
 
 ### The back-merge and the develop freeze
 
 This is the sequence the flow exists to guarantee. It is deliberately
 cumbersome; quality outranks convenience.
 
-1. A `fix/*` or `release/*` PR merges into main. main now has commits develop
-   lacks.
-2. A workflow opens the back-merge PR from main into develop immediately, with
-   automerge on. Green, it merges within minutes.
+1. A `hotfix/*` or `release/*` PR merges into main. main now has commits
+   develop lacks.
+2. A workflow cuts `back-merge/<sha>` from main and opens it into develop
+   immediately, with automerge on. Green, it merges within minutes.
 3. While main has any commit develop lacks, **every PR into develop fails the
    `branch-sync` check**. Nothing in the feature PR can fix it; the message
    names the open back-merge PR and says it must land first.
@@ -90,11 +94,14 @@ type(scope): subject [GH-n]
 ```
 
 - `type` is the same set as branch types and **must equal the branch's type**.
-  A `fix/*` branch with a `feat:` title is rejected.
+  A `fix/*` branch with a `feat:` title is rejected; a `hotfix/*` branch
+  carries a `fix` title.
 - `subject` is at most 80 characters.
 - Exactly one `[GH-n]`. `GH-000` is the explicit marker for on-the-fly work
   with no issue. Any other number must resolve to an existing issue in that
   repository, checked by CI, so a typo cannot pass as a reference.
+- A `back-merge/*` branch carries a `chore` title and must be authored by the
+  bot login.
 
 Squash merges use the PR title as the commit message, which is what makes
 develop's history a changelog.
@@ -164,6 +171,8 @@ It runs at three moments:
 - **Nightly, from Orrery,** against every body in the registry. This is the
   fourth drift alongside version, pointer and code. It re-applies rather than
   only reporting, and the observation report lists what it corrected.
+  *Amended by ADR 0017 (2026-09-10): no scheduled run exists; `orrery repo
+  apply` runs on demand only.*
 - **On demand,** when the policy file changes.
 
 Changing protection needs a token with admin rights. Orrery's CI holds that
@@ -207,13 +216,14 @@ in Orrery and are referenced the same way.
 4. The `commit-msg` and `pre-push` hooks in the bundle.
 5. `orrery release`.
 6. `repo apply` wired into the nightly observation.
-7. **Apply to the five bodies.** This step changes how their contributors
-   work the next morning, so it is presented and confirmed before it runs,
-   even though the plan is approved.
+7. **Apply to the five bodies.** Deferred 2026-09-09 by the owner to the
+   production cut-over that closes the whole programme; until then the
+   nightly observation runs in report mode and Orrery is kept ready.
 
 **Done when** Orrery runs on the flow with every check required, `repo apply`
-is idempotent against every registered repository, and a fixture body born
-through `init` is protected before its second commit.
+is idempotent against every registered repository, and the fixture repository
+integration test brings a bare repository to policy and finds nothing to
+change on the second run (the `init`-born fixture is Phase 2d's criterion).
 
 Deferred: `init` itself, the registry, and the bump bot remain in 2d; this
 phase gives them the policy file and the commands they call.
@@ -230,3 +240,14 @@ phase gives them the policy file and the commands they call.
 - Signatures not required.
 - Releases cut by a command, never by a schedule.
 - 2e runs before 2b and is applied to Orrery first.
+- Amended 2026-09-09: main only receives `release/*` and `hotfix/*`; `fix/*`
+  lands on develop. A hotfix is big words. And: when execution corners the
+  agent into an unplanned fix, it stops and asks; a needed fix means a
+  misunderstanding or a plan conflict.
+- Amended 2026-09-09: the bodies are not touched until the production
+  cut-over; every phase leaves Orrery ready and proven read-only.
+- Amended 2026-09-09 (option B): the back-merge goes through an intermediate
+  `back-merge/<sha>` branch so "Update branch" never merges develop into main
+  and strict stays on both branches; `back-merge/*` is automation-only,
+  enforced by an author check now and by a GitHub App identity plus a
+  creation ruleset in Phase 2d.

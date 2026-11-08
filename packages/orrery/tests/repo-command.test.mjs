@@ -1,4 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import repo from "../src/commands/repo.mjs";
 
 describe("orrery repo apply", () => {
@@ -17,14 +20,25 @@ describe("orrery repo apply", () => {
       createGithub: () => ({}),
       resolveToken: () => "t",
       applyRepoPolicy: async () => ({
-        ops: [{ kind: "create-branch", name: "develop", fromSha: "aaa" }, { kind: "set-protection", branch: "main", body: {} }],
-        applied: [{ kind: "create-branch" }, { kind: "set-protection" }],
+        ops: [
+          { kind: "create-branch", name: "develop", fromSha: "aaa" },
+          { kind: "update-settings", patch: { allow_rebase_merge: false }, current: { allow_rebase_merge: true } },
+          {
+            kind: "set-protection",
+            branch: "main",
+            body: { required_pull_request_reviews: { required_approving_review_count: 0 }, required_status_checks: { contexts: ["test"] } },
+            current: null,
+          },
+        ],
+        applied: [{ kind: "create-branch" }, { kind: "update-settings" }, { kind: "set-protection" }],
       }),
     });
     expect(code).toBe(0);
     const out = log.mock.calls.flat().join("\n");
     expect(out).toContain("create-branch develop");
+    expect(out).toContain("allow_rebase_merge: true -> false");
     expect(out).toContain("set-protection main");
+    expect(out).toContain("approvals: none -> 0");
     log.mockRestore();
   });
 
@@ -49,6 +63,23 @@ describe("orrery repo apply", () => {
     const code = await repo(["apply", "vaoan/x"], { loadPolicy: () => ({}), createGithub: () => ({}), resolveToken: () => "t", applyRepoPolicy: async () => { throw new Error("GitHub 403 on /x: Resource not accessible"); } });
     expect(code).toBe(1);
     expect(error.mock.calls.flat().join("\n")).toContain("Resource not accessible");
+    error.mockRestore();
+  });
+
+  it("exits 2 on an invalid policy file", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "orrery-policy-")), "policy.json");
+    fs.writeFileSync(file, JSON.stringify({
+      defaultBranch: "develop",
+      protectedBranches: ["develop"],
+      settings: { allow_rebase_merge: false },
+      protection: { develop: {} },
+      requiredChecks: { develop: [] },
+      labels: [],
+    }));
+    const code = await repo(["apply", "vaoan/x", "--policy", file], { createGithub: () => ({}), resolveToken: () => "t" });
+    expect(code).toBe(2);
+    expect(error.mock.calls.flat().join("\n")).toContain("protectedBranches must include main");
     error.mockRestore();
   });
 });

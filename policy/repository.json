@@ -59,6 +59,7 @@
     { "name": "chore", "color": "ededed", "description": "Tooling and maintenance" },
     { "name": "revert", "color": "000000", "description": "Reverts a previous change" },
     { "name": "release", "color": "5319e7", "description": "A release branch into main" },
+    { "name": "hotfix", "color": "b60205", "description": "A hotfix into main; title type fix" },
     { "name": "back-merge", "color": "c5def5", "description": "Automatic merge of main into develop" },
     { "name": "orrery", "color": "1d76db", "description": "Opened by Orrery automation" }
   ]

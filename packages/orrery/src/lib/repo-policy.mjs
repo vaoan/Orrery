@@ -76,10 +76,14 @@ export function planRepoChanges(state, policy) {
   }
 
   const patch = {};
+  const currentSettings = {};
   for (const [key, value] of Object.entries(policy.settings)) {
-    if (state.settings[key] !== value) patch[key] = value;
+    if (state.settings[key] !== value) {
+      patch[key] = value;
+      currentSettings[key] = state.settings[key];
+    }
   }
-  if (Object.keys(patch).length > 0) ops.push({ kind: "update-settings", patch });
+  if (Object.keys(patch).length > 0) ops.push({ kind: "update-settings", patch, current: currentSettings });
 
   if (state.defaultBranch !== policy.defaultBranch) {
     ops.push({ kind: "set-default-branch", name: policy.defaultBranch });
@@ -89,7 +93,7 @@ export function planRepoChanges(state, policy) {
     const body = desiredProtection(policy, branch, state);
     const current = state.protection[branch];
     if (!protectionEquals(current, body)) {
-      ops.push({ kind: "set-protection", branch, body });
+      ops.push({ kind: "set-protection", branch, body, current });
     }
   }
 

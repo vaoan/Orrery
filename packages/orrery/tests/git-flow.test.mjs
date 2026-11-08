@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
 import {
   TYPES, branchType, checkBranchName, checkBranchTarget, parsePrTitle, checkPrTitle,
-  checkCommitMessage, checkBranchSync, checkConfigDrift,
+  checkCommitMessage, checkBranchSync, checkConfigDrift, isBackMerge,
 } from "../src/lib/git-flow.mjs";
 
 describe("branch names", () => {
   it.each([
-    ["feat/phase-2a-diff-eslint", true],
+    ["feat/phase-2a-diff-eslint", false],             // plan label ("phase-"), not a description
     ["release/v2026.09.05.1", true],
     ["docs/repo-boilerplate-spec", true],
     ["chore/node24-actions", true],
@@ -16,8 +16,60 @@ describe("branch names", () => {
     ["feature/x", false],
     ["main", false],
     ["develop", false],
+    ["hotfix/checkout-total", true],
+    ["hotfix/Checkout", false],
+    ["back-merge/abc1234", true],
+    ["back-merge/ABC1234", false],
+    ["back-merge/abc", false], // too short
+    // descriptive-name rule: no plan/phase/task label, at least two words
+    ["feat/2b-reconcile-records", false],
+    ["feat/phase-2b", false],
+    ["fix/thing", false],                              // one word says nothing
+    ["feat/reconcile-records-command", true],
+    ["fix/eslint-bin-lookup-ignores-node-path", true],
+    ["docs/branch-name-rule", true],
+    ["release/v2026.09.09.1", true],                   // automation pattern, untouched
+    ["back-merge/abc1234", true],                       // automation pattern, untouched
   ])("%s -> %s", (name, ok) => {
     expect(checkBranchName(name).ok).toBe(ok);
+  });
+
+  // The plan-label rule, one case per shape it accepts and rejects.
+  it.each([
+    // 1. a phase/task word followed by a digit token
+    ["feat/phase-2b-reconciliation", false],
+    ["feat/task-5-records", false],
+    ["feat/step-3-migration", false],
+    ["feat/wave-1-cleanup", false],
+    ["feat/round-2-review", false],
+    // 2. a leading digit token
+    ["feat/2b-reconcile-records", false],
+    ["feat/3-more-work", false],
+    // "3d" is a digit token and no rule can tell a 3D viewer from phase 3d
+    ["feat/3d-viewer", false],
+    // 3. a single letter followed by a digit token
+    ["feat/t5-records", false],
+    ["feat/p2-repository-policy", false],
+    // bare words are fine: only the digit after the word makes a label
+    ["feat/task-runner", true],
+    ["feat/round-corners", true],
+    ["feat/step-indicator", true],
+    ["feat/phase-shift-detector", true],
+    ["feat/wave-form-preview", true],
+    ["chore/node24-actions", true],
+    // "fix-" is a label only on a fix/ branch
+    ["fix/fix-thing", false],
+    ["feat/fix-typos-in-readme", true],
+    ["fix/eslint-bin-lookup-ignores-node-path", true],
+  ])("plan label: %s -> %s", (name, allowed) => {
+    expect(checkBranchName(name).ok, checkBranchName(name).reason).toBe(allowed);
+  });
+
+  it("says which label shape it saw", () => {
+    expect(checkBranchName("feat/3d-viewer").reason).toContain("digit token");
+    expect(checkBranchName("feat/t5-records").reason).toContain("letter-and-number label");
+    expect(checkBranchName("feat/phase-2b-reconciliation").reason).toContain("plan label");
+    expect(checkBranchName("fix/fix-thing").reason).toContain("repeats the branch's own fix/ type");
   });
 
   it("names the rule in the reason", () => {
@@ -25,20 +77,36 @@ describe("branch names", () => {
     expect(checkBranchName("Feature/X").reason).toContain(TYPES.join("|"));
   });
 
+  it("names the descriptive-name rule in the reason, with a good example", () => {
+    const r = checkBranchName("feat/2b-reconcile");
+    expect(r.ok).toBe(false);
+    expect(r.reason).toMatch(/describe the change/);
+    expect(r.reason).toMatch(/two or more words/);
+    expect(r.reason).toContain('"2b-"');
+    expect(r.reason).toContain("2b-reconcile");
+    expect(r.reason).toContain("feat/reconcile-records-command");
+  });
+
   it("extracts the type", () => {
     expect(branchType("fix/a")).toBe("fix");
     expect(branchType("release/v2026.09.08.1")).toBe("release");
+    expect(branchType("hotfix/x")).toBe("hotfix");
     expect(branchType("main")).toBeNull();
+    expect(branchType("back-merge/abc1234")).toBe("back-merge");
   });
 });
 
 describe("branch targets", () => {
   it.each([
     ["feat/x", "develop", true],
-    ["fix/x", "main", true],
+    ["fix/x", "main", false],
     ["fix/x", "develop", true],
+    ["hotfix/x", "main", true],
+    ["hotfix/x", "develop", false],
     ["release/v2026.09.08.1", "main", true],
-    ["main", "develop", true],                 // the back-merge
+    ["main", "develop", false],                 // main is no longer a PR head
+    ["back-merge/abc1234", "develop", true],
+    ["back-merge/abc1234", "main", false],
     ["feat/x", "main", false],
     ["docs/x", "main", false],
     ["release/v2026.09.08.1", "develop", false],
@@ -48,7 +116,7 @@ describe("branch targets", () => {
   });
 
   it("explains which branches may target main", () => {
-    expect(checkBranchTarget("feat/x", "main").reason).toMatch(/only release\/\* and fix\/\* may target main/);
+    expect(checkBranchTarget("feat/x", "main").reason).toMatch(/only release\/\* and hotfix\/\* may target main/);
   });
 });
 
@@ -95,12 +163,34 @@ describe("PR titles", () => {
     expect((await checkPrTitle("fix(x): y [GH-12]", "fix/x", { issueExists: async (n) => n === 12 })).ok).toBe(true);
   });
 
+  it("a hotfix branch must carry a fix title", async () => {
+    const r = await checkPrTitle("fix(cart): total [GH-000]", "hotfix/checkout-total", { issueExists: async () => true });
+    expect(r.ok).toBe(true);
+  });
+
+  it("rejects a hotfix branch with a non-fix title", async () => {
+    const r = await checkPrTitle("feat(cart): total [GH-000]", "hotfix/checkout-total", { issueExists: async () => true });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toMatch(/a hotfix carries a fix title/);
+  });
+
   it("release branches must carry chore(release) titles with the version", async () => {
     const ok = await checkPrTitle("chore(release): v2026.09.08.1 [GH-000]", "release/v2026.09.08.1", { issueExists: async () => true });
     expect(ok.ok).toBe(true);
     const bad = await checkPrTitle("chore(release): v2026.09.08.2 [GH-000]", "release/v2026.09.08.1", { issueExists: async () => true });
     expect(bad.ok).toBe(false);
     expect(bad.reason).toMatch(/must be chore\(release\): v2026\.09\.08\.1/);
+  });
+
+  it("a back-merge branch must carry a chore title", async () => {
+    const r = await checkPrTitle("chore(back-merge): main into develop [GH-000]", "back-merge/abc1234", { issueExists: async () => true });
+    expect(r.ok).toBe(true);
+  });
+
+  it("rejects a back-merge branch with a non-chore title", async () => {
+    const r = await checkPrTitle("feat(x): y [GH-000]", "back-merge/abc1234", { issueExists: async () => true });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toMatch(/a back-merge carries a chore title/);
   });
 });
 
@@ -169,5 +259,27 @@ describe("config drift", () => {
     expect(r.ok).toBe(false);
     expect(r.stale).toEqual(["eslint.config.mjs"]);
     expect(r.reason).toMatch(/eslint\.config\.mjs.*differs from origin\/develop without this PR changing it/);
+  });
+});
+
+describe("isBackMerge", () => {
+  it("is true only for a same-repository back-merge branch into develop", () => {
+    expect(isBackMerge({ head: "back-merge/abc1234", base: "develop", sameRepo: true })).toBe(true);
+  });
+
+  it("is false when the repository differs (a fork)", () => {
+    expect(isBackMerge({ head: "back-merge/abc1234", base: "develop", sameRepo: false })).toBe(false);
+  });
+
+  it("is false when sameRepo is undefined", () => {
+    expect(isBackMerge({ head: "back-merge/abc1234", base: "develop" })).toBe(false);
+  });
+
+  it("is false for main as the head", () => {
+    expect(isBackMerge({ head: "main", base: "develop", sameRepo: true })).toBe(false);
+  });
+
+  it("is false when the base is not develop", () => {
+    expect(isBackMerge({ head: "back-merge/abc1234", base: "main", sameRepo: true })).toBe(false);
   });
 });

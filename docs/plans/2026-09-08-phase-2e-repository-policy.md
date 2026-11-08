@@ -1371,6 +1371,8 @@ const TYPE_ALT = TYPES.join("|");
 
 export const BRANCH_PATTERN = new RegExp(`^(${TYPE_ALT})\\/[a-z0-9]+(?:-[a-z0-9]+)*$`);
 export const RELEASE_PATTERN = /^release\/(v\d{4}\.\d{2}\.\d{2}\.\d+)$/;
+export const HOTFIX_PATTERN = /^hotfix\/[a-z0-9]+(?:-[a-z0-9]+)*$/;
+export const BACK_MERGE_PATTERN = /^back-merge\/[0-9a-f]{7,40}$/;
 // Subject: 1-80 chars, no leading whitespace, never containing another tag. Exactly one tag at the end.
 export const TITLE_PATTERN = new RegExp(`^(${TYPE_ALT})(?:\\(([a-z0-9-]+)\\))?: ((?=\\S)(?:(?!\\[GH-)[^\\r\\n]){1,80}) \\[GH-(\\d+)\\]$`);
 export const COMMIT_PATTERN = new RegExp(
@@ -1380,29 +1382,71 @@ export const COMMIT_PATTERN = new RegExp(
 const ok = () => ({ ok: true, reason: "" });
 const fail = (reason) => ({ ok: false, reason });
 
+// A description that starts with a plan label says what the plan called the work, not what the
+// work does. A label is one of exactly three shapes:
+//
+//   1. a phase/task word followed by a digit token — "phase-2b-", "task-5-", "step-3-",
+//      "wave-1-", "round-2-";
+//   2. a leading digit token — "2b-", "3-";
+//   3. a single letter followed by a digit token — "t5-", "p2-".
+//
+// Bare words are fine: "task-runner", "round-corners" and "step-indicator" are descriptions, not
+// labels, and only the digit after the word makes one. "3d-viewer" stays rejected, because "3d"
+// IS a digit token and no rule can tell a 3D viewer from phase 3d — say "three-d-viewer" or name
+// the thing it renders. "fix-" is rejected only on a `fix/` branch, where it is the redundant
+// task-refinement label repeating the branch's own type; on any other type "fix-typos-in-readme"
+// describes the change.
+const DIGIT_TOKEN = /^[0-9][a-z0-9]*$/;
+const LETTER_DIGIT_TOKEN = /^[a-z][0-9][a-z0-9]*$/;
+const LABEL_WORD = /^(?:phase|task|step|wave|round)$/;
+
+export function planLabel(description, type) {
+  const [first, second] = description.split("-");
+  if (DIGIT_TOKEN.test(first)) return `"${first}-" is a digit token, which names a phase and not a change`;
+  if (LETTER_DIGIT_TOKEN.test(first)) return `"${first}-" is a letter-and-number label, which names a task and not a change`;
+  if (LABEL_WORD.test(first) && second !== undefined && DIGIT_TOKEN.test(second)) return `"${first}-${second}-" is a plan label`;
+  if (type === "fix" && first === "fix") return `"fix-" repeats the branch's own fix/ type`;
+  return null;
+}
+
 export function branchType(name) {
+  if (BACK_MERGE_PATTERN.test(name)) return "back-merge";
   if (RELEASE_PATTERN.test(name)) return "release";
+  if (HOTFIX_PATTERN.test(name)) return "hotfix";
   const match = BRANCH_PATTERN.exec(name);
   return match ? match[1] : null;
 }
 
 export function checkBranchName(name) {
-  if (branchType(name)) return ok();
-  return fail(
-    `branch "${name}" must be type/short-kebab-description with type one of ${TYPE_ALT}, or release/vYYYY.MM.DD.N`
-  );
+  const type = branchType(name);
+  if (!type) {
+    return fail(
+      `branch "${name}" must be type/short-kebab-description with type one of ${TYPE_ALT}, hotfix/short-kebab-description, release/vYYYY.MM.DD.N, or back-merge/<sha> (automation only)`
+    );
+  }
+  // release/*, hotfix/* and back-merge/* are automation-shaped patterns handled by their own
+  // regexes above; the descriptive-name rule below governs only type/* branches.
+  if (type === "release" || type === "hotfix" || type === "back-merge") return ok();
+  const description = name.slice(name.indexOf("/") + 1);
+  const label = planLabel(description, type);
+  if (label || description.split("-").length < 2) {
+    return fail(
+      `branch description must describe the change (two or more words, no plan label such as "2b-"): got "${description}"${label ? ` — ${label}` : ""}; try feat/reconcile-records-command`
+    );
+  }
+  return ok();
 }
 
 export function checkBranchTarget(head, base) {
   const type = branchType(head);
   if (base === "main") {
-    if (type === "release" || type === "fix") return ok();
-    return fail(`branch "${head}" cannot target main: only release/* and fix/* may target main`);
+    if (type === "release" || type === "hotfix") return ok();
+    return fail(`branch "${head}" cannot target main: only release/* and hotfix/* may target main`);
   }
   if (base === "develop") {
-    if (head === "main") return ok(); // the automatic back-merge
     if (type === "release") return fail(`release branch "${head}" must target main, not develop`);
-    if (head === "develop" || type === null) return fail(`branch "${head}" cannot target develop`);
+    if (type === "hotfix") return fail(`hotfix branch "${head}" must target main, not develop`);
+    if (head === "main" || head === "develop" || type === null) return fail(`branch "${head}" cannot target develop`);
     return ok();
   }
   return ok(); // stacked branches and other bases are not governed
@@ -1425,6 +1469,10 @@ export async function checkPrTitle(title, headBranch, { issueExists }) {
     const version = RELEASE_PATTERN.exec(headBranch)[1];
     const expected = `chore(release): ${version}`;
     if (!title.startsWith(`${expected} `)) return fail(`release title must be ${expected} [GH-n]`);
+  } else if (type === "hotfix") {
+    if (parsed.type !== "fix") return fail(`title type ${parsed.type} does not match branch type hotfix (a hotfix carries a fix title)`);
+  } else if (type === "back-merge") {
+    if (parsed.type !== "chore") return fail(`title type ${parsed.type} does not match branch type back-merge (a back-merge carries a chore title)`);
   } else if (type && parsed.type !== type) {
     return fail(`title type ${parsed.type} does not match branch type ${type}`);
   }
@@ -1438,6 +1486,13 @@ export function checkCommitMessage(message) {
   const subject = message.split(/\r?\n/, 1)[0];
   if (COMMIT_PATTERN.test(subject)) return ok();
   return fail(`commit subject "${subject}" must be type(scope): subject with type one of ${TYPE_ALT}`);
+}
+
+// The back-merge (head back-merge/<sha> into base develop) is the PR that resolves the
+// freeze, so it cannot itself be subject to it. `back-merge/*` is automation-only, and a
+// fork branch of that shape gets no exemption: sameRepo must be verified by the caller.
+export function isBackMerge({ head, base, sameRepo }) {
+  return branchType(head) === "back-merge" && base === "develop" && sameRepo === true;
 }
 
 export async function checkBranchSync({ run }) {
@@ -1473,7 +1528,7 @@ export async function checkConfigDrift({ run, baseRef, headSha, files }) {
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `pnpm vitest run packages/orrery/tests/git-flow.test.mjs`
-Expected: PASS — 48 tests (10 + 1 + 1 branch-name; 9 + 1 target; 1 + 6 + 1 + 1 + 1 + 1 + 1 title; 8 commit; 3 sync; 3 drift; verified 2026-09-08 by running this exact file). Report the exact count.
+Expected: PASS — 95 tests as landed (the implementation above gained `planLabel`, `hotfix/*`, `back-merge/*` and `isBackMerge` after the descriptive-branch-name blocklist and back-merge work landed post-2e; run `pnpm exec vitest run packages/orrery/tests/git-flow.test.mjs` for the current count). Report the exact count.
 
 - [ ] **Step 5: Commit**
 
@@ -2874,7 +2929,7 @@ Save the output to the workspace. Expected operations per body, from the 2026-09
 
 Show the human the five dry-run outputs and this sentence, then wait:
 
-> Applying will change how anyone working on these repositories works tomorrow: develop becomes the default branch on aeleos and eclipse-con, rebase merging is disabled everywhere, merging requires a PR with resolved conversations, and squash titles come from the PR title. Their existing required checks are preserved. Nothing in their code changes. Say "apply" to proceed, or name the repositories to skip.
+> Applying will change how anyone working on these repositories works tomorrow: develop becomes the default branch on aeleos and eclipse-con, rebase merging is disabled everywhere, merging requires a PR with resolved conversations, and squash titles come from the PR title. Their existing required checks are preserved. Required approvals become 0 on both branches (all five bodies already require 0 as of 2026-09-09). Nothing in their code changes. Say "apply" to proceed, or name the repositories to skip.
 
 - [ ] **Step 5: Apply, verify idempotence, flip the nightly to apply mode**
 
@@ -2927,3 +2982,19 @@ Also update `CLAUDE.md`'s "Commands the CLI will expose" block to list `repo app
 4. Two tokens rather than one: an admin token that only Orrery's nightly job holds, and a bot token for PR-opening workflows, because a fine-grained token cannot open PRs that trigger checks without pull-request write, and the admin token should not travel.
 5. The nightly observation dry-runs until `ORRERY_APPLY_POLICY=apply` is set in Task 13, so nothing touches a body before the confirmation the spec requires.
 6. `pre-push` runs the body's `test` script rather than libra's scoped selection, which is libra-local; the docker health check is not carried into the shared hook.
+
+## Amendments
+
+- **2026-09-09:** main only receives `release/*` and `hotfix/*`; `fix/*`
+  lands on develop. A hotfix is big words. And: when execution corners the
+  agent into an unplanned fix, it stops and asks; a needed fix means a
+  misunderstanding or a plan conflict.
+- **2026-09-09:** Task 13's application to the five bodies is deferred to the
+  production cut-over that closes the whole programme, by the owner's
+  decision; until then the nightly observation runs in report mode and
+  Orrery is kept ready.
+- **2026-09-09 (option B):** the back-merge goes through an intermediate
+  `back-merge/<sha>` branch so "Update branch" never merges develop into main
+  and strict stays on both branches; `back-merge/*` is automation-only,
+  enforced by an author check now and by a GitHub App identity plus a
+  creation ruleset in Phase 2d.

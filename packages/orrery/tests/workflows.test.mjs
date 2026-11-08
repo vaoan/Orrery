@@ -5,7 +5,9 @@ import { fileURLToPath } from "node:url";
 import { loadPolicy } from "../src/lib/policy.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
-const read = (f) => fs.readFileSync(path.join(root, f), "utf8");
+// These tests assert file shape, not line endings, so normalise \r\n to \n regardless
+// of how the working tree checked the file out (see CLAUDE.md's core.autocrlf note).
+const read = (f) => fs.readFileSync(path.join(root, f), "utf8").replace(/\r\n/g, "\n");
 const jobNames = (yaml) => [...yaml.matchAll(/^  ([a-z-]+):\n(?:    [^\n]*\n)*?    name: \1\n/gm)].map((m) => m[1]);
 
 describe(".github/workflows/ci.yml", () => {
@@ -46,9 +48,16 @@ describe(".github/workflows/back-merge.yml", () => {
   it("runs on push to main and opens a merge-commit PR into develop with automerge", () => {
     expect(yaml).toMatch(/  push:\n    branches: \[main\]/);
     expect(yaml).toContain("--base develop");
-    expect(yaml).toContain("--head main");
     expect(yaml).toContain("--merge --auto");
     expect(yaml).not.toContain("--squash");
+  });
+  it("cuts an intermediate back-merge/<sha> branch from main rather than using main as the PR head", () => {
+    expect(yaml).toContain('back-merge/$(git rev-parse --short=7 origin/main)');
+    expect(yaml).not.toContain("--head main");
+  });
+  it("checks out without persisting the default token and pushes with the bot token instead", () => {
+    expect(yaml).toContain("persist-credentials: false");
+    expect(yaml).toContain("x-access-token:${GH_TOKEN}");
   });
   it("uses the bot token, not GITHUB_TOKEN, so the PR triggers checks", () => {
     expect(yaml).toContain("secrets.ORRERY_BOT_TOKEN");
@@ -56,6 +65,22 @@ describe(".github/workflows/back-merge.yml", () => {
   it("never treats jq's null as an existing PR", () => {
     expect(yaml).toContain(".[0].number // empty");
     expect(yaml).not.toContain(".[0].number'");
+  });
+  it("prints nothing for the existing-PR lookup when no back-merge is open", () => {
+    expect(yaml).toContain('select(. != null) | "\\(.number) \\(.headRefName)"');
+    expect(yaml).not.toContain('][0] | "\\(.number)');
+  });
+  it("the existing-PR lookup logic yields empty for no match and 'number branch' for a match", () => {
+    // Mirrors the yaml's jq expression
+    // `[.[] | select(.headRefName | startswith("back-merge/"))][0] | select(. != null) | "\(.number) \(.headRefName)"`
+    // in plain JavaScript, since gh's jq cannot run inside vitest. Update this
+    // alongside any change to that jq expression.
+    const pick = (prs) => {
+      const m = prs.filter((p) => p.headRefName.startsWith("back-merge/"))[0];
+      return m == null ? "" : `${m.number} ${m.headRefName}`;
+    };
+    expect(pick([])).toBe("");
+    expect(pick([{ number: 42, headRefName: "back-merge/abc1234" }])).toBe("42 back-merge/abc1234");
   });
 });
 
@@ -77,24 +102,17 @@ describe(".github/pull_request_template.md", () => {
   it("states the routes the checks enforce", () => {
     const md = read(".github/pull_request_template.md");
     expect(md).toContain("`type/*` → `develop`");
-    expect(md).toContain("`fix/*` → `main`");
+    expect(md).toContain("`hotfix/*` → `main`");
     expect(md).toContain("`release/*` → `main`");
     expect(md).toContain("[GH-000]");
   });
 });
 
-describe(".github/workflows/observe.yml", () => {
-  const yaml = read(".github/workflows/observe.yml");
-  it("runs nightly and on demand", () => {
-    expect(yaml).toMatch(/  schedule:\n    - cron: /);
-    expect(yaml).toContain("workflow_dispatch:");
-  });
-  it("dry-runs by default and applies only when the repository variable says so", () => {
-    expect(yaml).toContain("vars.ORRERY_APPLY_POLICY == 'apply'");
-    expect(yaml).toContain("--dry-run");
-  });
-  it("iterates the registry and uses the admin token", () => {
-    expect(yaml).toContain("registry.json");
-    expect(yaml).toContain("secrets.ORRERY_ADMIN_TOKEN");
+// ADR 0017: there is no scheduled job in Orrery. `orrery repo apply` and `orrery observe`
+// are on-demand commands; a body's own CI (the reusable ci.yml) is what fails it, not a
+// nightly run from here.
+describe("no scheduled observation workflow", () => {
+  it("does not ship .github/workflows/observe.yml", () => {
+    expect(fs.existsSync(path.join(root, ".github/workflows/observe.yml"))).toBe(false);
   });
 });

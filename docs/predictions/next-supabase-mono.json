@@ -1,0 +1,116 @@
+{
+  "body": "next-supabase-mono",
+  "sha": "7f6ccb0",
+  "generatedAt": "2026-09-11",
+  "bodyConfig": {
+    "class": "next-supabase-mono",
+    "workspacePackages": [
+      "core"
+    ],
+    "floatingPeers": [],
+    "tailwind": {
+      "entryPoint": "apps/web/src/app/globals.css"
+    },
+    "boundaries": {
+      "elements": [],
+      "allow": []
+    },
+    "i18n": {
+      "excludedWords": []
+    },
+    "e2e": {
+      "assertFunctionNames": []
+    },
+    "restrictions": {
+      "source": {
+        "syntax": [],
+        "imports": [],
+        "properties": []
+      },
+      "component": {
+        "syntax": [],
+        "imports": [],
+        "properties": []
+      },
+      "package": {
+        "syntax": [],
+        "imports": [],
+        "properties": []
+      },
+      "unit-test": {
+        "syntax": [],
+        "imports": [],
+        "properties": []
+      },
+      "e2e": {
+        "syntax": [],
+        "imports": [],
+        "properties": []
+      },
+      "script": {
+        "syntax": [],
+        "imports": [],
+        "properties": []
+      }
+    },
+    "spelling": [
+      "orrery"
+    ],
+    "ignore": {
+      "duplication": [],
+      "secrets": [],
+      "spelling": []
+    },
+    "knip": {
+      "apps": {
+        "extraEntries": [],
+        "extraProjects": []
+      },
+      "packages": {
+        "extraEntries": [],
+        "extraProjects": []
+      },
+      "root": {}
+    },
+    "tsconfig": {
+      "types": [],
+      "include": [],
+      "exclude": [
+        "node_modules"
+      ],
+      "paths": {}
+    },
+    "hooks": {
+      "preCommit": []
+    }
+  },
+  "tightened": [],
+  "counts": {},
+  "baseline": {},
+  "tools": {
+    "tsc": {
+      "errors": {
+        "TS2307": 2,
+        "TS7031": 2,
+        "TS2503": 3,
+        "TS7026": 6,
+        "TS2875": 2
+      }
+    },
+    "stylelint": {
+      "count": 0
+    },
+    "jscpd": {
+      "clones": 0
+    },
+    "cspell": {
+      "issues": 0
+    },
+    "ls-lint": {
+      "errors": 0
+    },
+    "syncpack": {
+      "mismatches": 0
+    }
+  }
+}

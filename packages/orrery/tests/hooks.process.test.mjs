@@ -46,14 +46,14 @@ describe("hooks as processes", () => {
     const bad = runHook(["pre-push"]);
     expect(bad.status).toBe(1);
     expect(bad.stderr).toMatch(/type\/short-kebab-description/);
-    execFileSync("git", ["checkout", "-q", "-b", "feat/good"], { cwd: repo });
+    execFileSync("git", ["checkout", "-q", "-b", "feat/good-branch"], { cwd: repo });
     expect(runHook(["pre-push"]).status).toBe(0);
   });
 
   it(
     "pre-push runs the test script through real pnpm and passes when there is no test script",
     () => {
-      execFileSync("git", ["checkout", "-q", "-b", "feat/good"], { cwd: repo });
+      execFileSync("git", ["checkout", "-q", "-b", "feat/good-branch"], { cwd: repo });
       writePackageJson(); // no scripts.test at all
       // With the old ["run", "test", "--if-present"] order, real pnpm forwards
       // --if-present to the missing script and reports "Missing script", exiting
@@ -67,7 +67,7 @@ describe("hooks as processes", () => {
   it(
     "pre-push fails when the test script fails",
     () => {
-      execFileSync("git", ["checkout", "-q", "-b", "feat/good"], { cwd: repo });
+      execFileSync("git", ["checkout", "-q", "-b", "feat/good-branch"], { cwd: repo });
       writePackageJson({ test: 'node -e "process.exit(1)"' });
       const result = runHookReal(["pre-push"]);
       expect(result.status).toBe(1);
@@ -79,7 +79,7 @@ describe("hooks as processes", () => {
   it(
     "pre-push passes when the test script passes",
     () => {
-      execFileSync("git", ["checkout", "-q", "-b", "feat/good"], { cwd: repo });
+      execFileSync("git", ["checkout", "-q", "-b", "feat/good-branch"], { cwd: repo });
       writePackageJson({ test: 'node -e "process.exit(0)"' });
       const result = runHookReal(["pre-push"]);
       expect(result.status).toBe(0);

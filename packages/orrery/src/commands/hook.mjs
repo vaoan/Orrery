@@ -4,6 +4,17 @@ import { checkCommitMessage, checkBranchName } from "../lib/git-flow.mjs";
 
 const USAGE = "usage: orrery hook <commit-msg|pre-push> [args]";
 
+// git appends a block of blank/`#`-prefixed lines to the end of the message file
+// (the "Please enter the commit message..." help text, for both `commit` and
+// `commit -v`). Strip only that trailing block: a `#` line the author actually
+// wrote in the body is real content, not git's comment block, and must survive.
+function stripTrailingCommentBlock(text) {
+  const lines = text.split(/\r?\n/);
+  let end = lines.length;
+  while (end > 0 && (lines[end - 1] === "" || lines[end - 1].startsWith("#"))) end--;
+  return lines.slice(0, end).join("\n");
+}
+
 function defaultRun(command, args) {
   // pnpm is a .cmd shim on Windows; execFileSync needs a shell for it there. The
   // arguments are fixed literals, so shell concatenation cannot inject anything.
@@ -20,7 +31,7 @@ export default async function hook(argv, deps = {}) {
       console.error(`commit-msg: message file not found: ${file}\n${USAGE}`);
       return 2;
     }
-    const message = fs.readFileSync(file, "utf8").split(/\r?\n/).filter((line) => !line.startsWith("#")).join("\n").trim();
+    const message = stripTrailingCommentBlock(fs.readFileSync(file, "utf8")).trim();
     const result = checkCommitMessage(message);
     if (result.ok) return 0;
     console.error(`commit-msg: ${result.reason}`);

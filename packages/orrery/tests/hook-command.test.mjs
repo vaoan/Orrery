@@ -18,8 +18,25 @@ describe("orrery hook", () => {
     e.mockRestore();
   });
 
-  it("commit-msg accepts a conventional subject and ignores comment lines", async () => {
-    expect(await hook(["commit-msg", msgFile("# comment\nfeat(x): y\n\nbody\n")])).toBe(0);
+  it("commit-msg accepts a conventional subject and strips git's trailing comment block", async () => {
+    expect(await hook(["commit-msg", msgFile("feat(x): y\n\nbody\n# Please enter the commit message for your changes.\n# Lines starting with '#' will be ignored.\n")])).toBe(0);
+  });
+
+  it("commit-msg keeps a '#' line inside the body, since only the trailing block is git's", async () => {
+    expect(await hook(["commit-msg", msgFile("feat(x): y\n\n# heading\nmore text\n")])).toBe(0);
+  });
+
+  it("commit-msg keeps a leading comment line as the subject", async () => {
+    const e = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await hook(["commit-msg", msgFile("# comment\nfeat(x): y\n")])).toBe(1);
+    e.mockRestore();
+  });
+
+  it("commit-msg rejects a message that is only comment lines", async () => {
+    const e = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await hook(["commit-msg", msgFile("# just comments\n# nothing else\n")])).toBe(1);
+    expect(e.mock.calls.flat().join("\n")).toContain("commit-msg:");
+    e.mockRestore();
   });
 
   it("commit-msg rejects a free-form subject with the reason", async () => {
@@ -35,7 +52,7 @@ describe("orrery hook", () => {
 
   it("pre-push checks the branch name through the runner and then runs tests", async () => {
     const calls = [];
-    const run = (c, a) => { calls.push([c, ...a].join(" ")); return c === "git" ? "feat/x\n" : ""; };
+    const run = (c, a) => { calls.push([c, ...a].join(" ")); return c === "git" ? "feat/two-words\n" : ""; };
     expect(await hook(["pre-push"], { run, env: {} })).toBe(0);
     expect(calls).toEqual(["git branch --show-current", "pnpm run --if-present test"]);
   });
@@ -49,9 +66,19 @@ describe("orrery hook", () => {
     e.mockRestore();
   });
 
+  it("pre-push rejects a plan-label branch description through the same function", async () => {
+    const e = vi.spyOn(console, "error").mockImplementation(() => {});
+    const calls = [];
+    const run = (c, a) => { calls.push(c); return "feat/2b-reconcile\n"; };
+    expect(await hook(["pre-push"], { run, env: {} })).toBe(1);
+    expect(calls).toEqual(["git"]);
+    expect(e.mock.calls.flat().join("\n")).toMatch(/describe the change/);
+    e.mockRestore();
+  });
+
   it("pre-push skips tests when ORRERY_HOOK_SKIP_TESTS=1", async () => {
     const calls = [];
-    const run = (c) => { calls.push(c); return "feat/x\n"; };
+    const run = (c) => { calls.push(c); return "feat/two-words\n"; };
     expect(await hook(["pre-push"], { run, env: { ORRERY_HOOK_SKIP_TESTS: "1" } })).toBe(0);
     expect(calls).toEqual(["git"]);
   });

@@ -1,0 +1,155 @@
+{
+  "date": "2026-11-06",
+  "label": "after",
+  "command": "orrery instructions libra eclipse-con --touching libra=apps/store/src/features/cart/presentation/components/CartDrawer.tsx --touching libra=apps/store/src/features/cart/application/groupBySeller.ts --touching libra=apps/store/src/features/cart/domain/constants.ts --touching libra=apps/admin/tests/ActivityRow.test.tsx --touching libra=apps/admin/e2e/audit-log.spec.ts --touching eclipse-con=apps/moonfest2026/src/features/analytics/domain/consent.ts --touching eclipse-con=apps/links/src/App.test.tsx --touching eclipse-con=apps/sunfest2027/src/components/AmenityCard.tsx --base libra=b5ca551 --base eclipse-con=da72c48 --allow-lost libra-allow-lost.json --label after",
+  "lostCount": 0,
+  "bodies": [
+    {
+      "body": "libra",
+      "sha": "d15770d",
+      "startup": {
+        "tokens": 2869,
+        "files": [
+          {
+            "path": "CLAUDE.md",
+            "bytes": 8607,
+            "reason": "root"
+          }
+        ]
+      },
+      "task": {
+        "tokens": 9813,
+        "added": [
+          {
+            "path": ".claude/rules/checkout-stock-integrity.md",
+            "bytes": 2171,
+            "reason": "path-rule"
+          },
+          {
+            "path": ".claude/rules/component-patterns.md",
+            "bytes": 1959,
+            "reason": "path-rule"
+          },
+          {
+            "path": ".claude/rules/one-component-per-file.md",
+            "bytes": 1161,
+            "reason": "path-rule"
+          },
+          {
+            "path": ".claude/rules/single-source-of-truth.md",
+            "bytes": 1701,
+            "reason": "path-rule"
+          },
+          {
+            "path": ".claude/rules/tailwind.md",
+            "bytes": 2804,
+            "reason": "path-rule"
+          },
+          {
+            "path": ".claude/rules/url-state.md",
+            "bytes": 1664,
+            "reason": "path-rule"
+          },
+          {
+            "path": ".claude/rules/architecture.md",
+            "bytes": 2755,
+            "reason": "path-rule"
+          },
+          {
+            "path": ".claude/rules/testing.md",
+            "bytes": 4215,
+            "reason": "path-rule"
+          },
+          {
+            "path": ".claude/rules/e2e-selectors.md",
+            "bytes": 2400,
+            "reason": "path-rule"
+          }
+        ]
+      },
+      "wideRules": [],
+      "over": {
+        "startup": false,
+        "task": false
+      },
+      "oversize": [],
+      "skippedRules": [],
+      "skills": {
+        "count": 40,
+        "descriptionTokens": 1891
+      },
+      "lostCount": 0
+    },
+    {
+      "body": "eclipse-con",
+      "sha": "d607a81",
+      "startup": {
+        "tokens": 2899,
+        "files": [
+          {
+            "path": "CLAUDE.md",
+            "bytes": 8695,
+            "reason": "root"
+          }
+        ]
+      },
+      "task": {
+        "tokens": 6737,
+        "added": [
+          {
+            "path": ".claude/rules/analytics-tracking.md",
+            "bytes": 1769,
+            "reason": "path-rule"
+          },
+          {
+            "path": ".claude/rules/architecture.md",
+            "bytes": 1466,
+            "reason": "path-rule"
+          },
+          {
+            "path": ".claude/rules/i18n-testing.md",
+            "bytes": 1285,
+            "reason": "path-rule"
+          },
+          {
+            "path": ".claude/rules/testing.md",
+            "bytes": 1827,
+            "reason": "path-rule"
+          },
+          {
+            "path": ".claude/rules/component-patterns.md",
+            "bytes": 1466,
+            "reason": "path-rule"
+          },
+          {
+            "path": ".claude/rules/i18n.md",
+            "bytes": 1200,
+            "reason": "path-rule"
+          },
+          {
+            "path": ".claude/rules/one-component-per-file.md",
+            "bytes": 957,
+            "reason": "path-rule"
+          },
+          {
+            "path": ".claude/rules/tailwind.md",
+            "bytes": 1545,
+            "reason": "path-rule"
+          }
+        ]
+      },
+      "wideRules": [],
+      "over": {
+        "startup": false,
+        "task": false
+      },
+      "oversize": [],
+      "skippedRules": [],
+      "skills": {
+        "count": 1,
+        "descriptionTokens": 133
+      },
+      "lostCount": 0
+    }
+  ]
+}

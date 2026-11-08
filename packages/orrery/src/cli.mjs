@@ -6,6 +6,10 @@ Usage:
   orrery ci <verb> [--head] [--base] [--title] [--repo] [--head-sha] [--files]
   orrery hook <commit-msg|pre-push> [args]
   orrery release [--dry-run] [--version-file <package.json>]
+  orrery reconcile <repoA> <repoB> [--sample surface=path]... [--out <dir>]
+  orrery bundle [--rulings docs/decisions/rulings.json] [--package packages/orrery]
+  orrery observe <bodyDir>... [--predict] [--report <dir>]
+  orrery instructions <bodyDir>... [--touching body=path]... [--base <ref>] [--allow-lost <file.json>] [--report <dir>] [--label <name>]
 
 Commands:
   diff-eslint   compare two repositories' effective ESLint configurations
@@ -13,6 +17,10 @@ Commands:
   ci            run one git-flow check: branch-target, branch-name, pr-title, branch-sync, config-drift
   hook          run a git hook: commit-msg validates the subject, pre-push validates the branch and runs tests
   release       cut release/vYYYY.MM.DD.N from develop and open its PR into main
+  reconcile     generate the ruling records and rulings.json from two donor repositories
+  bundle        generate the physics and class tiers from rulings.json
+  observe       version, pointer and code drift of a body against the bundle, read-only
+  instructions  what a body's CLAUDE.md, rules and imports load at session start and across a task, read-only
 `;
 
 const COMMANDS = {
@@ -21,6 +29,10 @@ const COMMANDS = {
   ci: async (argv) => (await import("./commands/ci.mjs")).default(argv),
   hook: async (argv) => (await import("./commands/hook.mjs")).default(argv),
   release: async (argv) => (await import("./commands/release.mjs")).default(argv),
+  reconcile: async (argv) => (await import("./commands/reconcile.mjs")).default(argv),
+  bundle: async (argv) => (await import("./commands/bundle.mjs")).default(argv),
+  observe: async (argv) => (await import("./commands/observe.mjs")).default(argv),
+  instructions: async (argv) => (await import("./commands/instructions.mjs")).default(argv),
 };
 
 export async function run(argv) {

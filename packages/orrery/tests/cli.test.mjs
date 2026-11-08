@@ -32,4 +32,20 @@ describe("run", () => {
     expect(code).toBe(2);
     error.mockRestore();
   });
+
+  // Every command module is loaded and run through the dispatcher, not mocked: a broken import
+  // path, a renamed default export or a command whose argument parsing throws would fail here and
+  // nowhere else. Each is called with arguments it must reject with exit 2, so nothing is written
+  // and no donor is read.
+  it.each([
+    ["reconcile", ["reconcile", "only-one"]],
+    ["bundle", ["bundle", "--nonsense"]],
+    ["observe", ["observe"]],
+  ])("dispatches to the real %s command module", async (_name, argv) => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    expect(await run(argv)).toBe(2);
+    error.mockRestore();
+    log.mockRestore();
+  });
 });

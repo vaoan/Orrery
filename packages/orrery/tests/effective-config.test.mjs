@@ -2,11 +2,17 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   pickSampleFile,
   readEffectiveConfig,
   resolveEslintBin,
 } from "../src/lib/effective-config.mjs";
+
+const effectiveConfigUrl = pathToFileURL(
+  fileURLToPath(new URL("../src/lib/effective-config.mjs", import.meta.url))
+).href;
 
 let repo;
 beforeEach(() => {
@@ -58,6 +64,59 @@ describe("resolveEslintBin", () => {
 
   it("throws naming the repo when eslint is not installed there", () => {
     expect(() => resolveEslintBin(repo)).toThrow(/eslint is not installed/i);
+  });
+
+  it("does not resolve eslint through NODE_PATH when the repo has none installed", () => {
+    // Reproduces the leak without relying on vitest's own worker environment
+    // (which happens to set NODE_PATH itself): a hoisted-looking node_modules
+    // directory is put on NODE_PATH for a *child* node process, and an empty
+    // repo is handed to resolveEslintBin in that child. A resolver that
+    // consults NODE_PATH (createRequire, require.resolve) finds the fake
+    // eslint and returns a path instead of throwing.
+    const hoisted = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-hoisted-"));
+    const fakeEslintDir = path.join(hoisted, "node_modules/eslint/bin");
+    fs.mkdirSync(fakeEslintDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(hoisted, "node_modules/eslint/package.json"),
+      JSON.stringify({ name: "eslint", version: "0.0.0", bin: { eslint: "./bin/eslint.js" } })
+    );
+    fs.writeFileSync(path.join(fakeEslintDir, "eslint.js"), "");
+
+    const script = [
+      `import { resolveEslintBin } from ${JSON.stringify(effectiveConfigUrl)};`,
+      `try {`,
+      `  console.log("RESOLVED:" + resolveEslintBin(${JSON.stringify(repo)}));`,
+      `} catch (error) {`,
+      `  console.log("ERROR:" + error.message);`,
+      `}`,
+    ].join("\n");
+
+    const output = execFileSync(
+      process.execPath,
+      ["--input-type=module", "-e", script],
+      {
+        env: { ...process.env, NODE_PATH: path.join(hoisted, "node_modules") },
+        encoding: "utf8",
+      }
+    );
+
+    expect(output).toMatch(/eslint is not installed/);
+  });
+
+  it("walks up to a hoisted node_modules above the repo (no leak: it is a real ancestor)", () => {
+    const outer = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-outer-"));
+    const pkg = path.join(outer, "node_modules/eslint");
+    fs.mkdirSync(path.join(pkg, "bin"), { recursive: true });
+    fs.writeFileSync(
+      path.join(pkg, "package.json"),
+      JSON.stringify({ name: "eslint", version: "0.0.0", bin: { eslint: "./bin/eslint.js" } })
+    );
+    fs.writeFileSync(path.join(pkg, "bin/eslint.js"), "");
+
+    const nestedRepo = path.join(outer, "repo");
+    fs.mkdirSync(nestedRepo, { recursive: true });
+
+    expect(resolveEslintBin(nestedRepo)).toBe(path.join(pkg, "bin/eslint.js"));
   });
 
   it("throws naming the manifest when bin is neither a string nor an object with an eslint key", () => {
