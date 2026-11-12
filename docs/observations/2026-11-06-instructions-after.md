@@ -2,7 +2,7 @@
 
 Date: 2026-11-06
 
-Command: `orrery instructions libra eclipse-con --touching libra=apps/store/src/features/cart/presentation/components/CartDrawer.tsx --touching libra=apps/store/src/features/cart/application/groupBySeller.ts --touching libra=apps/store/src/features/cart/domain/constants.ts --touching libra=apps/admin/tests/ActivityRow.test.tsx --touching libra=apps/admin/e2e/audit-log.spec.ts --touching eclipse-con=apps/moonfest2026/src/features/analytics/domain/consent.ts --touching eclipse-con=apps/links/src/App.test.tsx --touching eclipse-con=apps/sunfest2027/src/components/AmenityCard.tsx --base libra=b5ca551 --base eclipse-con=da72c48 --allow-lost libra-allow-lost.json --label after`
+Command: `themis instructions libra eclipse-con --touching libra=apps/store/src/features/cart/presentation/components/CartDrawer.tsx --touching libra=apps/store/src/features/cart/application/groupBySeller.ts --touching libra=apps/store/src/features/cart/domain/constants.ts --touching libra=apps/admin/tests/ActivityRow.test.tsx --touching libra=apps/admin/e2e/audit-log.spec.ts --touching eclipse-con=apps/moonfest2026/src/features/analytics/domain/consent.ts --touching eclipse-con=apps/links/src/App.test.tsx --touching eclipse-con=apps/sunfest2027/src/components/AmenityCard.tsx --base libra=b5ca551 --base eclipse-con=da72c48 --allow-lost libra-allow-lost.json --label after`
 
 Tokens are bytes divided by 3. Budgets: 10,000 at start, 25,000 in a task.
 

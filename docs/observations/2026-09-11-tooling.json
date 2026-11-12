@@ -7,7 +7,7 @@
       "installed": null,
       "latest": "ed1459d2b219845d5af638d5b63ee031cacebe7f",
       "behind": false,
-      "note": "body does not depend on @vaoan/orrery yet"
+      "note": "body does not depend on @vaoan/themis yet"
     },
     "pointers": {
       "files": [
@@ -441,7 +441,7 @@
       "installed": null,
       "latest": "ed1459d2b219845d5af638d5b63ee031cacebe7f",
       "behind": false,
-      "note": "body does not depend on @vaoan/orrery yet"
+      "note": "body does not depend on @vaoan/themis yet"
     },
     "pointers": {
       "files": [

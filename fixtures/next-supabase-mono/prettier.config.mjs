@@ -1,2 +1,2 @@
-import prettier from "@vaoan/orrery/prettier";
+import prettier from "@vaoan/themis/prettier";
 export default prettier();

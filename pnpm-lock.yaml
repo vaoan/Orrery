@@ -17,9 +17,9 @@ importers:
 
   fixtures/next-supabase-mono:
     devDependencies:
-      '@vaoan/orrery':
+      '@vaoan/themis':
         specifier: workspace:*
-        version: link:../../packages/orrery
+        version: link:../../packages/themis
       eslint:
         specifier: ^9.39.5
         version: 9.39.5(jiti@2.7.0)(supports-color@10.2.2)
@@ -30,7 +30,7 @@ importers:
         specifier: ^1.0.1
         version: 1.0.1(stylelint@17.15.0(supports-color@10.2.2)(typescript@6.0.3))(tailwindcss@4.3.3)
 
-  packages/orrery:
+  packages/themis:
     dependencies:
       '@eslint/js':
         specifier: ^10.0.1

@@ -1,0 +1,1 @@
+pnpm themis hook commit-msg "$1"

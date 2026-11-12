@@ -2,4 +2,4 @@ name: ci
 on: [push, pull_request]
 jobs:
   ci:
-    uses: vaoan/Orrery/.github/workflows/ci.yml@main
+    uses: vaoan/Themis/.github/workflows/ci.yml@main
