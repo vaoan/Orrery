@@ -13,8 +13,9 @@ some, you are in the wrong repository.
 - **Decisions already made:** `docs/decisions/`
 - **What to build next:** `docs/plans/`
 
-Current work is the AI layer: `docs/specs/2026-11-06-ai-layer-design.md`, starting
-with `docs/plans/2026-11-06-stage-0-instruction-load.md` (ADR 0019).
+Current work is the AI layer: `docs/specs/2026-11-06-ai-layer-design.md` (ADR 0019).
+Stage 0 is done. Next is the Portia trial, a minimal starter and `orrery init` first:
+`docs/specs/2026-11-08-portia-design.md` (ADR 0021).
 
 ## The one rule that keeps this honest
 
