@@ -9,14 +9,15 @@ const jsonResponse = (status, body) => ({
 });
 
 describe("resolveToken", () => {
-  it("prefers THEMIS_GH_TOKEN over GITHUB_TOKEN over gh", () => {
-    expect(resolveToken({ THEMIS_GH_TOKEN: "a", GITHUB_TOKEN: "b" }, () => "c")).toBe("a");
-    expect(resolveToken({ GITHUB_TOKEN: "b" }, () => "c")).toBe("b");
-    expect(resolveToken({}, () => "c\n")).toBe("c");
+  it("prefers THEMIS_GH_TOKEN over GITHUB_TOKEN over GH_TOKEN", () => {
+    expect(resolveToken({ THEMIS_GH_TOKEN: "a", GITHUB_TOKEN: "b", GH_TOKEN: "c" })).toBe("a");
+    expect(resolveToken({ GITHUB_TOKEN: "b", GH_TOKEN: "c" })).toBe("b");
+    expect(resolveToken({ GH_TOKEN: "x" })).toBe("x");
   });
 
-  it("throws naming every source when none yields a token", () => {
-    expect(() => resolveToken({}, () => "")).toThrow(/THEMIS_GH_TOKEN.*GITHUB_TOKEN.*gh auth token/s);
+  it("throws naming the three variables when none is set, and never calls gh", () => {
+    expect(() => resolveToken({})).toThrow(/THEMIS_GH_TOKEN.*GITHUB_TOKEN.*GH_TOKEN/s);
+    expect(() => resolveToken({})).toThrow(/^no GitHub token: set THEMIS_GH_TOKEN, GITHUB_TOKEN or GH_TOKEN$/);
   });
 });
 

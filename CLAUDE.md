@@ -60,7 +60,7 @@ themis repo apply <owner/name>           bring a repository to policy/repository
 themis ci <verb>                         branch-target, branch-name, pr-title, branch-sync, config-drift (built, 2e)
 themis hook <commit-msg|pre-push>        the git hooks, pointed at from .husky/    (built, 2e)
 themis release                           cut release/vYYYY.MM.DD.N from develop    (built, 2e)
-themis init --class next-supabase-mono   scaffold a new body, register it         (2d)
+themis init <name> --class <class>       create a body from the starter, apply policy, register it (built, trial)
 themis check                             validate a body has not drifted          (2d)
 themis status                            report every body's pinned version       (2d)
 themis promote <path> --to physics       lift a local rule into the shared tier   (2d)
