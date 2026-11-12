@@ -95,6 +95,7 @@
   - `resolveToken({ GH_TOKEN: "x" })` returns `"x"`; with no variables it throws, and never calls `gh`.
 - [ ] **Step 2:** Run the tests. Expected: FAIL.
 - [ ] **Step 3:** Implement. Repository generation is `POST /repos/{template}/generate` with `owner`, `name`, `private: false`, `include_all_branches: false`. Rename and pointers happen in a clone, committed as `chore(init): rename and pointers [GH-000]` on `develop` before policy is applied (policy protects `develop`). Remove the `gh auth token` fallback from `resolveToken`; add `GH_TOKEN`.
+  **Amended 2026-11-11, owner's approval:** a repository generated from the template has only its default branch (`develop`), while policy protects `develop` and `main`; `apply-policy` first creates `main` from `develop`'s sha, after the rename commit, when `main` is missing.
 - [ ] **Step 4:** Run the tests and the whole suite. Expected: PASS.
 - [ ] **Step 5:** Commit on `feat/init-command`, PR into `develop`.
 
