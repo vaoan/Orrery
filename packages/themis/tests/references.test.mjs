@@ -50,6 +50,7 @@ describe("discovery through git", () => {
 const ws = (extra = {}) => ({ "CLAUDE.md": "x", "package.json": JSON.stringify({ name: "root" }), "pnpm-workspace.yaml": "packages:\n  - \"apps/*\"\n  - \"packages/*\"\n", ...extra });
 const ok = async (files) => expect((await run(files)).code).toBe(0);
 const bad = async (files) => expect((await run(files)).code).toBe(1);
+const report = async (dir) => { const out = tmp(); await references([dir, "--report", out], deps); return JSON.parse(fs.readFileSync(path.join(out, "2026-11-11-references.json"), "utf8")).bodies[0]; };
 
 describe("precision rules", () => {
   it("1. resolves an app-relative path from a workspace package root, and still flags a missing one", async () => {
@@ -88,15 +89,44 @@ describe("precision rules", () => {
     await ok({ "CLAUDE.md": "`docs/a.md`", "docs/a.md": "x" });
   });
 
-  it("5b. a branch prefix with a trailing slash is a branch, not a directory", async () => {
-    await ok({ "CLAUDE.md": "branches `feature/` and `fix/`" });
+  it("5b. a lone segment with a trailing slash is never a branch: it is a bare directory name", async () => {
+    await bad({ "CLAUDE.md": "branches `feature/` and `fix/`", "src/a.ts": "x" });
+    await bad({ "CLAUDE.md": "see `docs/`", "src/a.ts": "x" });
+    const { code, dir } = await run({ "CLAUDE.md": "see `docs/`", "packages/x/docs/a.md": "x" });
+    expect(code).toBe(0);
+    expect((await report(dir)).exceptions).toEqual([expect.objectContaining({ token: "docs/", why: "matched elsewhere" })]);
   });
 
-  it("2b. a bare directory name resolves from the root, the file's dir or the file's own package, not anywhere", async () => {
-    const ui = { "packages/ui/package.json": JSON.stringify({ name: "ui" }), "packages/ui/src/domain/x.ts": "x" };
-    await bad(ws({ ...ui, "CLAUDE.md": "layers `domain/`" }));
-    await ok(ws({ ...ui, "CLAUDE.md": "x", "packages/ui/CLAUDE.md": "layers `domain/`" }));
-    await bad(ws({ ...ui, "CLAUDE.md": "x", "packages/other/package.json": JSON.stringify({ name: "other" }), "packages/other/CLAUDE.md": "layers `domain/`" }));
+  it("2b. a bare directory name passes when any directory has that name, listed as matched elsewhere", async () => {
+    const files = ws({ "CLAUDE.md": "layers `domain/` and `application/`", "apps/x/package.json": JSON.stringify({ name: "x" }), "apps/x/src/features/y/domain/a.ts": "x", "apps/x/src/application/b.ts": "x" });
+    const { code, dir } = await run(files);
+    expect(code).toBe(0);
+    const ex = (await report(dir)).exceptions;
+    expect(ex).toContainEqual(expect.objectContaining({ token: "domain/", why: "matched elsewhere" }));
+    expect(ex.some((e) => e.token === "application/")).toBe(false); // resolved from the package's src/
+    await bad(ws({ "CLAUDE.md": "`src/shared/domain/`", "apps/x/package.json": JSON.stringify({ name: "x" }), "apps/x/src/features/y/domain/a.ts": "x" }));
+    await bad(ws({ "CLAUDE.md": "layers `domain/`", "apps/x/src/a.ts": "x" }));
+  });
+
+  it("2c. a bare file name found only elsewhere is listed as matched elsewhere", async () => {
+    const { code, dir } = await run(ws({ "docs/lessons/a.md": "see `globals.css` and `package.json`", "apps/store/src/globals.css": "x" }));
+    expect(code).toBe(0);
+    const ex = (await report(dir)).exceptions;
+    expect(ex).toContainEqual(expect.objectContaining({ token: "globals.css", why: "matched elsewhere" }));
+    expect(ex.some((e) => e.token === "package.json")).toBe(false);
+  });
+
+  it("1b. a relative path resolves against every workspace package, not only the referring file's own", async () => {
+    const pk = { "packages/ui/package.json": JSON.stringify({ name: "ui" }), "packages/ui/src/domain/x.ts": "x", "packages/other/package.json": JSON.stringify({ name: "other" }) };
+    await ok(ws({ ...pk, "packages/other/CLAUDE.md": "see `domain/x.ts` and `src/domain/`" }));
+    await bad(ws({ ...pk, "packages/other/CLAUDE.md": "see `domain/y.ts`" }));
+  });
+
+  it("labels a missing bare directory name ambiguous, a missing multi-segment path stale", async () => {
+    const { dir } = await run({ "CLAUDE.md": "`domain/` and `src/shared/domain/`", "src/a.ts": "x" });
+    const broken = (await report(dir)).broken;
+    expect(broken.find((b) => b.token === "domain/").likely).toBe("ambiguous");
+    expect(broken.find((b) => b.token === "src/shared/domain/").likely).toBe("stale");
   });
 
   it("6. eslint rule ids of a dependency are not paths", async () => {
@@ -111,8 +141,9 @@ describe("precision rules", () => {
     await bad({ "CLAUDE.md": "`acme/AeleOS`" });
   });
 
-  it("8. a /name that names a directory or workspace app is a route, not a skill", async () => {
-    await ok(ws({ "CLAUDE.md": "`/auth` `/shared` `/cart`", "apps/auth/package.json": JSON.stringify({ name: "auth" }), "shared/a.ts": "x", "apps/auth/src/app/cart/page.tsx": "x" }));
+  it("8. a /name is a route only for a top-level directory or a package's src/app/<name>", async () => {
+    await ok(ws({ "CLAUDE.md": "`/shared` `/cart`", "apps/auth/package.json": JSON.stringify({ name: "auth" }), "shared/a.ts": "x", "apps/auth/src/app/cart/page.tsx": "x" }));
+    await bad(ws({ "CLAUDE.md": "`/auth`", "apps/auth/package.json": JSON.stringify({ name: "auth" }), "apps/auth/src/a.ts": "x" }));
     await bad({ "CLAUDE.md": "`/auth`" });
     await bad(ws({ "CLAUDE.md": "`/deep`", "src/lib/deep/a.ts": "x" }));
   });

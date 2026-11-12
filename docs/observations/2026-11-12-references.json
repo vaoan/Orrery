@@ -1,8 +1,8 @@
 {
-  "date": "2026-11-11",
+  "date": "2026-11-12",
   "label": null,
   "command": "themis references themis libra eclipse-con",
-  "brokenCount": 147,
+  "brokenCount": 132,
   "bodies": [
     {
       "body": "themis",
@@ -100,7 +100,7 @@
     {
       "body": "libra",
       "files": 79,
-      "checked": 942,
+      "checked": 949,
       "broken": [
         {
           "file": "CLAUDE.md",
@@ -1033,27 +1033,6 @@
         },
         {
           "file": "CLAUDE.md",
-          "line": 227,
-          "kind": "skill",
-          "token": "auth",
-          "why": "route"
-        },
-        {
-          "file": "CLAUDE.md",
-          "line": 228,
-          "kind": "skill",
-          "token": "store",
-          "why": "route"
-        },
-        {
-          "file": "CLAUDE.md",
-          "line": 229,
-          "kind": "skill",
-          "token": "admin",
-          "why": "route"
-        },
-        {
-          "file": "CLAUDE.md",
           "line": 230,
           "kind": "path",
           "token": "<absolute path>",
@@ -1061,17 +1040,24 @@
         },
         {
           "file": "CLAUDE.md",
-          "line": 231,
-          "kind": "skill",
-          "token": "payments",
-          "why": "route"
+          "line": 237,
+          "kind": "path",
+          "token": "application/",
+          "why": "matched elsewhere"
         },
         {
           "file": "CLAUDE.md",
-          "line": 232,
-          "kind": "skill",
-          "token": "studio",
-          "why": "route"
+          "line": 237,
+          "kind": "path",
+          "token": "infrastructure/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 237,
+          "kind": "path",
+          "token": "presentation/",
+          "why": "matched elsewhere"
         },
         {
           "file": ".claude/rules/architecture.md",
@@ -1145,10 +1131,17 @@
         },
         {
           "file": ".claude/rules/architecture.md",
-          "line": 151,
-          "kind": "skill",
-          "token": "shared",
-          "why": "route"
+          "line": 150,
+          "kind": "path",
+          "token": "page.tsx",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 152,
+          "kind": "path",
+          "token": "route.ts",
+          "why": "matched elsewhere"
         },
         {
           "file": ".claude/rules/architecture.md",
@@ -1156,6 +1149,13 @@
           "kind": "path",
           "token": "api/generated/<tag>/<tag>",
           "why": "example"
+        },
+        {
+          "file": ".claude/rules/code-review-standards.md",
+          "line": 124,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
         },
         {
           "file": ".claude/rules/code-review-standards.md",
@@ -1233,6 +1233,62 @@
           "kind": "path",
           "token": "../shared",
           "why": "import specifier"
+        },
+        {
+          "file": ".claude/rules/css-consistency.md",
+          "line": 17,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/css-consistency.md",
+          "line": 18,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/css-consistency.md",
+          "line": 28,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/css-consistency.md",
+          "line": 47,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/css-consistency.md",
+          "line": 72,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/css-consistency.md",
+          "line": 82,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/css-consistency.md",
+          "line": 90,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/css-consistency.md",
+          "line": 108,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
         },
         {
           "file": ".claude/rules/git-workflow.md",
@@ -1383,6 +1439,20 @@
         },
         {
           "file": ".claude/rules/naming-conventions.md",
+          "line": 10,
+          "kind": "path",
+          "token": "application/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/naming-conventions.md",
+          "line": 33,
+          "kind": "path",
+          "token": "types.ts",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/naming-conventions.md",
           "line": 202,
           "kind": "path",
           "token": "@/features/...",
@@ -1394,6 +1464,27 @@
           "kind": "path",
           "token": "./types",
           "why": "import specifier"
+        },
+        {
+          "file": ".claude/rules/no-hardcoding.md",
+          "line": 239,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/one-component-per-file.md",
+          "line": 245,
+          "kind": "path",
+          "token": "ui/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/one-component-per-file.md",
+          "line": 333,
+          "kind": "path",
+          "token": "ui/",
+          "why": "matched elsewhere"
         },
         {
           "file": ".claude/rules/portability.md",
@@ -1417,6 +1508,62 @@
           "why": "absolute"
         },
         {
+          "file": ".claude/rules/single-source-of-truth.md",
+          "line": 13,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/single-source-of-truth.md",
+          "line": 14,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/single-source-of-truth.md",
+          "line": 70,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/single-source-of-truth.md",
+          "line": 71,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/single-source-of-truth.md",
+          "line": 161,
+          "kind": "path",
+          "token": "en.json",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/single-source-of-truth.md",
+          "line": 162,
+          "kind": "path",
+          "token": "es.json",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/single-source-of-truth.md",
+          "line": 255,
+          "kind": "path",
+          "token": "en.json",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/single-source-of-truth.md",
+          "line": 256,
+          "kind": "path",
+          "token": "es.json",
+          "why": "matched elsewhere"
+        },
+        {
           "file": ".claude/rules/storybook.md",
           "line": 13,
           "kind": "path",
@@ -1431,11 +1578,39 @@
           "why": "package specifier"
         },
         {
+          "file": ".claude/rules/telegram-notifications.md",
+          "line": 34,
+          "kind": "path",
+          "token": "notify-bug-issue.yml",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/telegram-notifications.md",
+          "line": 45,
+          "kind": "path",
+          "token": "sync-secrets.yml",
+          "why": "matched elsewhere"
+        },
+        {
           "file": ".claude/rules/testing.md",
           "line": 13,
           "kind": "path",
           "token": "<workspace>/tests/",
           "why": "example"
+        },
+        {
+          "file": ".claude/rules/testing.md",
+          "line": 147,
+          "kind": "path",
+          "token": "constants.test.ts",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/testing.md",
+          "line": 148,
+          "kind": "path",
+          "token": "checkout-constants.test.ts",
+          "why": "matched elsewhere"
         },
         {
           "file": ".claude/rules/testing.md",
@@ -1453,6 +1628,13 @@
         },
         {
           "file": ".claude/rules/testing.md",
+          "line": 163,
+          "kind": "path",
+          "token": "colors.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/testing.md",
           "line": 164,
           "kind": "path",
           "token": "../src/styles/",
@@ -1464,6 +1646,13 @@
           "kind": "path",
           "token": "@axe-core/playwright",
           "why": "package specifier"
+        },
+        {
+          "file": ".claude/rules/testing.md",
+          "line": 447,
+          "kind": "path",
+          "token": "accessibility.test.tsx",
+          "why": "matched elsewhere"
         },
         {
           "file": ".claude/skills/ai-documents-audit/SKILL.md",
@@ -1529,6 +1718,13 @@
           "why": "absolute"
         },
         {
+          "file": ".claude/skills/code-review/SKILL.md",
+          "line": 206,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
           "file": ".claude/skills/commit-push/SKILL.md",
           "line": 209,
           "kind": "path",
@@ -1555,6 +1751,13 @@
           "kind": "path",
           "token": "release/*",
           "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/create-release/SKILL.md",
+          "line": 61,
+          "kind": "path",
+          "token": "pr-checks.yml",
+          "why": "matched elsewhere"
         },
         {
           "file": ".claude/skills/create-release/SKILL.md",
@@ -1593,16 +1796,16 @@
         },
         {
           "file": ".claude/skills/create-release/SKILL.md",
-          "line": 348,
+          "line": 308,
           "kind": "path",
-          "token": "fix/GH-XXX_Description",
-          "why": "branch name"
+          "token": "release.yml",
+          "why": "matched elsewhere"
         },
         {
           "file": ".claude/skills/create-release/SKILL.md",
-          "line": 359,
+          "line": 348,
           "kind": "path",
-          "token": "release/",
+          "token": "fix/GH-XXX_Description",
           "why": "branch name"
         },
         {
@@ -1660,6 +1863,13 @@
           "kind": "command",
           "token": "pnpm --dir",
           "why": "flags"
+        },
+        {
+          "file": ".claude/skills/e2e-eval/SKILL.md",
+          "line": 747,
+          "kind": "path",
+          "token": "e2e.mjs",
+          "why": "matched elsewhere"
         },
         {
           "file": ".claude/skills/fix-ai-documents-audit/SKILL.md",
@@ -1779,6 +1989,20 @@
           "kind": "path",
           "token": "@/",
           "why": "package specifier"
+        },
+        {
+          "file": ".claude/skills/i18n/SKILL.md",
+          "line": 420,
+          "kind": "path",
+          "token": "request.ts",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/skills/i18n/SKILL.md",
+          "line": 437,
+          "kind": "path",
+          "token": "request.ts",
+          "why": "matched elsewhere"
         },
         {
           "file": ".claude/skills/merge-pr/SKILL.md",
@@ -1991,6 +2215,13 @@
           "why": "package specifier"
         },
         {
+          "file": ".claude/skills/sync-with-develop/SKILL.md",
+          "line": 439,
+          "kind": "path",
+          "token": "types.ts",
+          "why": "matched elsewhere"
+        },
+        {
           "file": ".claude/skills/tailwind/SKILL.md",
           "line": 24,
           "kind": "path",
@@ -2033,6 +2264,13 @@
           "why": "flags"
         },
         {
+          "file": ".claude/agents/README.md",
+          "line": 23,
+          "kind": "path",
+          "token": "AGENT.md",
+          "why": "matched elsewhere"
+        },
+        {
           "file": ".claude/agents/frontend-developer.md",
           "line": 87,
           "kind": "path",
@@ -2040,39 +2278,11 @@
           "why": "absolute"
         },
         {
-          "file": "CLAUDE.md",
-          "line": 237,
+          "file": ".claude/agents/nextjs-architecture-expert.md",
+          "line": 163,
           "kind": "path",
-          "token": "domain/",
-          "why": "ignored by .gitignore"
-        },
-        {
-          "file": "CLAUDE.md",
-          "line": 237,
-          "kind": "path",
-          "token": "application/",
-          "why": "ignored by .gitignore"
-        },
-        {
-          "file": "CLAUDE.md",
-          "line": 237,
-          "kind": "path",
-          "token": "infrastructure/",
-          "why": "ignored by .gitignore"
-        },
-        {
-          "file": "CLAUDE.md",
-          "line": 237,
-          "kind": "path",
-          "token": "presentation/",
-          "why": "ignored by .gitignore"
-        },
-        {
-          "file": "CLAUDE.md",
-          "line": 239,
-          "kind": "path",
-          "token": "app/",
-          "why": "ignored by .gitignore"
+          "token": "layout.tsx",
+          "why": "matched elsewhere"
         },
         {
           "file": ".claude/rules/architecture.md",
@@ -2149,20 +2359,6 @@
           "line": 9,
           "kind": "path",
           "token": "user-management/",
-          "why": "ignored by .gitignore"
-        },
-        {
-          "file": ".claude/rules/naming-conventions.md",
-          "line": 10,
-          "kind": "path",
-          "token": "domain/",
-          "why": "ignored by .gitignore"
-        },
-        {
-          "file": ".claude/rules/naming-conventions.md",
-          "line": 10,
-          "kind": "path",
-          "token": "application/",
           "why": "ignored by .gitignore"
         },
         {
@@ -2293,20 +2489,6 @@
         },
         {
           "file": ".claude/skills/commit-push/SKILL.md",
-          "line": 226,
-          "kind": "path",
-          "token": "components/",
-          "why": "ignored by .gitignore"
-        },
-        {
-          "file": ".claude/skills/commit-push/SKILL.md",
-          "line": 228,
-          "kind": "path",
-          "token": "utils/",
-          "why": "ignored by .gitignore"
-        },
-        {
-          "file": ".claude/skills/commit-push/SKILL.md",
           "line": 229,
           "kind": "path",
           "token": "services/",
@@ -2317,6 +2499,13 @@
           "line": 154,
           "kind": "path",
           "token": "app/(protected)/[feature-name]/page.tsx",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/create-release/SKILL.md",
+          "line": 359,
+          "kind": "path",
+          "token": "release/",
           "why": "ignored by .gitignore"
         },
         {
@@ -2352,34 +2541,6 @@
           "line": 45,
           "kind": "path",
           "token": ".ai-context/reports/",
-          "why": "ignored by .gitignore"
-        },
-        {
-          "file": ".claude/skills/full-review/SKILL.md",
-          "line": 120,
-          "kind": "path",
-          "token": "src/",
-          "why": "ignored by .gitignore"
-        },
-        {
-          "file": ".claude/skills/full-review/SKILL.md",
-          "line": 139,
-          "kind": "path",
-          "token": "src/",
-          "why": "ignored by .gitignore"
-        },
-        {
-          "file": ".claude/skills/full-review/SKILL.md",
-          "line": 150,
-          "kind": "path",
-          "token": "src/",
-          "why": "ignored by .gitignore"
-        },
-        {
-          "file": ".claude/skills/generate-setup-guide/SKILL.md",
-          "line": 424,
-          "kind": "path",
-          "token": "app/",
           "why": "ignored by .gitignore"
         },
         {
@@ -2497,10 +2658,52 @@
       ],
       "external": [
         {
+          "file": "CLAUDE.md",
+          "line": 227,
+          "kind": "skill",
+          "token": "auth",
+          "plugin": "unverified"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 228,
+          "kind": "skill",
+          "token": "store",
+          "plugin": "unverified"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 229,
+          "kind": "skill",
+          "token": "admin",
+          "plugin": "unverified"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 231,
+          "kind": "skill",
+          "token": "payments",
+          "plugin": "unverified"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 232,
+          "kind": "skill",
+          "token": "studio",
+          "plugin": "unverified"
+        },
+        {
           "file": ".claude/rules/architecture.md",
           "line": 130,
           "kind": "skill",
           "token": "app",
+          "plugin": "unverified"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 151,
+          "kind": "skill",
+          "token": "shared",
           "plugin": "unverified"
         },
         {
@@ -2522,158 +2725,14 @@
     {
       "body": "eclipse-con",
       "files": 23,
-      "checked": 156,
+      "checked": 160,
       "broken": [
-        {
-          "file": "CLAUDE.md",
-          "line": 331,
-          "kind": "path",
-          "token": "domain/",
-          "reason": "no such file",
-          "likely": "stale"
-        },
-        {
-          "file": "CLAUDE.md",
-          "line": 331,
-          "kind": "path",
-          "token": "application/",
-          "reason": "no such file",
-          "likely": "stale"
-        },
-        {
-          "file": "CLAUDE.md",
-          "line": 331,
-          "kind": "path",
-          "token": "infrastructure/",
-          "reason": "no such file",
-          "likely": "stale"
-        },
-        {
-          "file": "CLAUDE.md",
-          "line": 331,
-          "kind": "path",
-          "token": "presentation/",
-          "reason": "no such file",
-          "likely": "stale"
-        },
-        {
-          "file": "CLAUDE.md",
-          "line": 333,
-          "kind": "path",
-          "token": "presentation/",
-          "reason": "no such file",
-          "likely": "stale"
-        },
-        {
-          "file": ".claude/rules/architecture.md",
-          "line": 31,
-          "kind": "path",
-          "token": "domain/",
-          "reason": "no such file",
-          "likely": "stale"
-        },
-        {
-          "file": ".claude/rules/architecture.md",
-          "line": 32,
-          "kind": "path",
-          "token": "application/",
-          "reason": "no such file",
-          "likely": "stale"
-        },
-        {
-          "file": ".claude/rules/architecture.md",
-          "line": 32,
-          "kind": "path",
-          "token": "domain/",
-          "reason": "no such file",
-          "likely": "stale"
-        },
-        {
-          "file": ".claude/rules/architecture.md",
-          "line": 33,
-          "kind": "path",
-          "token": "presentation/",
-          "reason": "no such file",
-          "likely": "stale"
-        },
-        {
-          "file": ".claude/rules/architecture.md",
-          "line": 33,
-          "kind": "path",
-          "token": "application/",
-          "reason": "no such file",
-          "likely": "stale"
-        },
-        {
-          "file": ".claude/rules/architecture.md",
-          "line": 33,
-          "kind": "path",
-          "token": "domain/",
-          "reason": "no such file",
-          "likely": "stale"
-        },
-        {
-          "file": ".claude/rules/architecture.md",
-          "line": 34,
-          "kind": "path",
-          "token": "infrastructure/",
-          "reason": "no such file",
-          "likely": "stale"
-        },
-        {
-          "file": ".claude/rules/architecture.md",
-          "line": 34,
-          "kind": "path",
-          "token": "application/",
-          "reason": "no such file",
-          "likely": "stale"
-        },
-        {
-          "file": ".claude/rules/architecture.md",
-          "line": 34,
-          "kind": "path",
-          "token": "domain/",
-          "reason": "no such file",
-          "likely": "stale"
-        },
-        {
-          "file": ".claude/rules/architecture.md",
-          "line": 36,
-          "kind": "path",
-          "token": "presentation/",
-          "reason": "no such file",
-          "likely": "stale"
-        },
-        {
-          "file": ".claude/rules/architecture.md",
-          "line": 36,
-          "kind": "path",
-          "token": "infrastructure/",
-          "reason": "no such file",
-          "likely": "stale"
-        },
-        {
-          "file": ".claude/rules/architecture.md",
-          "line": 36,
-          "kind": "path",
-          "token": "domain/",
-          "reason": "no such file",
-          "likely": "stale"
-        },
-        {
-          "file": ".claude/rules/architecture.md",
-          "line": 36,
-          "kind": "path",
-          "token": "application/",
-          "reason": "no such file",
-          "likely": "stale"
-        },
         {
           "file": ".claude/rules/dry-principle.md",
           "line": 8,
           "kind": "path",
           "token": "src/shared/domain/",
-          "reason": "no such file",
+          "reason": "no such directory",
           "likely": "stale"
         },
         {
@@ -2681,8 +2740,40 @@
           "line": 16,
           "kind": "path",
           "token": "src/shared/presentation/components/",
-          "reason": "no such file",
+          "reason": "no such directory",
           "likely": "stale"
+        },
+        {
+          "file": ".claude/rules/git-workflow.md",
+          "line": 9,
+          "kind": "path",
+          "token": "feature/",
+          "reason": "no such directory",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/git-workflow.md",
+          "line": 10,
+          "kind": "path",
+          "token": "fix/",
+          "reason": "no such directory",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/git-workflow.md",
+          "line": 11,
+          "kind": "path",
+          "token": "chore/",
+          "reason": "no such directory",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/git-workflow.md",
+          "line": 12,
+          "kind": "path",
+          "token": "refactor/",
+          "reason": "no such directory",
+          "likely": "ambiguous"
         },
         {
           "file": ".claude/rules/naming-conventions.md",
@@ -2766,18 +2857,10 @@
         },
         {
           "file": ".claude/rules/single-source-of-truth.md",
-          "line": 23,
-          "kind": "path",
-          "token": "domain/",
-          "reason": "no such file",
-          "likely": "stale"
-        },
-        {
-          "file": ".claude/rules/single-source-of-truth.md",
           "line": 48,
           "kind": "path",
           "token": "src/shared/domain/constants/",
-          "reason": "no such file",
+          "reason": "no such directory",
           "likely": "stale"
         }
       ],
@@ -2804,24 +2887,171 @@
           "why": "placeholder"
         },
         {
-          "file": ".claude/rules/git-workflow.md",
-          "line": 9,
+          "file": "CLAUDE.md",
+          "line": 325,
           "kind": "path",
-          "token": "feature/",
-          "why": "branch name"
+          "token": "es.json",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 331,
+          "kind": "path",
+          "token": "domain/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 331,
+          "kind": "path",
+          "token": "application/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 331,
+          "kind": "path",
+          "token": "infrastructure/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 331,
+          "kind": "path",
+          "token": "presentation/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 332,
+          "kind": "path",
+          "token": "index.ts",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 333,
+          "kind": "path",
+          "token": "presentation/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 335,
+          "kind": "path",
+          "token": "en.json",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 335,
+          "kind": "path",
+          "token": "es.json",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 31,
+          "kind": "path",
+          "token": "domain/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 32,
+          "kind": "path",
+          "token": "application/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 32,
+          "kind": "path",
+          "token": "domain/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 33,
+          "kind": "path",
+          "token": "presentation/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 33,
+          "kind": "path",
+          "token": "application/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 33,
+          "kind": "path",
+          "token": "domain/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 34,
+          "kind": "path",
+          "token": "infrastructure/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 34,
+          "kind": "path",
+          "token": "application/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 34,
+          "kind": "path",
+          "token": "domain/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 36,
+          "kind": "path",
+          "token": "presentation/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 36,
+          "kind": "path",
+          "token": "infrastructure/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 36,
+          "kind": "path",
+          "token": "domain/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 36,
+          "kind": "path",
+          "token": "application/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 61,
+          "kind": "path",
+          "token": "index.ts",
+          "why": "matched elsewhere"
         },
         {
           "file": ".claude/rules/git-workflow.md",
           "line": 9,
           "kind": "path",
           "token": "feature/user-profile",
-          "why": "branch name"
-        },
-        {
-          "file": ".claude/rules/git-workflow.md",
-          "line": 10,
-          "kind": "path",
-          "token": "fix/",
           "why": "branch name"
         },
         {
@@ -2835,21 +3065,7 @@
           "file": ".claude/rules/git-workflow.md",
           "line": 11,
           "kind": "path",
-          "token": "chore/",
-          "why": "branch name"
-        },
-        {
-          "file": ".claude/rules/git-workflow.md",
-          "line": 11,
-          "kind": "path",
           "token": "chore/update-tailwind",
-          "why": "branch name"
-        },
-        {
-          "file": ".claude/rules/git-workflow.md",
-          "line": 12,
-          "kind": "path",
-          "token": "refactor/",
           "why": "branch name"
         },
         {
@@ -2867,11 +3083,25 @@
           "why": "package specifier"
         },
         {
-          "file": ".claude/rules/testing.md",
-          "line": 53,
+          "file": ".claude/rules/portability.md",
+          "line": 21,
           "kind": "path",
-          "token": "e2e/",
-          "why": "ignored by .gitignore"
+          "token": "environment.ts",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/single-source-of-truth.md",
+          "line": 23,
+          "kind": "path",
+          "token": "domain/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/single-source-of-truth.md",
+          "line": 36,
+          "kind": "path",
+          "token": "environment.ts",
+          "why": "matched elsewhere"
         }
       ],
       "external": []

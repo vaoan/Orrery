@@ -1,6 +1,6 @@
 # References
 
-Date: 2026-11-11
+Date: 2026-11-12
 
 Command: `themis references themis libra eclipse-con`
 
@@ -38,7 +38,7 @@ Exceptions:
 
 ## libra
 
-Files read: 79, references checked: 942, broken: 115, exceptions: 210, external: 3
+Files read: 79, references checked: 949, broken: 115, exceptions: 233, external: 9
 
 Likely stale (a real thing that moved, was renamed or never existed; fix the instruction):
 
@@ -81,7 +81,7 @@ Likely stale (a real thing that moved, was renamed or never existed; fix the ins
 | .claude/skills/verify-code/SKILL.md | 182 | command | pnpm smoke | no such pnpm script |
 | .claude/agents/nextjs-architecture-expert.md | 164 | path | app/api/*/route.ts | glob matches no file |
 
-Ambiguous (a bare file name: a file that moved, or a name given as an example):
+Ambiguous (a bare file or directory name that matches nothing in the body: it moved, or it was given as an example):
 
 | file | line | kind | token | reason |
 |---|---|---|---|---|
@@ -175,12 +175,10 @@ Exceptions:
 | file | line | kind | token | why |
 |---|---|---|---|---|
 | CLAUDE.md | 133 | path | @/* | package specifier |
-| CLAUDE.md | 227 | skill | auth | route |
-| CLAUDE.md | 228 | skill | store | route |
-| CLAUDE.md | 229 | skill | admin | route |
 | CLAUDE.md | 230 | path | <absolute path> | absolute |
-| CLAUDE.md | 231 | skill | payments | route |
-| CLAUDE.md | 232 | skill | studio | route |
+| CLAUDE.md | 237 | path | application/ | matched elsewhere |
+| CLAUDE.md | 237 | path | infrastructure/ | matched elsewhere |
+| CLAUDE.md | 237 | path | presentation/ | matched elsewhere |
 | .claude/rules/architecture.md | 39 | path | <absolute path> | absolute |
 | .claude/rules/architecture.md | 40 | path | <absolute path> | absolute |
 | .claude/rules/architecture.md | 48 | path | ../../../ | import specifier |
@@ -191,8 +189,10 @@ Exceptions:
 | .claude/rules/architecture.md | 57 | path | ./types | import specifier |
 | .claude/rules/architecture.md | 58 | path | @/test/utils | package specifier |
 | .claude/rules/architecture.md | 95 | path | ../ | import specifier |
-| .claude/rules/architecture.md | 151 | skill | shared | route |
+| .claude/rules/architecture.md | 150 | path | page.tsx | matched elsewhere |
+| .claude/rules/architecture.md | 152 | path | route.ts | matched elsewhere |
 | .claude/rules/architecture.md | 235 | path | api/generated/<tag>/<tag> | example |
+| .claude/rules/code-review-standards.md | 124 | path | globals.css | matched elsewhere |
 | .claude/rules/code-review-standards.md | 180 | path | @/features/[feature]/[layer] | package specifier |
 | .claude/rules/code-review-standards.md | 180 | path | ../domain | import specifier |
 | .claude/rules/code-review-standards.md | 181 | path | @/features/[other] | package specifier |
@@ -204,6 +204,14 @@ Exceptions:
 | .claude/rules/code-review-standards.md | 184 | path | ../domain | import specifier |
 | .claude/rules/code-review-standards.md | 184 | path | ../application | import specifier |
 | .claude/rules/code-review-standards.md | 184 | path | ../shared | import specifier |
+| .claude/rules/css-consistency.md | 17 | path | globals.css | matched elsewhere |
+| .claude/rules/css-consistency.md | 18 | path | globals.css | matched elsewhere |
+| .claude/rules/css-consistency.md | 28 | path | globals.css | matched elsewhere |
+| .claude/rules/css-consistency.md | 47 | path | globals.css | matched elsewhere |
+| .claude/rules/css-consistency.md | 72 | path | globals.css | matched elsewhere |
+| .claude/rules/css-consistency.md | 82 | path | globals.css | matched elsewhere |
+| .claude/rules/css-consistency.md | 90 | path | globals.css | matched elsewhere |
+| .claude/rules/css-consistency.md | 108 | path | globals.css | matched elsewhere |
 | .claude/rules/git-workflow.md | 31 | path | release/* | branch name |
 | .claude/rules/git-workflow.md | 32 | path | fix/* | branch name |
 | .claude/rules/git-workflow.md | 48 | path | feat/* | branch name |
@@ -225,18 +233,37 @@ Exceptions:
 | .claude/rules/monorepo-architecture.md | 220 | path | @ui/utils/cn | package specifier |
 | .claude/rules/multi-agent-persistence.md | 43 | path | {sub-agent-type}_{timestamp}.json | placeholder |
 | .claude/rules/multi-agent-persistence.md | 44 | path | {skill-name}_{timestamp}.md | placeholder |
+| .claude/rules/naming-conventions.md | 10 | path | application/ | matched elsewhere |
+| .claude/rules/naming-conventions.md | 33 | path | types.ts | matched elsewhere |
 | .claude/rules/naming-conventions.md | 202 | path | @/features/... | package specifier |
 | .claude/rules/naming-conventions.md | 203 | path | ./types | import specifier |
+| .claude/rules/no-hardcoding.md | 239 | path | globals.css | matched elsewhere |
+| .claude/rules/one-component-per-file.md | 245 | path | ui/ | matched elsewhere |
+| .claude/rules/one-component-per-file.md | 333 | path | ui/ | matched elsewhere |
 | .claude/rules/portability.md | 33 | path | <absolute path> | absolute |
 | .claude/rules/portability.md | 44 | path | ./src/ | import specifier |
 | .claude/rules/portability.md | 206 | path | <absolute path> | absolute |
+| .claude/rules/single-source-of-truth.md | 13 | path | globals.css | matched elsewhere |
+| .claude/rules/single-source-of-truth.md | 14 | path | globals.css | matched elsewhere |
+| .claude/rules/single-source-of-truth.md | 70 | path | globals.css | matched elsewhere |
+| .claude/rules/single-source-of-truth.md | 71 | path | globals.css | matched elsewhere |
+| .claude/rules/single-source-of-truth.md | 161 | path | en.json | matched elsewhere |
+| .claude/rules/single-source-of-truth.md | 162 | path | es.json | matched elsewhere |
+| .claude/rules/single-source-of-truth.md | 255 | path | en.json | matched elsewhere |
+| .claude/rules/single-source-of-truth.md | 256 | path | es.json | matched elsewhere |
 | .claude/rules/storybook.md | 13 | path | @storybook/nextjs-vite | package specifier |
 | .claude/rules/tailwind.md | 14 | path | @tailwindcss/postcss | package specifier |
+| .claude/rules/telegram-notifications.md | 34 | path | notify-bug-issue.yml | matched elsewhere |
+| .claude/rules/telegram-notifications.md | 45 | path | sync-secrets.yml | matched elsewhere |
 | .claude/rules/testing.md | 13 | path | <workspace>/tests/ | example |
+| .claude/rules/testing.md | 147 | path | constants.test.ts | matched elsewhere |
+| .claude/rules/testing.md | 148 | path | checkout-constants.test.ts | matched elsewhere |
 | .claude/rules/testing.md | 151 | path | ./LoginForm | import specifier |
 | .claude/rules/testing.md | 152 | path | @/ | package specifier |
+| .claude/rules/testing.md | 163 | path | colors.css | matched elsewhere |
 | .claude/rules/testing.md | 164 | path | ../src/styles/ | import specifier |
 | .claude/rules/testing.md | 441 | path | @axe-core/playwright | package specifier |
+| .claude/rules/testing.md | 447 | path | accessibility.test.tsx | matched elsewhere |
 | .claude/skills/ai-documents-audit/SKILL.md | 91 | path | {audit-type}_YYYY-MM-DDTHH-MM-SS.json | placeholder |
 | .claude/skills/ai-documents-audit/SKILL.md | 326 | path | <absolute path> | absolute |
 | .claude/skills/analyze-bundle/SKILL.md | 121 | path | @mui/icons-material | package specifier |
@@ -246,17 +273,19 @@ Exceptions:
 | .claude/skills/checkpoint/SKILL.md | 144 | path | <absolute path> | absolute |
 | .claude/skills/checkpoint/SKILL.md | 298 | path | feat/GH-42_User-Auth | branch name |
 | .claude/skills/checkpoint/SKILL.md | 412 | path | <absolute path> | absolute |
+| .claude/skills/code-review/SKILL.md | 206 | path | globals.css | matched elsewhere |
 | .claude/skills/commit-push/SKILL.md | 209 | path | ../domain | import specifier |
 | .claude/skills/commit-push/SKILL.md | 209 | path | @/features/[feature]/domain | package specifier |
 | .claude/skills/create-component/SKILL.md | 95 | path | [ComponentName].test.tsx | placeholder |
 | .claude/skills/create-release/SKILL.md | 25 | path | release/* | branch name |
+| .claude/skills/create-release/SKILL.md | 61 | path | pr-checks.yml | matched elsewhere |
 | .claude/skills/create-release/SKILL.md | 65 | path | release/* | branch name |
 | .claude/skills/create-release/SKILL.md | 65 | path | fix/* | branch name |
 | .claude/skills/create-release/SKILL.md | 177 | path | release/* | branch name |
 | .claude/skills/create-release/SKILL.md | 178 | path | release/* | branch name |
 | .claude/skills/create-release/SKILL.md | 178 | path | fix/* | branch name |
+| .claude/skills/create-release/SKILL.md | 308 | path | release.yml | matched elsewhere |
 | .claude/skills/create-release/SKILL.md | 348 | path | fix/GH-XXX_Description | branch name |
-| .claude/skills/create-release/SKILL.md | 359 | path | release/ | branch name |
 | .claude/skills/e2e-eval/SKILL.md | 167 | command | pnpm --dir | flags |
 | .claude/skills/e2e-eval/SKILL.md | 168 | command | pnpm --dir | flags |
 | .claude/skills/e2e-eval/SKILL.md | 169 | command | pnpm --dir | flags |
@@ -265,6 +294,7 @@ Exceptions:
 | .claude/skills/e2e-eval/SKILL.md | 177 | command | pnpm --dir | flags |
 | .claude/skills/e2e-eval/SKILL.md | 178 | command | pnpm --dir | flags |
 | .claude/skills/e2e-eval/SKILL.md | 179 | command | pnpm --dir | flags |
+| .claude/skills/e2e-eval/SKILL.md | 747 | path | e2e.mjs | matched elsewhere |
 | .claude/skills/fix-ai-documents-audit/SKILL.md | 193 | path | {owner}/{repo} | placeholder |
 | .claude/skills/fix-ai-documents-audit/SKILL.md | 194 | path | <absolute path> | absolute |
 | .claude/skills/fix-ai-documents-audit/SKILL.md | 194 | path | ./ | import specifier |
@@ -282,6 +312,8 @@ Exceptions:
 | .claude/skills/full-review/SKILL.md | 546 | path | {review_id}_*.json | placeholder |
 | .claude/skills/generate-setup-guide/SKILL.md | 418 | path | {type}/GH-{number}_{title} | placeholder |
 | .claude/skills/generate-setup-guide/SKILL.md | 420 | path | @/ | package specifier |
+| .claude/skills/i18n/SKILL.md | 420 | path | request.ts | matched elsewhere |
+| .claude/skills/i18n/SKILL.md | 437 | path | request.ts | matched elsewhere |
 | .claude/skills/merge-pr/SKILL.md | 458 | path | feat/GH-42_User-Auth | branch name |
 | .claude/skills/post-merge/SKILL.md | 308 | path | feat/GH-42_User-Auth | branch name |
 | .claude/skills/project-intelligence/SKILL.md | 583 | path | <absolute path> | absolute |
@@ -312,18 +344,16 @@ Exceptions:
 | .claude/skills/sync-with-develop/SKILL.md | 111 | path | feat/GH-XXX_Title | branch name |
 | .claude/skills/sync-with-develop/SKILL.md | 389 | path | ../domain | import specifier |
 | .claude/skills/sync-with-develop/SKILL.md | 438 | path | @/test/utils | package specifier |
+| .claude/skills/sync-with-develop/SKILL.md | 439 | path | types.ts | matched elsewhere |
 | .claude/skills/tailwind/SKILL.md | 24 | path | @tailwindcss/postcss | package specifier |
 | .claude/skills/verify-code/SKILL.md | 275 | command | pnpm --filter | flags |
 | .claude/skills/verify-code/SKILL.md | 276 | command | pnpm --filter | flags |
 | .claude/skills/verify-code/SKILL.md | 277 | command | pnpm --filter | flags |
 | .claude/skills/verify-code/SKILL.md | 278 | command | pnpm --filter | flags |
 | .claude/skills/verify-code/SKILL.md | 279 | command | pnpm --filter | flags |
+| .claude/agents/README.md | 23 | path | AGENT.md | matched elsewhere |
 | .claude/agents/frontend-developer.md | 87 | path | <absolute path> | absolute |
-| CLAUDE.md | 237 | path | domain/ | ignored by .gitignore |
-| CLAUDE.md | 237 | path | application/ | ignored by .gitignore |
-| CLAUDE.md | 237 | path | infrastructure/ | ignored by .gitignore |
-| CLAUDE.md | 237 | path | presentation/ | ignored by .gitignore |
-| CLAUDE.md | 239 | path | app/ | ignored by .gitignore |
+| .claude/agents/nextjs-architecture-expert.md | 163 | path | layout.tsx | matched elsewhere |
 | .claude/rules/architecture.md | 198 | path | features/orders/domain/types/ | ignored by .gitignore |
 | .claude/rules/code-review-standards.md | 188 | path | domain/types/ | ignored by .gitignore |
 | .claude/rules/code-review-standards.md | 189 | path | src/mocks/data/ | ignored by .gitignore |
@@ -335,8 +365,6 @@ Exceptions:
 | .claude/rules/monorepo-architecture.md | 177 | path | types/generated/ | ignored by .gitignore |
 | .claude/rules/multi-agent-persistence.md | 30 | path | .ai-context/reports/ | ignored by .gitignore |
 | .claude/rules/naming-conventions.md | 9 | path | user-management/ | ignored by .gitignore |
-| .claude/rules/naming-conventions.md | 10 | path | domain/ | ignored by .gitignore |
-| .claude/rules/naming-conventions.md | 10 | path | application/ | ignored by .gitignore |
 | .claude/rules/naming-conventions.md | 11 | path | LoginForm/ | ignored by .gitignore |
 | .claude/rules/naming-conventions.md | 26 | path | src/shared/presentation/components/ui/ | ignored by .gitignore |
 | .claude/rules/no-hardcoding.md | 234 | path | src/mocks/data/[entity].ts | ignored by .gitignore |
@@ -355,19 +383,14 @@ Exceptions:
 | .claude/skills/ai-documents-audit/SKILL.md | 648 | path | .ai-context/reports/ai-documents-audit_YYYY-MM-DDTHH-MM-SS.md | ignored by .gitignore |
 | .claude/skills/ai-documents-audit/SKILL.md | 1290 | path | .ai-context/reports/ | ignored by .gitignore |
 | .claude/skills/analyze-bundle/SKILL.md | 48 | path | .ai-context/reports/bundle-analysis-{timestamp}.md | ignored by .gitignore |
-| .claude/skills/commit-push/SKILL.md | 226 | path | components/ | ignored by .gitignore |
-| .claude/skills/commit-push/SKILL.md | 228 | path | utils/ | ignored by .gitignore |
 | .claude/skills/commit-push/SKILL.md | 229 | path | services/ | ignored by .gitignore |
 | .claude/skills/create-feature/SKILL.md | 154 | path | app/(protected)/[feature-name]/page.tsx | ignored by .gitignore |
+| .claude/skills/create-release/SKILL.md | 359 | path | release/ | ignored by .gitignore |
 | .claude/skills/e2e-eval/SKILL.md | 412 | path | test-results/ | ignored by .gitignore |
 | .claude/skills/e2e-eval/SKILL.md | 536 | path | .ai-context/reports/ | ignored by .gitignore |
 | .claude/skills/figma/SKILL.md | 93 | path | src/shared/presentation/components/ui/ | ignored by .gitignore |
 | .claude/skills/fix-ai-documents-audit/SKILL.md | 34 | path | .ai-context/reports/ | ignored by .gitignore |
 | .claude/skills/fix-ai-documents-audit/SKILL.md | 45 | path | .ai-context/reports/ | ignored by .gitignore |
-| .claude/skills/full-review/SKILL.md | 120 | path | src/ | ignored by .gitignore |
-| .claude/skills/full-review/SKILL.md | 139 | path | src/ | ignored by .gitignore |
-| .claude/skills/full-review/SKILL.md | 150 | path | src/ | ignored by .gitignore |
-| .claude/skills/generate-setup-guide/SKILL.md | 424 | path | app/ | ignored by .gitignore |
 | .claude/skills/investigate-error/SKILL.md | 72 | path | .ai-context/reports/error-investigation-{timestamp}.md | ignored by .gitignore |
 | .claude/skills/project-intelligence/SKILL.md | 45 | path | .ai-context/reports/project-intelligence_{timestamp}.md | ignored by .gitignore |
 | .claude/skills/project-intelligence/SKILL.md | 87 | path | .ai-context/reports/ | ignored by .gitignore |
@@ -389,45 +412,36 @@ External:
 
 | file | line | token | plugin |
 |---|---|---|---|
+| CLAUDE.md | 227 | auth | unverified |
+| CLAUDE.md | 228 | store | unverified |
+| CLAUDE.md | 229 | admin | unverified |
+| CLAUDE.md | 231 | payments | unverified |
+| CLAUDE.md | 232 | studio | unverified |
 | .claude/rules/architecture.md | 130 | app | unverified |
+| .claude/rules/architecture.md | 151 | shared | unverified |
 | .claude/skills/code-review/SKILL.md | 127 | app | unverified |
 | .claude/skills/start-task/SKILL.md | 31 | brainstorming | unverified |
 
 ## eclipse-con
 
-Files read: 23, references checked: 156, broken: 32, exceptions: 13, external: 0
+Files read: 23, references checked: 160, broken: 17, exceptions: 34, external: 0
 
 Likely stale (a real thing that moved, was renamed or never existed; fix the instruction):
 
 | file | line | kind | token | reason |
 |---|---|---|---|---|
-| CLAUDE.md | 331 | path | domain/ | no such file |
-| CLAUDE.md | 331 | path | application/ | no such file |
-| CLAUDE.md | 331 | path | infrastructure/ | no such file |
-| CLAUDE.md | 331 | path | presentation/ | no such file |
-| CLAUDE.md | 333 | path | presentation/ | no such file |
-| .claude/rules/architecture.md | 31 | path | domain/ | no such file |
-| .claude/rules/architecture.md | 32 | path | application/ | no such file |
-| .claude/rules/architecture.md | 32 | path | domain/ | no such file |
-| .claude/rules/architecture.md | 33 | path | presentation/ | no such file |
-| .claude/rules/architecture.md | 33 | path | application/ | no such file |
-| .claude/rules/architecture.md | 33 | path | domain/ | no such file |
-| .claude/rules/architecture.md | 34 | path | infrastructure/ | no such file |
-| .claude/rules/architecture.md | 34 | path | application/ | no such file |
-| .claude/rules/architecture.md | 34 | path | domain/ | no such file |
-| .claude/rules/architecture.md | 36 | path | presentation/ | no such file |
-| .claude/rules/architecture.md | 36 | path | infrastructure/ | no such file |
-| .claude/rules/architecture.md | 36 | path | domain/ | no such file |
-| .claude/rules/architecture.md | 36 | path | application/ | no such file |
-| .claude/rules/dry-principle.md | 8 | path | src/shared/domain/ | no such file |
-| .claude/rules/dry-principle.md | 16 | path | src/shared/presentation/components/ | no such file |
-| .claude/rules/single-source-of-truth.md | 23 | path | domain/ | no such file |
-| .claude/rules/single-source-of-truth.md | 48 | path | src/shared/domain/constants/ | no such file |
+| .claude/rules/dry-principle.md | 8 | path | src/shared/domain/ | no such directory |
+| .claude/rules/dry-principle.md | 16 | path | src/shared/presentation/components/ | no such directory |
+| .claude/rules/single-source-of-truth.md | 48 | path | src/shared/domain/constants/ | no such directory |
 
-Ambiguous (a bare file name: a file that moved, or a name given as an example):
+Ambiguous (a bare file or directory name that matches nothing in the body: it moved, or it was given as an example):
 
 | file | line | kind | token | reason |
 |---|---|---|---|---|
+| .claude/rules/git-workflow.md | 9 | path | feature/ | no such directory |
+| .claude/rules/git-workflow.md | 10 | path | fix/ | no such directory |
+| .claude/rules/git-workflow.md | 11 | path | chore/ | no such directory |
+| .claude/rules/git-workflow.md | 12 | path | refactor/ | no such directory |
 | .claude/rules/naming-conventions.md | 7 | path | UserCard.tsx | no such file |
 | .claude/rules/naming-conventions.md | 8 | path | UserProfile.ts | no such file |
 | .claude/rules/naming-conventions.md | 9 | path | useAuth.ts | no such file |
@@ -446,14 +460,35 @@ Exceptions:
 | CLAUDE.md | 41 | path | fco.bz/<slug> | example |
 | CLAUDE.md | 212 | path | @/* | package specifier |
 | CLAUDE.md | 321 | path | [Name].test.tsx | placeholder |
-| .claude/rules/git-workflow.md | 9 | path | feature/ | branch name |
+| CLAUDE.md | 325 | path | es.json | matched elsewhere |
+| CLAUDE.md | 331 | path | domain/ | matched elsewhere |
+| CLAUDE.md | 331 | path | application/ | matched elsewhere |
+| CLAUDE.md | 331 | path | infrastructure/ | matched elsewhere |
+| CLAUDE.md | 331 | path | presentation/ | matched elsewhere |
+| CLAUDE.md | 332 | path | index.ts | matched elsewhere |
+| CLAUDE.md | 333 | path | presentation/ | matched elsewhere |
+| CLAUDE.md | 335 | path | en.json | matched elsewhere |
+| CLAUDE.md | 335 | path | es.json | matched elsewhere |
+| .claude/rules/architecture.md | 31 | path | domain/ | matched elsewhere |
+| .claude/rules/architecture.md | 32 | path | application/ | matched elsewhere |
+| .claude/rules/architecture.md | 32 | path | domain/ | matched elsewhere |
+| .claude/rules/architecture.md | 33 | path | presentation/ | matched elsewhere |
+| .claude/rules/architecture.md | 33 | path | application/ | matched elsewhere |
+| .claude/rules/architecture.md | 33 | path | domain/ | matched elsewhere |
+| .claude/rules/architecture.md | 34 | path | infrastructure/ | matched elsewhere |
+| .claude/rules/architecture.md | 34 | path | application/ | matched elsewhere |
+| .claude/rules/architecture.md | 34 | path | domain/ | matched elsewhere |
+| .claude/rules/architecture.md | 36 | path | presentation/ | matched elsewhere |
+| .claude/rules/architecture.md | 36 | path | infrastructure/ | matched elsewhere |
+| .claude/rules/architecture.md | 36 | path | domain/ | matched elsewhere |
+| .claude/rules/architecture.md | 36 | path | application/ | matched elsewhere |
+| .claude/rules/architecture.md | 61 | path | index.ts | matched elsewhere |
 | .claude/rules/git-workflow.md | 9 | path | feature/user-profile | branch name |
-| .claude/rules/git-workflow.md | 10 | path | fix/ | branch name |
 | .claude/rules/git-workflow.md | 10 | path | fix/login-redirect | branch name |
-| .claude/rules/git-workflow.md | 11 | path | chore/ | branch name |
 | .claude/rules/git-workflow.md | 11 | path | chore/update-tailwind | branch name |
-| .claude/rules/git-workflow.md | 12 | path | refactor/ | branch name |
 | .claude/rules/git-workflow.md | 12 | path | refactor/auth-service | branch name |
 | .claude/rules/portability.md | 5 | path | @/ | package specifier |
-| .claude/rules/testing.md | 53 | path | e2e/ | ignored by .gitignore |
+| .claude/rules/portability.md | 21 | path | environment.ts | matched elsewhere |
+| .claude/rules/single-source-of-truth.md | 23 | path | domain/ | matched elsewhere |
+| .claude/rules/single-source-of-truth.md | 36 | path | environment.ts | matched elsewhere |
 

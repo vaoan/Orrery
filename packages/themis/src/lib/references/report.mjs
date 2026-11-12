@@ -22,7 +22,7 @@ export function renderReferences(results, { date, label, command }) {
     if (r.error) { md.push(`Error: ${r.error}`, ""); continue; }
     md.push(`Files read: ${r.files}, references checked: ${r.checked}, broken: ${r.broken.length}, exceptions: ${r.exceptions.length}, external: ${r.external.length}`, "");
     md.push(...table("Likely stale (a real thing that moved, was renamed or never existed; fix the instruction):", r.broken.filter((b) => b.likely === "stale"), ["file", "line", "kind", "token", "reason"]));
-    md.push(...table("Ambiguous (a bare file name: a file that moved, or a name given as an example):", r.broken.filter((b) => b.likely === "ambiguous"), ["file", "line", "kind", "token", "reason"]));
+    md.push(...table("Ambiguous (a bare file or directory name that matches nothing in the body: it moved, or it was given as an example):", r.broken.filter((b) => b.likely === "ambiguous"), ["file", "line", "kind", "token", "reason"]));
     md.push(...table("Likely illustrative (an example name or sample structure that was never meant to exist; mark it as an example):", r.broken.filter((b) => b.likely === "illustrative"), ["file", "line", "kind", "token", "reason"]));
     md.push(...table("Exceptions:", r.exceptions, ["file", "line", "kind", "token", "why"]));
     md.push(...table("External:", r.external, ["file", "line", "token", "plugin"]));

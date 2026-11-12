@@ -56,9 +56,10 @@ export function bodyContext(dir, files = listBodyFiles(dir)) {
   const fileSet = new Set(files);
   const dirSet = new Set();
   const basenames = new Set();
+  const dirBasenames = new Set();
   for (const f of files) {
     basenames.add(path.posix.basename(f));
-    for (let d = path.posix.dirname(f); d !== "." && !dirSet.has(d); d = path.posix.dirname(d)) dirSet.add(d);
+    for (let d = path.posix.dirname(f); d !== "." && !dirSet.has(d); d = path.posix.dirname(d)) { dirSet.add(d); dirBasenames.add(path.posix.basename(d)); }
   }
   const rootPkg = readJson(dir, "package.json");
   const scripts = new Set(Object.keys(rootPkg?.scripts ?? {}));
@@ -82,7 +83,7 @@ export function bodyContext(dir, files = listBodyFiles(dir)) {
   const commands = new Set(files.filter((f) => /^\.claude\/commands\/.+\.md$/.test(f)).map((f) => f.slice(".claude/commands/".length, -3).replace(/\//g, ":")));
   const plugins = Object.keys(readJson(dir, ".claude/settings.json")?.enabledPlugins ?? {});
   const topDirs = new Set(files.filter((f) => f.includes("/")).map((f) => f.split("/")[0]));
-  return { dir, files, fileSet, dirSet, basenames, topDirs, packages, scripts, skills, agents, commands, plugins, owners: owners(), eslintPlugins: pluginIds(depNames) };
+  return { dir, files, fileSet, dirSet, basenames, dirBasenames, topDirs, packages, scripts, skills, agents, commands, plugins, owners: owners(), eslintPlugins: pluginIds(depNames) };
 }
 
 // Brackets alone are a literal, such as a Next.js route `[id]`; `*` and `{}` make a glob.
@@ -97,22 +98,25 @@ function globMatches(ctx, base, pattern) {
   return ctx.files.some((f) => path.matchesGlob(f, full)) || [...ctx.dirSet].some((d) => path.matchesGlob(d, full));
 }
 
-// Where a relative token may resolve from: the body root, the file's directory, then each workspace
+// Where a relative token may resolve from: the body root, the file's directory, then every workspace
 // package root and its src/.
-// A bare directory name (`domain/`) is far more ambiguous than a path, so it resolves only from the
-// package the referring file lives in.
-function bases(ctx, fileRel, own = false) {
+function bases(ctx, fileRel) {
   const fileDir = path.posix.dirname(fileRel);
-  const pkgs = own ? ctx.packages.filter((p) => fileRel.startsWith(`${p.dir}/`)) : ctx.packages;
-  return ["", ...(fileDir === "." ? [] : [fileDir]), ...pkgs.flatMap((p) => [p.dir, `${p.dir}/src`])];
+  return ["", ...(fileDir === "." ? [] : [fileDir]), ...ctx.packages.flatMap((p) => [p.dir, `${p.dir}/src`])];
 }
 
-function resolveLiteral(ctx, fileRel, clean, own = false) {
+// A single segment is a bare name: a file name with an extension, or a directory name with a trailing
+// slash. It is vocabulary, a weak claim, so any file or directory with that name anywhere satisfies it.
+const bareName = (token, segs) => segs.length === 1 && !isGlob(token) && (token.endsWith("/") || hasExtension(token));
+
+// Returns "base" when the token resolves from a base, "elsewhere" when a bare name only matches a file
+// or directory somewhere else in the body, false otherwise.
+function resolveLiteral(ctx, fileRel, clean, bare) {
   const join = (b, p) => path.posix.normalize(b ? `${b}/${p}` : p);
-  if (!clean.includes("/") && !clean.endsWith("/") && hasExtension(clean) && !isGlob(clean)) {
-    if (ctx.basenames.has(clean)) return true; // a bare file name: any file anywhere with it
-  }
-  return bases(ctx, fileRel, own).some((b) => { const p = join(b, clean); return !p.startsWith("..") && exists(ctx, p); });
+  if (bases(ctx, fileRel).some((b) => { const p = join(b, clean); return !p.startsWith("..") && exists(ctx, p); })) return "base";
+  if (bare === "file" && ctx.basenames.has(clean)) return "elsewhere";
+  if (bare === "dir" && ctx.dirBasenames.has(clean)) return "elsewhere";
+  return false;
 }
 
 function resolveGlob(ctx, fileRel, clean) {
@@ -139,14 +143,13 @@ function resolveInPackage(ctx, clean) {
 // and the rest could be inside it.
 function isBranch(ctx, token, segs) {
   if (!BRANCH_TYPES.has(segs[0]) || ctx.topDirs.has(segs[0])) return false;
-  if (segs.length === 1) return token.endsWith("/"); // a bare prefix such as `feature/`
-  if (segs.length !== 2) return false;
+  if (segs.length !== 2) return false; // a lone `docs/` or `feature/` is a bare directory name
   const rest = segs[1];
   if (rest.includes(".")) return false; // path-like: an extension or a version
   return rest === "*" || isGlob(rest) || isPlaceholderSeg(rest) || /^[A-Za-z0-9_.]+(-[A-Za-z0-9_.]+)+$/.test(rest);
 }
 
-// Returns { ok } or { skip } with the reason the token is not a path to check.
+// Returns { ok }, { ok, elsewhere }, { broken } or { skip } with the reason the token is not a path to check.
 function checkPath(ctx, fileRel, token, kind) {
   const clean = token.replace(/^\.\//, "").replace(/\/$/, "");
   const segs = clean.split("/");
@@ -161,9 +164,11 @@ function checkPath(ctx, fileRel, token, kind) {
   if (segs.length === 2 && !hasExtension(clean) && ctx.eslintPlugins.has(segs[0])) return { skip: "eslint rule" };
   if (segs.length === 3 && segs[0].startsWith("@") && !hasExtension(clean) && ctx.eslintPlugins.has(`${segs[0]}/${segs[1]}`)) return { skip: "eslint rule" };
 
-  const bareDir = segs.length === 1 && token.endsWith("/");
-  const run = (c) => isGlob(c) ? resolveGlob(ctx, fileRel, c) : resolveLiteral(ctx, fileRel, c, bareDir) || resolveInPackage(ctx, c);
-  if (run(clean)) return { ok: true };
+  const bare = bareName(token, segs) ? (token.endsWith("/") ? "dir" : "file") : null;
+  const run = (c, b = null) => isGlob(c) ? resolveGlob(ctx, fileRel, c) : resolveLiteral(ctx, fileRel, c, b) || resolveInPackage(ctx, c);
+  const found = run(clean, bare);
+  if (found === "elsewhere") return { ok: true, elsewhere: true };
+  if (found) return { ok: true };
 
   const at = segs.findIndex(isPlaceholderSeg);
   if (at !== -1) {
@@ -188,7 +193,9 @@ export function checkText(ctx, fileRel, text) {
       const c = checkPath(ctx, fileRel, r.token, r.kind);
       if (c.skip) { res.exceptions.push({ ...at, why: c.skip }); continue; }
       res.checked++;
-      if (!c.ok) res.broken.push({ ...at, reason: c.broken ?? (isGlob(r.token) ? "glob matches no file" : "no such file"), likely: r.kind === "path" && !r.token.includes("/") && !isGlob(r.token) ? "ambiguous" : r.kind === "path" && (r.illustrative || /\bpath\/to\b|YYYY|\{|<|\[/.test(r.token)) ? "illustrative" : "stale", probe: c.probe });
+      if (c.elsewhere) { res.exceptions.push({ ...at, why: "matched elsewhere" }); continue; }
+      const bare = r.kind === "path" && !isGlob(r.token) && r.token.replace(/^\.\//, "").replace(/\/$/, "").split("/").length === 1;
+      if (!c.ok) res.broken.push({ ...at, reason: c.broken ?? (isGlob(r.token) ? "glob matches no file" : r.token.endsWith("/") ? "no such directory" : "no such file"), likely: bare ? "ambiguous" : r.kind === "path" && (r.illustrative || /\bpath\/to\b|YYYY|\{|<|\[/.test(r.token)) ? "illustrative" : "stale", probe: c.probe });
       continue;
     }
     if (r.kind === "command") {
@@ -202,8 +209,8 @@ export function checkText(ctx, fileRel, text) {
     // skill or agent
     const name = r.token;
     if (name.includes(":")) { res.external.push({ ...at, plugin: name.split(":")[0] }); res.checked++; continue; }
-    // A `/name` that names a directory or a workspace app is a route, not a skill.
-    if (r.slash && (ctx.topDirs.has(name) || ctx.packages.some((p) => path.posix.basename(p.dir) === name || ctx.dirSet.has(`${p.dir}/src/app/${name}`)))) { res.exceptions.push({ ...at, why: "route" }); continue; }
+    // A `/name` that names a top-level directory or a package's src/app/<name> is a route, not a skill.
+    if (r.slash && (ctx.topDirs.has(name) || ctx.packages.some((p) => ctx.dirSet.has(`${p.dir}/src/app/${name}`)))) { res.exceptions.push({ ...at, why: "route" }); continue; }
     res.checked++;
     const known = r.kind === "agent" ? ctx.agents.has(name) : ctx.skills.has(name) || ctx.agents.has(name) || ctx.commands.has(name) || BUILTIN_SLASH.has(name);
     if (known) continue;
