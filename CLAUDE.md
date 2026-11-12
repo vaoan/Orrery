@@ -19,7 +19,7 @@ Stage 0 is done. Next is the Portia trial, a minimal starter and `themis init` f
 
 ## The one rule that keeps this honest
 
-> Anything in `physics/` must be true for a repository that does not exist yet.
+> Anything in the physics tier must be true for a repository that does not exist yet.
 
 If justifying a rule requires naming a specific project, it is not physics — it
 belongs to a class, or it stays in that project. This is the check that stops one
@@ -46,13 +46,13 @@ in its own repository rather than inside `aeleos`.
 as a Claude Code plugin from this repo's own marketplace. Content lives in the
 package — bodies keep only *pointer files* that contain a path and no policy.
 
-**Tiers.** `physics/` binds every body. `classes/` binds an archetype. Anything
+**Tiers.** The physics tier (`packages/themis/physics`, and the physics skills of the plugin) binds every body. The classes tier binds an archetype. Anything
 project-specific stays in the body and is never touched by sync.
 
 The tier is an **export path**, not a directory anyone copies from:
-`@vaoan/themis/eslint/physics` versus `@vaoan/themis/eslint/next-supabase-mono`.
+`@vaoan/themis/eslint/physics` versus `@vaoan/themis/eslint`.
 
-## Commands the CLI will expose
+## Commands the CLI exposes
 
 ```
 themis diff-eslint <repoA> <repoB>       rule-by-rule effective-config diff        (built, 2a)
@@ -60,17 +60,21 @@ themis repo apply <owner/name>           bring a repository to policy/repository
 themis ci <verb>                         branch-target, branch-name, pr-title, branch-sync, config-drift (built, 2e)
 themis hook <commit-msg|pre-push>        the git hooks, pointed at from .husky/    (built, 2e)
 themis release                           cut release/vYYYY.MM.DD.N from develop    (built, 2e)
-themis init --class next-supabase-mono   scaffold a new body, register it         (2d)
-themis check                             validate a body has not drifted          (2d)
-themis status                            report every body's pinned version       (2d)
-themis promote <path> --to physics       lift a local rule into the shared tier   (2d)
+themis init <name> --class <class>       create a body from the starter, apply policy, register it (built, trial)
 themis reconcile <repoA> <repoB>         rule-by-rule rulings and records from two donors (built, 2b)
 themis bundle                            render the rulings into physics/ and classes/   (built, 2b)
 themis observe <body>...                 on-demand drift of a body against the bundle and
                                           its prediction (built, 2b; no schedule, ADR 0017)
 themis instructions <body>...             what a body loads at session start and across a task,
                                           against 10,000 and 25,000 token budgets (static half built, stage 0)
+themis references <body>...              every link, path, pnpm script, themis command and skill name the
+                                          instructions mention, checked against the body (built)
+themis skills <body>...                  frontmatter, description and references of each skill and agent (built)
 ```
+
+Planned, not registered yet (so they are not written as commands): check, to validate
+that a body has not drifted; status, to report every body's pinned version; promote, to
+lift a local rule into the shared tier (all 2d).
 
 `diff-eslint` was built first. It sized the reconciliation: see
 `docs/decisions/0002-eslint-reconciliation-input.md`.
@@ -132,7 +136,7 @@ these repositories:
   LF; checkout rewrites working files to CRLF, so a test that regex-matches `\n`
   fails here and passes on Linux CI. `.gitattributes` forces LF; tests that read
   files normalise line endings anyway.
-- **vitest injects `NODE_PATH` pointing at `node_modules/.pnpm/node_modules`
+- **vitest injects `NODE_PATH` pointing at `node_modules/.pnpm/node_modules` <!-- themis: example -->
   into its workers**, so `createRequire` or `require.resolve` from ANY
   directory — a temp dir included — resolves any package in the workspace's
   transitive tree. A test asserting "not installed" passes only while the

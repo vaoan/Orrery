@@ -20,14 +20,14 @@ const posix = (p) => p.split(path.sep).join("/");
 // ---- frontmatter -------------------------------------------------------------------------
 
 // Frontmatter only counts when the file opens with `---` on line 1 and a closing `---` follows.
-function frontmatter(text) {
+export function frontmatter(text) {
   const lines = lf(text).split("\n");
   if (lines[0].trim() !== "---") return null;
   const end = lines.findIndex((l, i) => i > 0 && l.trim() === "---");
   return end === -1 ? null : lines.slice(1, end);
 }
 
-const unquote = (s) => {
+export const unquote = (s) => {
   const t = s.trim();
   return t.length >= 2 && (t[0] === '"' || t[0] === "'") && t.at(-1) === t[0] ? t.slice(1, -1) : t;
 };
@@ -105,7 +105,7 @@ export function parseRule(text) {
   return { paths: globs.length && !globs.every((g) => g === "**") ? globs : null };
 }
 
-function skillText(text) {
+export function skillText(text) {
   const fm = frontmatter(text);
   if (!fm) return "";
   let out = "", active = false;
@@ -151,14 +151,14 @@ function importsOf(text) {
   return found;
 }
 
-function readFile(dir, rel) {
+export function readFile(dir, rel) {
   try {
     const abs = path.join(dir, rel);
     return fs.statSync(abs).isFile() ? fs.readFileSync(abs, "utf8") : null;
   } catch { return null; }
 }
 
-function walkMd(dir, rel) {
+export function walkMd(dir, rel) {
   const abs = path.join(dir, rel);
   if (!fs.existsSync(abs)) return [];
   const out = [];

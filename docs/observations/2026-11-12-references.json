@@ -1,0 +1,3110 @@
+{
+  "date": "2026-11-12",
+  "label": null,
+  "command": "themis references themis libra eclipse-con",
+  "brokenCount": 132,
+  "bodies": [
+    {
+      "body": "themis",
+      "files": 1,
+      "checked": 26,
+      "broken": [],
+      "exceptions": [
+        {
+          "file": "CLAUDE.md",
+          "line": 33,
+          "kind": "path",
+          "token": "vaoan/AeleOS",
+          "why": "repository name"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 34,
+          "kind": "path",
+          "token": "vaoan/libra",
+          "why": "repository name"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 35,
+          "kind": "path",
+          "token": "vaoan/Puck",
+          "why": "repository name"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 36,
+          "kind": "path",
+          "token": "vaoan/eclipse-con",
+          "why": "repository name"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 37,
+          "kind": "path",
+          "token": "vaoan/Janus",
+          "why": "repository name"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 97,
+          "kind": "path",
+          "token": "type/*",
+          "why": "branch name"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 98,
+          "kind": "path",
+          "token": "release/*",
+          "why": "branch name"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 99,
+          "kind": "path",
+          "token": "hotfix/*",
+          "why": "branch name"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 104,
+          "kind": "path",
+          "token": "back-merge/<sha>",
+          "why": "example"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 106,
+          "kind": "path",
+          "token": "feat/reconcile-records-command",
+          "why": "branch name"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 106,
+          "kind": "path",
+          "token": "feat/2b-task-5",
+          "why": "branch name"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 139,
+          "kind": "path",
+          "token": "node_modules/.pnpm/node_modules",
+          "why": "example"
+        }
+      ],
+      "external": []
+    },
+    {
+      "body": "libra",
+      "files": 79,
+      "checked": 949,
+      "broken": [
+        {
+          "file": "CLAUDE.md",
+          "line": 124,
+          "kind": "path",
+          "token": "LoginForm.tsx",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 125,
+          "kind": "path",
+          "token": "useAuth.ts",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 126,
+          "kind": "path",
+          "token": "formatDate.ts",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 127,
+          "kind": "path",
+          "token": "UserTypes.ts",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 234,
+          "kind": "path",
+          "token": "api/types/generated",
+          "reason": "no such file",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/rules/code-review-standards.md",
+          "line": 186,
+          "kind": "path",
+          "token": "domain/constants.ts",
+          "reason": "no such file",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/rules/code-review-standards.md",
+          "line": 250,
+          "kind": "path",
+          "token": "bg-success/10",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/rules/code-review-standards.md",
+          "line": 250,
+          "kind": "path",
+          "token": "bg-green-500/10",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/rules/code-review-standards.md",
+          "line": 276,
+          "kind": "path",
+          "token": ".test.tsx",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/git-workflow.md",
+          "line": 144,
+          "kind": "path",
+          "token": "docs/GH-92_API-Documentation",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/rules/git-workflow.md",
+          "line": 146,
+          "kind": "path",
+          "token": "release/GH-100_v2026.04.22.1",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/rules/git-workflow.md",
+          "line": 317,
+          "kind": "path",
+          "token": "release/GH-XXX_vYYYY.MM.DD.N",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/rules/multi-agent-persistence.md",
+          "line": 43,
+          "kind": "path",
+          "token": "mcp-audit_2026-01-16T10-30-00.json",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/multi-agent-persistence.md",
+          "line": 44,
+          "kind": "path",
+          "token": "ai-documents-audit_2026-01-16T10-30-00.md",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/multi-agent-persistence.md",
+          "line": 110,
+          "kind": "path",
+          "token": "*-audit_*.json",
+          "reason": "glob matches no file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/rules/multi-agent-persistence.md",
+          "line": 111,
+          "kind": "path",
+          "token": "*-analysis_*.json",
+          "reason": "glob matches no file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/rules/multi-agent-persistence.md",
+          "line": 112,
+          "kind": "path",
+          "token": "*-review_*.json",
+          "reason": "glob matches no file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/rules/naming-conventions.md",
+          "line": 17,
+          "kind": "path",
+          "token": "LoginForm.tsx",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/naming-conventions.md",
+          "line": 18,
+          "kind": "path",
+          "token": "useAuth.ts",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/naming-conventions.md",
+          "line": 19,
+          "kind": "path",
+          "token": "formatDate.ts",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/naming-conventions.md",
+          "line": 20,
+          "kind": "path",
+          "token": "UserTypes.ts",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/naming-conventions.md",
+          "line": 21,
+          "kind": "path",
+          "token": "apiEndpoints.ts",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/naming-conventions.md",
+          "line": 22,
+          "kind": "path",
+          "token": "AuthService.ts",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/naming-conventions.md",
+          "line": 23,
+          "kind": "path",
+          "token": "UserRepository.ts",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/naming-conventions.md",
+          "line": 24,
+          "kind": "path",
+          "token": "LoginForm.test.tsx",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/naming-conventions.md",
+          "line": 35,
+          "kind": "path",
+          "token": "schema.ts",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/no-hardcoding.md",
+          "line": 232,
+          "kind": "path",
+          "token": "features/users/domain/types/index.ts",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/rules/no-hardcoding.md",
+          "line": 233,
+          "kind": "path",
+          "token": "shared/domain/types/index.ts",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/rules/no-hardcoding.md",
+          "line": 233,
+          "kind": "path",
+          "token": "shared/domain/types/index.ts",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/rules/no-hardcoding.md",
+          "line": 234,
+          "kind": "path",
+          "token": "src/mocks/data/users.ts",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/rules/no-hardcoding.md",
+          "line": 235,
+          "kind": "path",
+          "token": "src/mocks/handlers/users.ts",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/rules/no-hardcoding.md",
+          "line": 236,
+          "kind": "path",
+          "token": "shared/infrastructure/config/env.ts",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/rules/no-hardcoding.md",
+          "line": 236,
+          "kind": "path",
+          "token": "shared/infrastructure/config/env.ts",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/rules/no-hardcoding.md",
+          "line": 237,
+          "kind": "path",
+          "token": "shared/infrastructure/config/features.ts",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/rules/no-hardcoding.md",
+          "line": 237,
+          "kind": "path",
+          "token": "shared/infrastructure/config/features.ts",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/rules/no-hardcoding.md",
+          "line": 238,
+          "kind": "path",
+          "token": "features/users/infrastructure/api/endpoints.ts",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/rules/one-component-per-file.md",
+          "line": 132,
+          "kind": "path",
+          "token": "*.spec.tsx",
+          "reason": "glob matches no file",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/rules/one-component-per-file.md",
+          "line": 180,
+          "kind": "path",
+          "token": "UserCard.tsx",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/one-component-per-file.md",
+          "line": 181,
+          "kind": "path",
+          "token": "UserList.tsx",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/one-component-per-file.md",
+          "line": 182,
+          "kind": "path",
+          "token": "UserForm.tsx",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/one-component-per-file.md",
+          "line": 298,
+          "kind": "path",
+          "token": "react/no-multi-comp",
+          "reason": "no such file",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/rules/single-source-of-truth.md",
+          "line": 17,
+          "kind": "path",
+          "token": "domain/constants.ts",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/rules/single-source-of-truth.md",
+          "line": 219,
+          "kind": "path",
+          "token": "shared/presentation/theme/constants.ts",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/rules/storybook.md",
+          "line": 438,
+          "kind": "command",
+          "token": "pnpm storybook",
+          "reason": "no such pnpm script",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/rules/storybook.md",
+          "line": 441,
+          "kind": "command",
+          "token": "pnpm build-storybook",
+          "reason": "no such pnpm script",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/rules/storybook.md",
+          "line": 444,
+          "kind": "command",
+          "token": "pnpm test-storybook",
+          "reason": "no such pnpm script",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/rules/storybook.md",
+          "line": 447,
+          "kind": "command",
+          "token": "pnpm test-storybook",
+          "reason": "no such pnpm script",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/rules/tailwind.md",
+          "line": 17,
+          "kind": "path",
+          "token": "tailwind.config.js",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/tailwind.md",
+          "line": 70,
+          "kind": "path",
+          "token": "text-foreground/50",
+          "reason": "no such file",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/rules/telegram-notifications.md",
+          "line": 35,
+          "kind": "path",
+          "token": "notify-deploy.yml",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/url-state.md",
+          "line": 123,
+          "kind": "path",
+          "token": "src/test/utils.tsx",
+          "reason": "no such file",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/skills/ai-documents-audit/SKILL.md",
+          "line": 314,
+          "kind": "path",
+          "token": ".ai-context/README.md",
+          "reason": "no such file",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/skills/ai-documents-audit/SKILL.md",
+          "line": 646,
+          "kind": "path",
+          "token": "ai-documents-audit_YYYY-MM-DDTHH-MM-SS.md",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/skills/ai-documents-audit/SKILL.md",
+          "line": 650,
+          "kind": "path",
+          "token": "ai-documents-audit_2026-01-09T17-00-28.md",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/skills/checkpoint/SKILL.md",
+          "line": 65,
+          "kind": "path",
+          "token": ".ai-context/checkpoints/ai-structure/RESUME.md",
+          "reason": "no such file",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/skills/checkpoint/SKILL.md",
+          "line": 66,
+          "kind": "path",
+          "token": ".ai-context/checkpoints/feat-GH-42_User-Auth/RESUME.md",
+          "reason": "no such file",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/skills/checkpoint/SKILL.md",
+          "line": 434,
+          "kind": "link",
+          "token": "../../../.ai-context/README.md",
+          "reason": "no such file",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/skills/code-review/SKILL.md",
+          "line": 134,
+          "kind": "path",
+          "token": "features/X",
+          "reason": "no such file",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/skills/code-review/SKILL.md",
+          "line": 134,
+          "kind": "path",
+          "token": "features/Y",
+          "reason": "no such file",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/skills/code-review/SKILL.md",
+          "line": 164,
+          "kind": "path",
+          "token": "bg-green-500/10",
+          "reason": "no such file",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/skills/code-review/SKILL.md",
+          "line": 164,
+          "kind": "path",
+          "token": "bg-success/10",
+          "reason": "no such file",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/skills/create-api-integration/SKILL.md",
+          "line": 275,
+          "kind": "path",
+          "token": "features/orders/domain/types/order.ts",
+          "reason": "no such file",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/skills/create-api-integration/SKILL.md",
+          "line": 276,
+          "kind": "path",
+          "token": "features/orders/infrastructure/api/orderApi.ts",
+          "reason": "no such file",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/skills/create-api-integration/SKILL.md",
+          "line": 277,
+          "kind": "path",
+          "token": "features/orders/application/hooks/useOrders.ts",
+          "reason": "no such file",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/skills/create-hook/SKILL.md",
+          "line": 293,
+          "kind": "path",
+          "token": "src/features/orders/application/hooks/useOrders.ts",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/skills/create-hook/SKILL.md",
+          "line": 301,
+          "kind": "path",
+          "token": "src/shared/application/hooks/useDebounce.ts",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/skills/create-hook/SKILL.md",
+          "line": 309,
+          "kind": "path",
+          "token": "src/features/orders/presentation/hooks/useOrderModal.ts",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/skills/create-release/SKILL.md",
+          "line": 65,
+          "kind": "path",
+          "token": "release/vYYYY.MM.DD.N",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/skills/create-release/SKILL.md",
+          "line": 79,
+          "kind": "path",
+          "token": "release/vYYYY.MM.DD.N",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/skills/create-release/SKILL.md",
+          "line": 86,
+          "kind": "path",
+          "token": "release/v2025.01.09.1",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/skills/create-release/SKILL.md",
+          "line": 87,
+          "kind": "path",
+          "token": "release/v2025.01.09.2",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/skills/create-release/SKILL.md",
+          "line": 88,
+          "kind": "path",
+          "token": "release/v2025.12.15.1",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/skills/create-release/SKILL.md",
+          "line": 340,
+          "kind": "path",
+          "token": "release/vYYYY.MM.DD.N",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/skills/create-release/SKILL.md",
+          "line": 395,
+          "kind": "path",
+          "token": "release/v2025.01.09.1",
+          "reason": "no such file",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/skills/create-release/SKILL.md",
+          "line": 419,
+          "kind": "path",
+          "token": "release/v2025.01.09.2",
+          "reason": "no such file",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/skills/e2e-eval/SKILL.md",
+          "line": 45,
+          "kind": "path",
+          "token": ".ai-context/reports/e2e-eval-*.md",
+          "reason": "glob matches no file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/skills/e2e-eval/SKILL.md",
+          "line": 708,
+          "kind": "path",
+          "token": ".ai-context/reports/e2e-eval-*.md",
+          "reason": "glob matches no file",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/skills/fix-ai-documents-audit/SKILL.md",
+          "line": 46,
+          "kind": "path",
+          "token": "ai-documents-audit_*.md",
+          "reason": "glob matches no file",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/skills/fix-ai-documents-audit/SKILL.md",
+          "line": 55,
+          "kind": "path",
+          "token": "ai-documents-audit_YYYY-MM-DDTHH-MM-SS.md",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/skills/fix-ai-documents-audit/SKILL.md",
+          "line": 193,
+          "kind": "path",
+          "token": "mycompany/myproject",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/skills/generate-setup-guide/SKILL.md",
+          "line": 49,
+          "kind": "path",
+          "token": ".ai-context/setup-guide.md",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/skills/i18n/SKILL.md",
+          "line": 419,
+          "kind": "path",
+          "token": "routing.ts",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/skills/i18n/SKILL.md",
+          "line": 421,
+          "kind": "path",
+          "token": "navigation.ts",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/skills/i18n/SKILL.md",
+          "line": 422,
+          "kind": "path",
+          "token": "middleware.ts",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/skills/resume-checkpoint/SKILL.md",
+          "line": 352,
+          "kind": "link",
+          "token": "../../../.ai-context/README.md",
+          "reason": "no such file",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/skills/review-pr-comments/SKILL.md",
+          "line": 73,
+          "kind": "path",
+          "token": ".ai-context/task-outputs/GH-XXXX/08-pr-review-tracking.md",
+          "reason": "no such file",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/skills/review-pr-comments/SKILL.md",
+          "line": 378,
+          "kind": "path",
+          "token": ".ai-context/task-outputs/GH-XXXX/08-pr-review-tracking.md",
+          "reason": "no such file",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/skills/run-tests/SKILL.md",
+          "line": 309,
+          "kind": "path",
+          "token": "vitest.config.ts",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/skills/start-task/SKILL.md",
+          "line": 83,
+          "kind": "path",
+          "token": "task-overview.md",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/skills/start-task/SKILL.md",
+          "line": 84,
+          "kind": "path",
+          "token": "setup.md",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/skills/start-task/SKILL.md",
+          "line": 85,
+          "kind": "path",
+          "token": "analysis.md",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/skills/start-task/SKILL.md",
+          "line": 86,
+          "kind": "path",
+          "token": "implementation-plan.md",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/skills/start-task/SKILL.md",
+          "line": 87,
+          "kind": "path",
+          "token": "implementation-log.md",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/skills/start-task/SKILL.md",
+          "line": 88,
+          "kind": "path",
+          "token": "testing-results.md",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/skills/start-task/SKILL.md",
+          "line": 89,
+          "kind": "path",
+          "token": "review-notes.md",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/skills/start-task/SKILL.md",
+          "line": 123,
+          "kind": "path",
+          "token": "docs/GH-92_API-Documentation",
+          "reason": "no such file",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/skills/start-task/SKILL.md",
+          "line": 810,
+          "kind": "path",
+          "token": "path/to/file.tsx",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/skills/start-task/SKILL.md",
+          "line": 868,
+          "kind": "path",
+          "token": "path/to/file.tsx",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/skills/start-task/SKILL.md",
+          "line": 902,
+          "kind": "path",
+          "token": "Component.test.tsx",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/skills/start-task/SKILL.md",
+          "line": 903,
+          "kind": "path",
+          "token": "useHook.test.ts",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/skills/storybook/SKILL.md",
+          "line": 327,
+          "kind": "command",
+          "token": "pnpm storybook",
+          "reason": "no such pnpm script",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/skills/storybook/SKILL.md",
+          "line": 345,
+          "kind": "command",
+          "token": "pnpm build-storybook",
+          "reason": "no such pnpm script",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/skills/storybook/SKILL.md",
+          "line": 364,
+          "kind": "command",
+          "token": "pnpm test-storybook",
+          "reason": "no such pnpm script",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/skills/storybook/SKILL.md",
+          "line": 367,
+          "kind": "command",
+          "token": "pnpm test-storybook",
+          "reason": "no such pnpm script",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/skills/storybook/SKILL.md",
+          "line": 417,
+          "kind": "path",
+          "token": "Component/Component.stories.tsx",
+          "reason": "no such file",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/skills/storybook/SKILL.md",
+          "line": 418,
+          "kind": "path",
+          "token": "ComponentName.stories.tsx",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/skills/storybook/SKILL.md",
+          "line": 451,
+          "kind": "path",
+          "token": ".storybook/preview.ts",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/skills/submit-pr/SKILL.md",
+          "line": 166,
+          "kind": "path",
+          "token": "release/GH-100_v1.0",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/skills/tailwind/SKILL.md",
+          "line": 14,
+          "kind": "path",
+          "token": "tailwind.config.js",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/skills/tailwind/SKILL.md",
+          "line": 26,
+          "kind": "path",
+          "token": "components.json",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/skills/verify-code/SKILL.md",
+          "line": 103,
+          "kind": "path",
+          "token": "import/order",
+          "reason": "no such file",
+          "likely": "illustrative"
+        },
+        {
+          "file": ".claude/skills/verify-code/SKILL.md",
+          "line": 159,
+          "kind": "path",
+          "token": "vitest.config.ts",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/skills/verify-code/SKILL.md",
+          "line": 182,
+          "kind": "command",
+          "token": "pnpm smoke",
+          "reason": "no such pnpm script",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/agents/nextjs-architecture-expert.md",
+          "line": 163,
+          "kind": "path",
+          "token": "_app.js",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/agents/nextjs-architecture-expert.md",
+          "line": 164,
+          "kind": "path",
+          "token": "app/api/*/route.ts",
+          "reason": "glob matches no file",
+          "likely": "stale"
+        }
+      ],
+      "exceptions": [
+        {
+          "file": "CLAUDE.md",
+          "line": 133,
+          "kind": "path",
+          "token": "@/*",
+          "why": "package specifier"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 230,
+          "kind": "path",
+          "token": "<absolute path>",
+          "why": "absolute"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 237,
+          "kind": "path",
+          "token": "application/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 237,
+          "kind": "path",
+          "token": "infrastructure/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 237,
+          "kind": "path",
+          "token": "presentation/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 39,
+          "kind": "path",
+          "token": "<absolute path>",
+          "why": "absolute"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 40,
+          "kind": "path",
+          "token": "<absolute path>",
+          "why": "absolute"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 48,
+          "kind": "path",
+          "token": "../../../",
+          "why": "import specifier"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 54,
+          "kind": "path",
+          "token": "@/features/dashboard/domain/types",
+          "why": "package specifier"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 55,
+          "kind": "path",
+          "token": "@/features/auth/application/hooks",
+          "why": "package specifier"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 56,
+          "kind": "path",
+          "token": "@/shared/infrastructure/i18n",
+          "why": "package specifier"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 57,
+          "kind": "path",
+          "token": "./Component",
+          "why": "import specifier"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 57,
+          "kind": "path",
+          "token": "./types",
+          "why": "import specifier"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 58,
+          "kind": "path",
+          "token": "@/test/utils",
+          "why": "package specifier"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 95,
+          "kind": "path",
+          "token": "../",
+          "why": "import specifier"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 150,
+          "kind": "path",
+          "token": "page.tsx",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 152,
+          "kind": "path",
+          "token": "route.ts",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 235,
+          "kind": "path",
+          "token": "api/generated/<tag>/<tag>",
+          "why": "example"
+        },
+        {
+          "file": ".claude/rules/code-review-standards.md",
+          "line": 124,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/code-review-standards.md",
+          "line": 180,
+          "kind": "path",
+          "token": "@/features/[feature]/[layer]",
+          "why": "package specifier"
+        },
+        {
+          "file": ".claude/rules/code-review-standards.md",
+          "line": 180,
+          "kind": "path",
+          "token": "../domain",
+          "why": "import specifier"
+        },
+        {
+          "file": ".claude/rules/code-review-standards.md",
+          "line": 181,
+          "kind": "path",
+          "token": "@/features/[other]",
+          "why": "package specifier"
+        },
+        {
+          "file": ".claude/rules/code-review-standards.md",
+          "line": 181,
+          "kind": "path",
+          "token": "../../other-feature",
+          "why": "import specifier"
+        },
+        {
+          "file": ".claude/rules/code-review-standards.md",
+          "line": 182,
+          "kind": "path",
+          "token": "@/shared/[layer]",
+          "why": "package specifier"
+        },
+        {
+          "file": ".claude/rules/code-review-standards.md",
+          "line": 182,
+          "kind": "path",
+          "token": "../shared",
+          "why": "import specifier"
+        },
+        {
+          "file": ".claude/rules/code-review-standards.md",
+          "line": 183,
+          "kind": "path",
+          "token": "./types",
+          "why": "import specifier"
+        },
+        {
+          "file": ".claude/rules/code-review-standards.md",
+          "line": 184,
+          "kind": "path",
+          "token": "../..",
+          "why": "import specifier"
+        },
+        {
+          "file": ".claude/rules/code-review-standards.md",
+          "line": 184,
+          "kind": "path",
+          "token": "../domain",
+          "why": "import specifier"
+        },
+        {
+          "file": ".claude/rules/code-review-standards.md",
+          "line": 184,
+          "kind": "path",
+          "token": "../application",
+          "why": "import specifier"
+        },
+        {
+          "file": ".claude/rules/code-review-standards.md",
+          "line": 184,
+          "kind": "path",
+          "token": "../shared",
+          "why": "import specifier"
+        },
+        {
+          "file": ".claude/rules/css-consistency.md",
+          "line": 17,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/css-consistency.md",
+          "line": 18,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/css-consistency.md",
+          "line": 28,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/css-consistency.md",
+          "line": 47,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/css-consistency.md",
+          "line": 72,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/css-consistency.md",
+          "line": 82,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/css-consistency.md",
+          "line": 90,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/css-consistency.md",
+          "line": 108,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/git-workflow.md",
+          "line": 31,
+          "kind": "path",
+          "token": "release/*",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/rules/git-workflow.md",
+          "line": 32,
+          "kind": "path",
+          "token": "fix/*",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/rules/git-workflow.md",
+          "line": 48,
+          "kind": "path",
+          "token": "feat/*",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/rules/git-workflow.md",
+          "line": 49,
+          "kind": "path",
+          "token": "chore/*",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/rules/git-workflow.md",
+          "line": 50,
+          "kind": "path",
+          "token": "refactor/*",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/rules/git-workflow.md",
+          "line": 52,
+          "kind": "path",
+          "token": "release/*",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/rules/git-workflow.md",
+          "line": 53,
+          "kind": "path",
+          "token": "fix/*",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/rules/git-workflow.md",
+          "line": 82,
+          "kind": "path",
+          "token": "fix/*",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/rules/git-workflow.md",
+          "line": 141,
+          "kind": "path",
+          "token": "feat/GH-42_User-Authentication",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/rules/git-workflow.md",
+          "line": 142,
+          "kind": "path",
+          "token": "fix/GH-15_Login-Error",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/rules/git-workflow.md",
+          "line": 143,
+          "kind": "path",
+          "token": "chore/GH-88_Update-Dependencies",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/rules/git-workflow.md",
+          "line": 145,
+          "kind": "path",
+          "token": "refactor/GH-55_Cleanup-Auth",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/rules/libraries-over-manual-code.md",
+          "line": 13,
+          "kind": "path",
+          "token": "unicorn/no-document-cookie",
+          "why": "eslint rule"
+        },
+        {
+          "file": ".claude/rules/libraries-over-manual-code.md",
+          "line": 33,
+          "kind": "path",
+          "token": "@tanstack/react-query",
+          "why": "package specifier"
+        },
+        {
+          "file": ".claude/rules/libraries-over-manual-code.md",
+          "line": 39,
+          "kind": "path",
+          "token": "@tanstack/react-table",
+          "why": "package specifier"
+        },
+        {
+          "file": ".claude/rules/monorepo-architecture.md",
+          "line": 214,
+          "kind": "path",
+          "token": "./Component",
+          "why": "import specifier"
+        },
+        {
+          "file": ".claude/rules/monorepo-architecture.md",
+          "line": 218,
+          "kind": "path",
+          "token": "./ThemeProvider",
+          "why": "import specifier"
+        },
+        {
+          "file": ".claude/rules/monorepo-architecture.md",
+          "line": 219,
+          "kind": "path",
+          "token": "@shared/hooks/useTheme",
+          "why": "package specifier"
+        },
+        {
+          "file": ".claude/rules/monorepo-architecture.md",
+          "line": 220,
+          "kind": "path",
+          "token": "@ui/utils/cn",
+          "why": "package specifier"
+        },
+        {
+          "file": ".claude/rules/multi-agent-persistence.md",
+          "line": 43,
+          "kind": "path",
+          "token": "{sub-agent-type}_{timestamp}.json",
+          "why": "placeholder"
+        },
+        {
+          "file": ".claude/rules/multi-agent-persistence.md",
+          "line": 44,
+          "kind": "path",
+          "token": "{skill-name}_{timestamp}.md",
+          "why": "placeholder"
+        },
+        {
+          "file": ".claude/rules/naming-conventions.md",
+          "line": 10,
+          "kind": "path",
+          "token": "application/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/naming-conventions.md",
+          "line": 33,
+          "kind": "path",
+          "token": "types.ts",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/naming-conventions.md",
+          "line": 202,
+          "kind": "path",
+          "token": "@/features/...",
+          "why": "package specifier"
+        },
+        {
+          "file": ".claude/rules/naming-conventions.md",
+          "line": 203,
+          "kind": "path",
+          "token": "./types",
+          "why": "import specifier"
+        },
+        {
+          "file": ".claude/rules/no-hardcoding.md",
+          "line": 239,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/one-component-per-file.md",
+          "line": 245,
+          "kind": "path",
+          "token": "ui/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/one-component-per-file.md",
+          "line": 333,
+          "kind": "path",
+          "token": "ui/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/portability.md",
+          "line": 33,
+          "kind": "path",
+          "token": "<absolute path>",
+          "why": "absolute"
+        },
+        {
+          "file": ".claude/rules/portability.md",
+          "line": 44,
+          "kind": "path",
+          "token": "./src/",
+          "why": "import specifier"
+        },
+        {
+          "file": ".claude/rules/portability.md",
+          "line": 206,
+          "kind": "path",
+          "token": "<absolute path>",
+          "why": "absolute"
+        },
+        {
+          "file": ".claude/rules/single-source-of-truth.md",
+          "line": 13,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/single-source-of-truth.md",
+          "line": 14,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/single-source-of-truth.md",
+          "line": 70,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/single-source-of-truth.md",
+          "line": 71,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/single-source-of-truth.md",
+          "line": 161,
+          "kind": "path",
+          "token": "en.json",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/single-source-of-truth.md",
+          "line": 162,
+          "kind": "path",
+          "token": "es.json",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/single-source-of-truth.md",
+          "line": 255,
+          "kind": "path",
+          "token": "en.json",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/single-source-of-truth.md",
+          "line": 256,
+          "kind": "path",
+          "token": "es.json",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/storybook.md",
+          "line": 13,
+          "kind": "path",
+          "token": "@storybook/nextjs-vite",
+          "why": "package specifier"
+        },
+        {
+          "file": ".claude/rules/tailwind.md",
+          "line": 14,
+          "kind": "path",
+          "token": "@tailwindcss/postcss",
+          "why": "package specifier"
+        },
+        {
+          "file": ".claude/rules/telegram-notifications.md",
+          "line": 34,
+          "kind": "path",
+          "token": "notify-bug-issue.yml",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/telegram-notifications.md",
+          "line": 45,
+          "kind": "path",
+          "token": "sync-secrets.yml",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/testing.md",
+          "line": 13,
+          "kind": "path",
+          "token": "<workspace>/tests/",
+          "why": "example"
+        },
+        {
+          "file": ".claude/rules/testing.md",
+          "line": 147,
+          "kind": "path",
+          "token": "constants.test.ts",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/testing.md",
+          "line": 148,
+          "kind": "path",
+          "token": "checkout-constants.test.ts",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/testing.md",
+          "line": 151,
+          "kind": "path",
+          "token": "./LoginForm",
+          "why": "import specifier"
+        },
+        {
+          "file": ".claude/rules/testing.md",
+          "line": 152,
+          "kind": "path",
+          "token": "@/",
+          "why": "package specifier"
+        },
+        {
+          "file": ".claude/rules/testing.md",
+          "line": 163,
+          "kind": "path",
+          "token": "colors.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/testing.md",
+          "line": 164,
+          "kind": "path",
+          "token": "../src/styles/",
+          "why": "import specifier"
+        },
+        {
+          "file": ".claude/rules/testing.md",
+          "line": 441,
+          "kind": "path",
+          "token": "@axe-core/playwright",
+          "why": "package specifier"
+        },
+        {
+          "file": ".claude/rules/testing.md",
+          "line": 447,
+          "kind": "path",
+          "token": "accessibility.test.tsx",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/skills/ai-documents-audit/SKILL.md",
+          "line": 91,
+          "kind": "path",
+          "token": "{audit-type}_YYYY-MM-DDTHH-MM-SS.json",
+          "why": "placeholder"
+        },
+        {
+          "file": ".claude/skills/ai-documents-audit/SKILL.md",
+          "line": 326,
+          "kind": "path",
+          "token": "<absolute path>",
+          "why": "absolute"
+        },
+        {
+          "file": ".claude/skills/analyze-bundle/SKILL.md",
+          "line": 121,
+          "kind": "path",
+          "token": "@mui/icons-material",
+          "why": "package specifier"
+        },
+        {
+          "file": ".claude/skills/capture-evidences/SKILL.md",
+          "line": 53,
+          "kind": "path",
+          "token": "feat/GH-162_Title",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/checkpoint/SKILL.md",
+          "line": 66,
+          "kind": "path",
+          "token": "feat/GH-42_User-Auth",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/checkpoint/SKILL.md",
+          "line": 68,
+          "kind": "path",
+          "token": "<absolute path>",
+          "why": "absolute"
+        },
+        {
+          "file": ".claude/skills/checkpoint/SKILL.md",
+          "line": 144,
+          "kind": "path",
+          "token": "<absolute path>",
+          "why": "absolute"
+        },
+        {
+          "file": ".claude/skills/checkpoint/SKILL.md",
+          "line": 298,
+          "kind": "path",
+          "token": "feat/GH-42_User-Auth",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/checkpoint/SKILL.md",
+          "line": 412,
+          "kind": "path",
+          "token": "<absolute path>",
+          "why": "absolute"
+        },
+        {
+          "file": ".claude/skills/code-review/SKILL.md",
+          "line": 206,
+          "kind": "path",
+          "token": "globals.css",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/skills/commit-push/SKILL.md",
+          "line": 209,
+          "kind": "path",
+          "token": "../domain",
+          "why": "import specifier"
+        },
+        {
+          "file": ".claude/skills/commit-push/SKILL.md",
+          "line": 209,
+          "kind": "path",
+          "token": "@/features/[feature]/domain",
+          "why": "package specifier"
+        },
+        {
+          "file": ".claude/skills/create-component/SKILL.md",
+          "line": 95,
+          "kind": "path",
+          "token": "[ComponentName].test.tsx",
+          "why": "placeholder"
+        },
+        {
+          "file": ".claude/skills/create-release/SKILL.md",
+          "line": 25,
+          "kind": "path",
+          "token": "release/*",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/create-release/SKILL.md",
+          "line": 61,
+          "kind": "path",
+          "token": "pr-checks.yml",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/skills/create-release/SKILL.md",
+          "line": 65,
+          "kind": "path",
+          "token": "release/*",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/create-release/SKILL.md",
+          "line": 65,
+          "kind": "path",
+          "token": "fix/*",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/create-release/SKILL.md",
+          "line": 177,
+          "kind": "path",
+          "token": "release/*",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/create-release/SKILL.md",
+          "line": 178,
+          "kind": "path",
+          "token": "release/*",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/create-release/SKILL.md",
+          "line": 178,
+          "kind": "path",
+          "token": "fix/*",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/create-release/SKILL.md",
+          "line": 308,
+          "kind": "path",
+          "token": "release.yml",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/skills/create-release/SKILL.md",
+          "line": 348,
+          "kind": "path",
+          "token": "fix/GH-XXX_Description",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/e2e-eval/SKILL.md",
+          "line": 167,
+          "kind": "command",
+          "token": "pnpm --dir",
+          "why": "flags"
+        },
+        {
+          "file": ".claude/skills/e2e-eval/SKILL.md",
+          "line": 168,
+          "kind": "command",
+          "token": "pnpm --dir",
+          "why": "flags"
+        },
+        {
+          "file": ".claude/skills/e2e-eval/SKILL.md",
+          "line": 169,
+          "kind": "command",
+          "token": "pnpm --dir",
+          "why": "flags"
+        },
+        {
+          "file": ".claude/skills/e2e-eval/SKILL.md",
+          "line": 170,
+          "kind": "command",
+          "token": "pnpm --dir",
+          "why": "flags"
+        },
+        {
+          "file": ".claude/skills/e2e-eval/SKILL.md",
+          "line": 176,
+          "kind": "command",
+          "token": "pnpm --dir",
+          "why": "flags"
+        },
+        {
+          "file": ".claude/skills/e2e-eval/SKILL.md",
+          "line": 177,
+          "kind": "command",
+          "token": "pnpm --dir",
+          "why": "flags"
+        },
+        {
+          "file": ".claude/skills/e2e-eval/SKILL.md",
+          "line": 178,
+          "kind": "command",
+          "token": "pnpm --dir",
+          "why": "flags"
+        },
+        {
+          "file": ".claude/skills/e2e-eval/SKILL.md",
+          "line": 179,
+          "kind": "command",
+          "token": "pnpm --dir",
+          "why": "flags"
+        },
+        {
+          "file": ".claude/skills/e2e-eval/SKILL.md",
+          "line": 747,
+          "kind": "path",
+          "token": "e2e.mjs",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/skills/fix-ai-documents-audit/SKILL.md",
+          "line": 193,
+          "kind": "path",
+          "token": "{owner}/{repo}",
+          "why": "placeholder"
+        },
+        {
+          "file": ".claude/skills/fix-ai-documents-audit/SKILL.md",
+          "line": 194,
+          "kind": "path",
+          "token": "<absolute path>",
+          "why": "absolute"
+        },
+        {
+          "file": ".claude/skills/fix-ai-documents-audit/SKILL.md",
+          "line": 194,
+          "kind": "path",
+          "token": "./",
+          "why": "import specifier"
+        },
+        {
+          "file": ".claude/skills/full-review/SKILL.md",
+          "line": 169,
+          "kind": "path",
+          "token": "{id}_architecture.json",
+          "why": "placeholder"
+        },
+        {
+          "file": ".claude/skills/full-review/SKILL.md",
+          "line": 170,
+          "kind": "path",
+          "token": "{id}_solid.json",
+          "why": "placeholder"
+        },
+        {
+          "file": ".claude/skills/full-review/SKILL.md",
+          "line": 171,
+          "kind": "path",
+          "token": "{id}_dry.json",
+          "why": "placeholder"
+        },
+        {
+          "file": ".claude/skills/full-review/SKILL.md",
+          "line": 172,
+          "kind": "path",
+          "token": "{id}_component-patterns.json",
+          "why": "placeholder"
+        },
+        {
+          "file": ".claude/skills/full-review/SKILL.md",
+          "line": 173,
+          "kind": "path",
+          "token": "{id}_naming-conventions.json",
+          "why": "placeholder"
+        },
+        {
+          "file": ".claude/skills/full-review/SKILL.md",
+          "line": 174,
+          "kind": "path",
+          "token": "{id}_bug-detection.json",
+          "why": "placeholder"
+        },
+        {
+          "file": ".claude/skills/full-review/SKILL.md",
+          "line": 176,
+          "kind": "path",
+          "token": "{id}_tailwind.json",
+          "why": "placeholder"
+        },
+        {
+          "file": ".claude/skills/full-review/SKILL.md",
+          "line": 176,
+          "kind": "path",
+          "token": "{id}_testing.json",
+          "why": "placeholder"
+        },
+        {
+          "file": ".claude/skills/full-review/SKILL.md",
+          "line": 176,
+          "kind": "path",
+          "token": "{id}_security.json",
+          "why": "placeholder"
+        },
+        {
+          "file": ".claude/skills/full-review/SKILL.md",
+          "line": 176,
+          "kind": "path",
+          "token": "{id}_performance.json",
+          "why": "placeholder"
+        },
+        {
+          "file": ".claude/skills/full-review/SKILL.md",
+          "line": 176,
+          "kind": "path",
+          "token": "{id}_pattern-discovery.json",
+          "why": "placeholder"
+        },
+        {
+          "file": ".claude/skills/full-review/SKILL.md",
+          "line": 546,
+          "kind": "path",
+          "token": "{review_id}_*.json",
+          "why": "placeholder"
+        },
+        {
+          "file": ".claude/skills/generate-setup-guide/SKILL.md",
+          "line": 418,
+          "kind": "path",
+          "token": "{type}/GH-{number}_{title}",
+          "why": "placeholder"
+        },
+        {
+          "file": ".claude/skills/generate-setup-guide/SKILL.md",
+          "line": 420,
+          "kind": "path",
+          "token": "@/",
+          "why": "package specifier"
+        },
+        {
+          "file": ".claude/skills/i18n/SKILL.md",
+          "line": 420,
+          "kind": "path",
+          "token": "request.ts",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/skills/i18n/SKILL.md",
+          "line": 437,
+          "kind": "path",
+          "token": "request.ts",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/skills/merge-pr/SKILL.md",
+          "line": 458,
+          "kind": "path",
+          "token": "feat/GH-42_User-Auth",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/post-merge/SKILL.md",
+          "line": 308,
+          "kind": "path",
+          "token": "feat/GH-42_User-Auth",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/project-intelligence/SKILL.md",
+          "line": 583,
+          "kind": "path",
+          "token": "<absolute path>",
+          "why": "absolute"
+        },
+        {
+          "file": ".claude/skills/resume-checkpoint/SKILL.md",
+          "line": 59,
+          "kind": "path",
+          "token": "<absolute path>",
+          "why": "absolute"
+        },
+        {
+          "file": ".claude/skills/resume-checkpoint/SKILL.md",
+          "line": 189,
+          "kind": "path",
+          "token": "feat/GH-42_User-Auth",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/review-pr-comments/SKILL.md",
+          "line": 183,
+          "kind": "path",
+          "token": "feat/GH-42_Title",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/security-audit/SKILL.md",
+          "line": 506,
+          "kind": "path",
+          "token": ".ai-context/reports/security-audit-${timestamp}.md",
+          "why": "variable"
+        },
+        {
+          "file": ".claude/skills/start-task/SKILL.md",
+          "line": 120,
+          "kind": "path",
+          "token": "feat/GH-42_User-Authentication",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/start-task/SKILL.md",
+          "line": 121,
+          "kind": "path",
+          "token": "fix/GH-15_Login-Redirect-Error",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/start-task/SKILL.md",
+          "line": 122,
+          "kind": "path",
+          "token": "chore/GH-88_Update-Dependencies",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/start-task/SKILL.md",
+          "line": 330,
+          "kind": "path",
+          "token": "{type}/GH-{number}_{Formatted-Title}",
+          "why": "placeholder"
+        },
+        {
+          "file": ".claude/skills/start-task/SKILL.md",
+          "line": 954,
+          "kind": "path",
+          "token": "feat/GH-42_Other-Task",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/start-task/SKILL.md",
+          "line": 965,
+          "kind": "path",
+          "token": "feat/GH-42_User-Auth",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/storybook/SKILL.md",
+          "line": 46,
+          "kind": "path",
+          "token": "@storybook/nextjs-vite",
+          "why": "package specifier"
+        },
+        {
+          "file": ".claude/skills/storybook/SKILL.md",
+          "line": 452,
+          "kind": "path",
+          "token": "@storybook/nextjs-vite",
+          "why": "package specifier"
+        },
+        {
+          "file": ".claude/skills/submit-pr/SKILL.md",
+          "line": 66,
+          "kind": "path",
+          "token": "release/*",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/submit-pr/SKILL.md",
+          "line": 67,
+          "kind": "path",
+          "token": "fix/*",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/submit-pr/SKILL.md",
+          "line": 114,
+          "kind": "path",
+          "token": "feat/GH-42_Title",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/submit-pr/SKILL.md",
+          "line": 164,
+          "kind": "path",
+          "token": "feat/GH-42_Login",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/submit-pr/SKILL.md",
+          "line": 165,
+          "kind": "path",
+          "token": "chore/GH-88_Deps",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/submit-pr/SKILL.md",
+          "line": 167,
+          "kind": "path",
+          "token": "fix/GH-99_Hotfix",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/submit-pr/SKILL.md",
+          "line": 683,
+          "kind": "path",
+          "token": "release/*",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/submit-pr/SKILL.md",
+          "line": 684,
+          "kind": "path",
+          "token": "fix/*",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/submit-pr/SKILL.md",
+          "line": 685,
+          "kind": "path",
+          "token": "feat/*",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/submit-pr/SKILL.md",
+          "line": 686,
+          "kind": "path",
+          "token": "chore/*",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/submit-pr/SKILL.md",
+          "line": 687,
+          "kind": "path",
+          "token": "refactor/*",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/submit-pr/SKILL.md",
+          "line": 715,
+          "kind": "path",
+          "token": "git@github.com:{owner}/{repo}.git",
+          "why": "placeholder"
+        },
+        {
+          "file": ".claude/skills/sync-with-develop/SKILL.md",
+          "line": 111,
+          "kind": "path",
+          "token": "feat/GH-XXX_Title",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/skills/sync-with-develop/SKILL.md",
+          "line": 389,
+          "kind": "path",
+          "token": "../domain",
+          "why": "import specifier"
+        },
+        {
+          "file": ".claude/skills/sync-with-develop/SKILL.md",
+          "line": 438,
+          "kind": "path",
+          "token": "@/test/utils",
+          "why": "package specifier"
+        },
+        {
+          "file": ".claude/skills/sync-with-develop/SKILL.md",
+          "line": 439,
+          "kind": "path",
+          "token": "types.ts",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/skills/tailwind/SKILL.md",
+          "line": 24,
+          "kind": "path",
+          "token": "@tailwindcss/postcss",
+          "why": "package specifier"
+        },
+        {
+          "file": ".claude/skills/verify-code/SKILL.md",
+          "line": 275,
+          "kind": "command",
+          "token": "pnpm --filter",
+          "why": "flags"
+        },
+        {
+          "file": ".claude/skills/verify-code/SKILL.md",
+          "line": 276,
+          "kind": "command",
+          "token": "pnpm --filter",
+          "why": "flags"
+        },
+        {
+          "file": ".claude/skills/verify-code/SKILL.md",
+          "line": 277,
+          "kind": "command",
+          "token": "pnpm --filter",
+          "why": "flags"
+        },
+        {
+          "file": ".claude/skills/verify-code/SKILL.md",
+          "line": 278,
+          "kind": "command",
+          "token": "pnpm --filter",
+          "why": "flags"
+        },
+        {
+          "file": ".claude/skills/verify-code/SKILL.md",
+          "line": 279,
+          "kind": "command",
+          "token": "pnpm --filter",
+          "why": "flags"
+        },
+        {
+          "file": ".claude/agents/README.md",
+          "line": 23,
+          "kind": "path",
+          "token": "AGENT.md",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/agents/frontend-developer.md",
+          "line": 87,
+          "kind": "path",
+          "token": "<absolute path>",
+          "why": "absolute"
+        },
+        {
+          "file": ".claude/agents/nextjs-architecture-expert.md",
+          "line": 163,
+          "kind": "path",
+          "token": "layout.tsx",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 198,
+          "kind": "path",
+          "token": "features/orders/domain/types/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/rules/code-review-standards.md",
+          "line": 188,
+          "kind": "path",
+          "token": "domain/types/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/rules/code-review-standards.md",
+          "line": 189,
+          "kind": "path",
+          "token": "src/mocks/data/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/rules/mcp-standards.md",
+          "line": 33,
+          "kind": "path",
+          "token": "node_modules/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/rules/monorepo-architecture.md",
+          "line": 141,
+          "kind": "path",
+          "token": "src/generated/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/rules/monorepo-architecture.md",
+          "line": 142,
+          "kind": "path",
+          "token": "src/types/generated/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/rules/monorepo-architecture.md",
+          "line": 143,
+          "kind": "path",
+          "token": "src/mutator/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/rules/monorepo-architecture.md",
+          "line": 177,
+          "kind": "path",
+          "token": "generated/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/rules/monorepo-architecture.md",
+          "line": 177,
+          "kind": "path",
+          "token": "types/generated/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/rules/multi-agent-persistence.md",
+          "line": 30,
+          "kind": "path",
+          "token": ".ai-context/reports/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/rules/naming-conventions.md",
+          "line": 9,
+          "kind": "path",
+          "token": "user-management/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/rules/naming-conventions.md",
+          "line": 11,
+          "kind": "path",
+          "token": "LoginForm/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/rules/naming-conventions.md",
+          "line": 26,
+          "kind": "path",
+          "token": "src/shared/presentation/components/ui/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/rules/no-hardcoding.md",
+          "line": 234,
+          "kind": "path",
+          "token": "src/mocks/data/[entity].ts",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/rules/no-hardcoding.md",
+          "line": 239,
+          "kind": "path",
+          "token": "shared/presentation/theme/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/rules/one-component-per-file.md",
+          "line": 114,
+          "kind": "path",
+          "token": "src/shared/presentation/components/ui/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/rules/portability.md",
+          "line": 216,
+          "kind": "path",
+          "token": ".claude/portability-exceptions.json",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/rules/single-source-of-truth.md",
+          "line": 18,
+          "kind": "path",
+          "token": "domain/types/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/rules/testing.md",
+          "line": 17,
+          "kind": "path",
+          "token": "e2e/visual/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/ai-documents-audit/SKILL.md",
+          "line": 80,
+          "kind": "path",
+          "token": ".ai-context/reports/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/ai-documents-audit/SKILL.md",
+          "line": 112,
+          "kind": "path",
+          "token": ".ai-context/reports/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/ai-documents-audit/SKILL.md",
+          "line": 360,
+          "kind": "path",
+          "token": ".claude/portability-exceptions.json",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/ai-documents-audit/SKILL.md",
+          "line": 368,
+          "kind": "path",
+          "token": ".claude/portability-exceptions.json",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/ai-documents-audit/SKILL.md",
+          "line": 406,
+          "kind": "path",
+          "token": ".claude/portability-exceptions.json",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/ai-documents-audit/SKILL.md",
+          "line": 618,
+          "kind": "path",
+          "token": ".claude/docs/examples/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/ai-documents-audit/SKILL.md",
+          "line": 644,
+          "kind": "path",
+          "token": ".ai-context/reports/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/ai-documents-audit/SKILL.md",
+          "line": 648,
+          "kind": "path",
+          "token": ".ai-context/reports/ai-documents-audit_YYYY-MM-DDTHH-MM-SS.md",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/ai-documents-audit/SKILL.md",
+          "line": 1290,
+          "kind": "path",
+          "token": ".ai-context/reports/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/analyze-bundle/SKILL.md",
+          "line": 48,
+          "kind": "path",
+          "token": ".ai-context/reports/bundle-analysis-{timestamp}.md",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/commit-push/SKILL.md",
+          "line": 229,
+          "kind": "path",
+          "token": "services/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/create-feature/SKILL.md",
+          "line": 154,
+          "kind": "path",
+          "token": "app/(protected)/[feature-name]/page.tsx",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/create-release/SKILL.md",
+          "line": 359,
+          "kind": "path",
+          "token": "release/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/e2e-eval/SKILL.md",
+          "line": 412,
+          "kind": "path",
+          "token": "test-results/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/e2e-eval/SKILL.md",
+          "line": 536,
+          "kind": "path",
+          "token": ".ai-context/reports/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/figma/SKILL.md",
+          "line": 93,
+          "kind": "path",
+          "token": "src/shared/presentation/components/ui/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/fix-ai-documents-audit/SKILL.md",
+          "line": 34,
+          "kind": "path",
+          "token": ".ai-context/reports/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/fix-ai-documents-audit/SKILL.md",
+          "line": 45,
+          "kind": "path",
+          "token": ".ai-context/reports/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/investigate-error/SKILL.md",
+          "line": 72,
+          "kind": "path",
+          "token": ".ai-context/reports/error-investigation-{timestamp}.md",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/project-intelligence/SKILL.md",
+          "line": 45,
+          "kind": "path",
+          "token": ".ai-context/reports/project-intelligence_{timestamp}.md",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/project-intelligence/SKILL.md",
+          "line": 87,
+          "kind": "path",
+          "token": ".ai-context/reports/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/security-audit/SKILL.md",
+          "line": 36,
+          "kind": "path",
+          "token": ".ai-context/reports/security-audit-{YYYY-MM-DD-HHmmss}.md",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/storybook/SKILL.md",
+          "line": 308,
+          "kind": "path",
+          "token": "shared/presentation/components/atoms/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/storybook/SKILL.md",
+          "line": 308,
+          "kind": "path",
+          "token": "Atoms/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/storybook/SKILL.md",
+          "line": 309,
+          "kind": "path",
+          "token": "shared/presentation/components/molecules/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/storybook/SKILL.md",
+          "line": 309,
+          "kind": "path",
+          "token": "Molecules/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/storybook/SKILL.md",
+          "line": 310,
+          "kind": "path",
+          "token": "shared/presentation/components/organisms/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/storybook/SKILL.md",
+          "line": 310,
+          "kind": "path",
+          "token": "Organisms/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/storybook/SKILL.md",
+          "line": 311,
+          "kind": "path",
+          "token": "shared/presentation/layouts/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/storybook/SKILL.md",
+          "line": 311,
+          "kind": "path",
+          "token": "Templates/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/storybook/SKILL.md",
+          "line": 312,
+          "kind": "path",
+          "token": "Features/[Name]/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/storybook/SKILL.md",
+          "line": 348,
+          "kind": "path",
+          "token": "storybook-static/",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/skills/sync-with-develop/SKILL.md",
+          "line": 547,
+          "kind": "path",
+          "token": "coverage/coverage-summary.json",
+          "why": "ignored by .gitignore"
+        },
+        {
+          "file": ".claude/agents/nextjs-architecture-expert.md",
+          "line": 164,
+          "kind": "path",
+          "token": "pages/api/",
+          "why": "ignored by .gitignore"
+        }
+      ],
+      "external": [
+        {
+          "file": "CLAUDE.md",
+          "line": 227,
+          "kind": "skill",
+          "token": "auth",
+          "plugin": "unverified"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 228,
+          "kind": "skill",
+          "token": "store",
+          "plugin": "unverified"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 229,
+          "kind": "skill",
+          "token": "admin",
+          "plugin": "unverified"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 231,
+          "kind": "skill",
+          "token": "payments",
+          "plugin": "unverified"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 232,
+          "kind": "skill",
+          "token": "studio",
+          "plugin": "unverified"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 130,
+          "kind": "skill",
+          "token": "app",
+          "plugin": "unverified"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 151,
+          "kind": "skill",
+          "token": "shared",
+          "plugin": "unverified"
+        },
+        {
+          "file": ".claude/skills/code-review/SKILL.md",
+          "line": 127,
+          "kind": "skill",
+          "token": "app",
+          "plugin": "unverified"
+        },
+        {
+          "file": ".claude/skills/start-task/SKILL.md",
+          "line": 31,
+          "kind": "skill",
+          "token": "brainstorming",
+          "plugin": "unverified"
+        }
+      ]
+    },
+    {
+      "body": "eclipse-con",
+      "files": 23,
+      "checked": 160,
+      "broken": [
+        {
+          "file": ".claude/rules/dry-principle.md",
+          "line": 8,
+          "kind": "path",
+          "token": "src/shared/domain/",
+          "reason": "no such directory",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/rules/dry-principle.md",
+          "line": 16,
+          "kind": "path",
+          "token": "src/shared/presentation/components/",
+          "reason": "no such directory",
+          "likely": "stale"
+        },
+        {
+          "file": ".claude/rules/git-workflow.md",
+          "line": 9,
+          "kind": "path",
+          "token": "feature/",
+          "reason": "no such directory",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/git-workflow.md",
+          "line": 10,
+          "kind": "path",
+          "token": "fix/",
+          "reason": "no such directory",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/git-workflow.md",
+          "line": 11,
+          "kind": "path",
+          "token": "chore/",
+          "reason": "no such directory",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/git-workflow.md",
+          "line": 12,
+          "kind": "path",
+          "token": "refactor/",
+          "reason": "no such directory",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/naming-conventions.md",
+          "line": 7,
+          "kind": "path",
+          "token": "UserCard.tsx",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/naming-conventions.md",
+          "line": 8,
+          "kind": "path",
+          "token": "UserProfile.ts",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/naming-conventions.md",
+          "line": 9,
+          "kind": "path",
+          "token": "useAuth.ts",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/naming-conventions.md",
+          "line": 10,
+          "kind": "path",
+          "token": "formatDate.ts",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/naming-conventions.md",
+          "line": 11,
+          "kind": "path",
+          "token": "authService.ts",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/naming-conventions.md",
+          "line": 12,
+          "kind": "path",
+          "token": "tailwind.config.ts",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/naming-conventions.md",
+          "line": 13,
+          "kind": "path",
+          "token": "UserCard.test.tsx",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/naming-conventions.md",
+          "line": 13,
+          "kind": "path",
+          "token": "formatDate.test.ts",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/one-component-per-file.md",
+          "line": 38,
+          "kind": "path",
+          "token": ".types.ts",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/portability.md",
+          "line": 47,
+          "kind": "path",
+          "token": "package-lock.json",
+          "reason": "no such file",
+          "likely": "ambiguous"
+        },
+        {
+          "file": ".claude/rules/single-source-of-truth.md",
+          "line": 48,
+          "kind": "path",
+          "token": "src/shared/domain/constants/",
+          "reason": "no such directory",
+          "likely": "stale"
+        }
+      ],
+      "exceptions": [
+        {
+          "file": "CLAUDE.md",
+          "line": 41,
+          "kind": "path",
+          "token": "fco.bz/<slug>",
+          "why": "example"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 212,
+          "kind": "path",
+          "token": "@/*",
+          "why": "package specifier"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 321,
+          "kind": "path",
+          "token": "[Name].test.tsx",
+          "why": "placeholder"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 325,
+          "kind": "path",
+          "token": "es.json",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 331,
+          "kind": "path",
+          "token": "domain/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 331,
+          "kind": "path",
+          "token": "application/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 331,
+          "kind": "path",
+          "token": "infrastructure/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 331,
+          "kind": "path",
+          "token": "presentation/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 332,
+          "kind": "path",
+          "token": "index.ts",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 333,
+          "kind": "path",
+          "token": "presentation/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 335,
+          "kind": "path",
+          "token": "en.json",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": "CLAUDE.md",
+          "line": 335,
+          "kind": "path",
+          "token": "es.json",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 31,
+          "kind": "path",
+          "token": "domain/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 32,
+          "kind": "path",
+          "token": "application/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 32,
+          "kind": "path",
+          "token": "domain/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 33,
+          "kind": "path",
+          "token": "presentation/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 33,
+          "kind": "path",
+          "token": "application/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 33,
+          "kind": "path",
+          "token": "domain/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 34,
+          "kind": "path",
+          "token": "infrastructure/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 34,
+          "kind": "path",
+          "token": "application/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 34,
+          "kind": "path",
+          "token": "domain/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 36,
+          "kind": "path",
+          "token": "presentation/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 36,
+          "kind": "path",
+          "token": "infrastructure/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 36,
+          "kind": "path",
+          "token": "domain/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 36,
+          "kind": "path",
+          "token": "application/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/architecture.md",
+          "line": 61,
+          "kind": "path",
+          "token": "index.ts",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/git-workflow.md",
+          "line": 9,
+          "kind": "path",
+          "token": "feature/user-profile",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/rules/git-workflow.md",
+          "line": 10,
+          "kind": "path",
+          "token": "fix/login-redirect",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/rules/git-workflow.md",
+          "line": 11,
+          "kind": "path",
+          "token": "chore/update-tailwind",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/rules/git-workflow.md",
+          "line": 12,
+          "kind": "path",
+          "token": "refactor/auth-service",
+          "why": "branch name"
+        },
+        {
+          "file": ".claude/rules/portability.md",
+          "line": 5,
+          "kind": "path",
+          "token": "@/",
+          "why": "package specifier"
+        },
+        {
+          "file": ".claude/rules/portability.md",
+          "line": 21,
+          "kind": "path",
+          "token": "environment.ts",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/single-source-of-truth.md",
+          "line": 23,
+          "kind": "path",
+          "token": "domain/",
+          "why": "matched elsewhere"
+        },
+        {
+          "file": ".claude/rules/single-source-of-truth.md",
+          "line": 36,
+          "kind": "path",
+          "token": "environment.ts",
+          "why": "matched elsewhere"
+        }
+      ],
+      "external": []
+    }
+  ]
+}

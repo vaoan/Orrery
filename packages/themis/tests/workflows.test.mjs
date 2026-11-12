@@ -116,3 +116,38 @@ describe("no scheduled observation workflow", () => {
     expect(fs.existsSync(path.join(root, ".github/workflows/observe.yml"))).toBe(false);
   });
 });
+
+describe(".github/workflows/body-ci.yml", () => {
+  const yaml = read(".github/workflows/body-ci.yml");
+  it("is callable with a boolean database input that defaults to false", () => {
+    expect(yaml).toMatch(/^on:\n  workflow_call:\n    inputs:\n      database:\n(?:        [^\n]*\n)*?        type: boolean\n(?:        [^\n]*\n)*?        default: false\n/m);
+  });
+  it("defines exactly the six jobs, named as the required checks", () => {
+    expect(jobNames(yaml)).toEqual(["test", "branch-target", "branch-name", "pr-title", "config-drift", "branch-sync"]);
+  });
+  it("runs the body's own scripts as steps of the test job, the database steps only when asked", () => {
+    const block = yaml.match(/^  test:\n((?:    [^\n]*\n|\n)*)/m)[1];
+    const steps = block.split(/^      - /m).slice(1).map((s) => s.replace(/\n        /g, "\n"));
+    const runs = steps.filter((s) => !s.includes("inputs.database")).map((s) => s.match(/^run: (.*)$/m)?.[1]);
+    expect(runs).toEqual(expect.arrayContaining(["pnpm lint", "pnpm typecheck", "pnpm test", "pnpm themis references .", "pnpm themis skills ."]));
+    expect(runs.indexOf("pnpm themis references .")).toBeGreaterThan(runs.indexOf("pnpm test"));
+    expect(runs.indexOf("pnpm themis skills .")).toBeGreaterThan(runs.indexOf("pnpm test"));
+    const gated = steps.filter((s) => s.includes("if: ${{ inputs.database }}"));
+    const find = (needle) => steps.filter((s) => s.includes(needle));
+    for (const needle of ["supabase/setup-cli@v1", "run: supabase start", "run: pnpm test:db"]) {
+      expect(find(needle)).toHaveLength(1);
+      expect(gated).toContain(find(needle)[0]);
+    }
+    expect(gated).toHaveLength(3);
+  });
+  it("calls each verb through the installed package and holds no secret but GITHUB_TOKEN", () => {
+    for (const verb of ["branch-target", "branch-name", "pr-title", "branch-sync", "config-drift"]) {
+      expect(yaml).toContain(`pnpm themis ci ${verb}`);
+    }
+    expect([...yaml.matchAll(/secrets\.(\w+)/g)].map((m) => m[1]).every((n) => n === "GITHUB_TOKEN")).toBe(true);
+  });
+  it("runs the PR-only jobs on pull_request and branch-sync only into develop", () => {
+    expect(yaml).toMatch(/  branch-sync:\n(?:    [^\n]*\n)*?    if: github\.event_name == 'pull_request' && github\.event\.pull_request\.base\.ref == 'develop'/);
+    expect((yaml.match(/    if: github\.event_name == 'pull_request'/g) ?? []).length).toBe(5);
+  });
+});
