@@ -93,6 +93,12 @@ export async function planInit({
 
   const { data: repoData } = await github.request("GET", `/repos/${repo}`);
   const exists = Boolean(repoData);
+  // Generation is asynchronous: the repository can exist before its default branch does.
+  let branchReady = false;
+  if (exists) {
+    const { data: branches } = await github.request("GET", `/repos/${repo}/branches`);
+    branchReady = Array.isArray(branches) && branches.some((b) => b.name === defaultBranch);
+  }
 
   let renameDone = false;
   let pointersDone = false;
@@ -142,7 +148,7 @@ export async function planInit({
   }
 
   const steps = [
-    { kind: "generate-repo", done: exists, detail: `${repo} from ${template}` },
+    { kind: "generate-repo", done: exists && branchReady, exists, detail: `${repo} from ${template}` },
     { kind: "rename", done: renameDone, detail: `vulkan -> ${name} in package.json, themis.config.mjs, CLAUDE.md and README.md titles` },
     { kind: "write-pointers", done: pointersDone, detail: `${pointerFiles.length} pointer file(s) of class ${klass}` },
     { kind: "apply-policy", done: policyDone, detail: `bring ${repo} to policy/repository.json` },
@@ -158,7 +164,9 @@ const authed = (args) => ["-c", "credential.helper=", "-c", CREDENTIAL_HELPER, .
 async function generateRepo(plan, { github, sleep }) {
   const { template, owner, repo, defaultBranch } = plan.params;
   const name = repo.split("/")[1];
-  await github.request("POST", `/repos/${template}/generate`, { owner, name, private: false, include_all_branches: false });
+  if (!plan.steps[0].exists) {
+    await github.request("POST", `/repos/${template}/generate`, { owner, name, private: false, include_all_branches: false });
+  }
   for (let attempt = 0; attempt < BRANCH_POLL_TRIES; attempt++) {
     const { data } = await github.request("GET", `/repos/${repo}/branches`);
     if (Array.isArray(data) && data.some((b) => b.name === defaultBranch)) return;
@@ -195,6 +203,15 @@ async function renameAndPointers(plan, { run, token, log }, pending) {
     run("git", ["add", "-A"], { cwd: dir, env });
     const status = run("git", ["status", "--porcelain"], { cwd: dir, env });
     if (String(status).trim() === "") return;
+    for (const key of ["user.name", "user.email"]) {
+      let value = "";
+      try {
+        value = String(run("git", ["config", key], { cwd: dir, env })).trim();
+      } catch {
+        value = "";
+      }
+      if (!value) throw new Error(`git ${key} is not set; set it (git config --global ${key} <value>) and rerun init`);
+    }
     run("git", ["commit", "-m", COMMIT_MESSAGE], { cwd: dir, env });
     run("git", authed(["push", "origin", `HEAD:${defaultBranch}`]), { cwd: dir, env });
     log(`pushed "${COMMIT_MESSAGE}" to ${defaultBranch}`);
@@ -223,6 +240,7 @@ async function registryPr(plan, { github }) {
     await github.request("POST", `/repos/${themisRepo}/git/refs`, { ref: `refs/heads/${registryBranch}`, sha: develop.commit.sha });
   }
   const { data: file } = await github.request("GET", contentsRoute(themisRepo, "registry.json", registryBranch));
+  if (!file) throw new Error(`registry.json not found on ${themisRepo} branch ${registryBranch}`);
   const current = decode(file).toString("utf8");
   if (!JSON.parse(current).bodies?.[name]) {
     const next = insertRegistryEntry(current, name, entry);

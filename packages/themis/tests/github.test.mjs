@@ -17,7 +17,8 @@ describe("resolveToken", () => {
 
   it("throws naming the three variables when none is set, and never calls gh", () => {
     expect(() => resolveToken({})).toThrow(/THEMIS_GH_TOKEN.*GITHUB_TOKEN.*GH_TOKEN/s);
-    expect(() => resolveToken({})).not.toThrow(/gh auth/);
+    expect(resolveToken.length).toBe(0);
+    expect(() => resolveToken({})).toThrow(/^no GitHub token: set THEMIS_GH_TOKEN, GITHUB_TOKEN or GH_TOKEN$/);
   });
 });
 

@@ -33,7 +33,7 @@ const REGISTRY = `{
 `;
 
 // An in-memory GitHub: the template, optionally the generated repo, Themis's registry.
-function makeWorld({ exists = false, files = {}, pollsBeforeBranch = 0, openPr = false, registry = REGISTRY, hasMain = true } = {}) {
+function makeWorld({ registryBranchExists = false, noRegistryOnBranch = false, exists = false, files = {}, pollsBeforeBranch = 0, openPr = false, registry = REGISTRY, hasMain = true } = {}) {
   const calls = [];
   const state = { exists, polls: 0, branches: new Set(), registry, files: { ...files } };
   const github = {
@@ -57,9 +57,9 @@ function makeWorld({ exists = false, files = {}, pollsBeforeBranch = 0, openPr =
         const text = state.files[decodeURIComponent(contents[1])];
         return text === undefined ? none : ok({ content: b64(text), encoding: "base64", sha: "f1" });
       }
-      if (method === "GET" && pathname === "/repos/vaoan/Themis/contents/registry.json") return ok({ content: b64(state.registry), encoding: "base64", sha: "r1" });
+      if (method === "GET" && pathname === "/repos/vaoan/Themis/contents/registry.json") return noRegistryOnBranch && /register-portia/.test(route) ? none : ok({ content: b64(state.registry), encoding: "base64", sha: "r1" });
       if (method === "GET" && pathname === "/repos/vaoan/Themis/branches/develop") return ok({ commit: { sha: "t1" } });
-      if (method === "GET" && pathname === "/repos/vaoan/Themis/branches/feat/register-portia") return none;
+      if (method === "GET" && pathname === "/repos/vaoan/Themis/branches/feat/register-portia") return registryBranchExists ? ok({ commit: { sha: "t2" } }) : none;
       if (method === "GET" && pathname === "/repos/vaoan/Themis/pulls") return ok(openPr ? [{ html_url: "https://example/pr/7" }] : []);
       if (method === "POST" && pathname === "/repos/vaoan/Themis/git/refs") return ok({}, 201);
       if (method === "PUT" && pathname === "/repos/vaoan/Themis/contents/registry.json") return ok({}, 200);
@@ -71,13 +71,13 @@ function makeWorld({ exists = false, files = {}, pollsBeforeBranch = 0, openPr =
 }
 
 // A git runner whose "clone" materialises the starter files, and whose push snapshots them.
-function makeGit({ starter = STARTER, dirty = true } = {}) {
+function makeGit({ starter = STARTER, dirty = true, identity = true } = {}) {
   const log = [];
   const snapshots = [];
   const run = (command, args, options = {}) => {
     log.push({ command, args, options });
     const sub = args.filter((a) => !a.startsWith("-c") && !a.startsWith("credential.helper"))[0];
-    const verb = args.find((a) => ["clone", "add", "commit", "push", "status"].includes(a));
+    const verb = args.find((a) => ["clone", "add", "commit", "push", "status", "config"].includes(a));
     if (verb === "clone") {
       const dir = args[args.length - 1];
       for (const [file, text] of Object.entries(starter)) {
@@ -99,6 +99,7 @@ function makeGit({ starter = STARTER, dirty = true } = {}) {
       walk(dir);
       snapshots.push(snap);
     }
+    if (verb === "config") return identity ? "someone\n" : "";
     if (verb === "status") return dirty ? " M package.json\n" : "";
     return "";
   };
@@ -258,6 +259,54 @@ describe("runInit", () => {
   });
 });
 
+describe("runInit edge cases", () => {
+  const deps = (world, git, extra = {}) => ({
+    github: world.github, run: git.run, sleep: async () => {}, token: "t", policy, applyRepoPolicy: noOps, log: () => {}, ...extra,
+  });
+
+  it("polls instead of skipping when the repository exists but its branch does not yet", async () => {
+    const world = makeWorld({ exists: true, pollsBeforeBranch: 3 });
+    const git = makeGit();
+    const plan = await planInit({ ...base, github: world.github, policy, applyRepoPolicy: noOps });
+    expect(plan.steps[0].done).toBe(false);
+    await runInit(plan, deps(world, git));
+    expect(world.calls.some((c) => c.route.endsWith("/generate"))).toBe(false);
+    expect(world.state.polls).toBeGreaterThan(3);
+    expect(git.snapshots).toHaveLength(1);
+  });
+
+  it("fails clearly when the branch never appears for an existing repository", async () => {
+    const world = makeWorld({ exists: true, pollsBeforeBranch: 1000 });
+    const git = makeGit();
+    const plan = await planInit({ ...base, github: world.github, policy, applyRepoPolicy: noOps });
+    await expect(runInit(plan, deps(world, git))).rejects.toThrow(/did not appear/);
+    expect(git.log).toEqual([]);
+  });
+
+  it("fails clearly when registry.json is missing on the registry branch", async () => {
+    const world = makeWorld({ exists: true, registryBranchExists: true, noRegistryOnBranch: true });
+    const plan = await planInit({ ...base, github: world.github, policy, applyRepoPolicy: noOps });
+    await expect(runInit(plan, deps(world, makeGit()))).rejects.toThrow(/registry\.json not found on vaoan\/Themis branch feat\/register-portia/);
+  });
+
+  it("refuses to commit without a git identity, and does not invent one", async () => {
+    const world = makeWorld({ exists: true });
+    const git = makeGit({ identity: false });
+    const plan = await planInit({ ...base, github: world.github, policy, applyRepoPolicy: noOps });
+    await expect(runInit(plan, deps(world, git))).rejects.toThrow(/git user\.name is not set/);
+    expect(git.log.some((l) => l.args.includes("commit") || l.args.includes("push"))).toBe(false);
+  });
+
+  it("opens the PR and writes the entry once when the registry branch exists without a PR", async () => {
+    const world = makeWorld({ exists: true, registryBranchExists: true });
+    const plan = await planInit({ ...base, github: world.github, policy, applyRepoPolicy: noOps });
+    await runInit(plan, deps(world, makeGit()));
+    expect(world.calls.filter((c) => c.method === "PUT")).toHaveLength(1);
+    expect(world.calls.filter((c) => c.method === "POST" && c.route === "/repos/vaoan/Themis/pulls")).toHaveLength(1);
+    expect(world.calls.some((c) => c.method === "POST" && c.route === "/repos/vaoan/Themis/git/refs")).toBe(false);
+  });
+});
+
 describe("themis init command", () => {
   const run = async (argv, extra = {}) => {
     const out = [];
@@ -285,6 +334,13 @@ describe("themis init command", () => {
     expect(out.join("\n")).toMatch(/pending/);
     expect(world.calls.filter((c) => c.method !== "GET")).toEqual([]);
     expect(git.log).toEqual([]);
+  });
+
+  it("--dry-run with main missing reports apply-policy pending and writes nothing", async () => {
+    const { code, out, world } = await run(["portia", "--class", "next-supabase-mono", "--dry-run"], { world: makeWorld({ exists: true, hasMain: false }) });
+    expect(code).toBe(0);
+    expect(out.join("\n")).toMatch(/apply-policy\s+pending/);
+    expect(world.calls.filter((c) => c.method !== "GET")).toEqual([]);
   });
 
   it("runs for real and ends with the repository and the registry PR URL", async () => {
