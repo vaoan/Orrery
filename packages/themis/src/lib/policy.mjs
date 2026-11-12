@@ -29,6 +29,12 @@ export function validatePolicy(policy) {
       }
     }
   }
+  if (typeof policy.selfRepository !== "string" || !/^[^/\s]+\/[^/\s]+$/.test(policy.selfRepository)) {
+    errors.push("selfRepository must be an owner/name string");
+  }
+  if (typeof policy.bodyCheckPrefix !== "string" || policy.bodyCheckPrefix === "") {
+    errors.push("bodyCheckPrefix must be a non-empty string");
+  }
   if (policy.settings?.allow_rebase_merge !== false) {
     errors.push("settings.allow_rebase_merge must be false");
   }

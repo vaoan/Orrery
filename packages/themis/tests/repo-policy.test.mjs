@@ -4,6 +4,7 @@ import { loadPolicy } from "../src/lib/policy.mjs";
 import {
   normaliseProtection,
   desiredProtection,
+  requiredChecksFor,
   planRepoChanges,
   readRepoState,
   applyRepoPolicy,
@@ -30,6 +31,7 @@ const apiProtection = (contexts) => ({
 });
 
 const compliantState = () => ({
+  repo: "vaoan/Themis",
   settings: { ...policy.settings },
   defaultBranch: "develop",
   branches: { main: "aaa", develop: "bbb" },
@@ -51,7 +53,32 @@ describe("normaliseProtection", () => {
   });
 });
 
+// Measured 2026-11-12 on vaoan/Vulkan PR #1: a body's caller job `ci` that `uses:` body-ci.yml
+// reports every check as `ci / <job>`. Themis runs ci.yml itself and reports bare names.
+const BODY_DEVELOP_CHECKS = ["ci / branch-name", "ci / branch-sync", "ci / branch-target", "ci / config-drift", "ci / pr-title", "ci / test"];
+
+describe("requiredChecksFor", () => {
+  it("gives Themis itself the bare job names", () => {
+    expect(requiredChecksFor(policy, "vaoan/Themis", "develop")).toEqual([...policy.requiredChecks.develop].sort());
+    expect(requiredChecksFor(policy, "vaoan/Themis", "main")).toEqual([...policy.requiredChecks.main].sort());
+  });
+
+  it("gives every other repository the names its caller job reports", () => {
+    expect(requiredChecksFor(policy, "vaoan/Vulkan", "develop")).toEqual(BODY_DEVELOP_CHECKS);
+    expect(requiredChecksFor(policy, "vaoan/Vulkan", "main")).toEqual(BODY_DEVELOP_CHECKS.filter((c) => c !== "ci / branch-sync"));
+  });
+
+  it("matches Themis's name without regard to case, as GitHub does", () => {
+    expect(requiredChecksFor(policy, "VAOAN/themis", "develop")).toEqual([...policy.requiredChecks.develop].sort());
+  });
+});
+
 describe("desiredProtection", () => {
+  it("uses the prefixed checks for a body on the shared CI", () => {
+    const body = desiredProtection(policy, "develop", { ...compliantState(), repo: "vaoan/Vulkan", sharedCi: true });
+    expect(body.required_status_checks.contexts).toEqual(BODY_DEVELOP_CHECKS);
+  });
+
   it("uses the policy's checks when the repo runs the shared CI", () => {
     const body = desiredProtection(policy, "develop", { ...compliantState(), sharedCi: true });
     expect(body.required_status_checks.contexts).toEqual([...policy.requiredChecks.develop].sort());
@@ -164,6 +191,7 @@ describe("readRepoState", () => {
     expect(state.protection).toEqual({ main: null, develop: null });
     expect(state.labels).toEqual([{ name: "bug", color: "d73a4a", description: "x" }]);
     expect(state.sharedCi).toBe(true);
+    expect(state.repo).toBe("vaoan/x");
     expect(state.settings.allow_rebase_merge).toBe(true);
   });
 
@@ -195,7 +223,7 @@ describe("applyRepoPolicy", () => {
         if (m === "GET" && p === "/repos/vaoan/x") return { status: 200, data: { default_branch: created ? "develop" : "main", ...policy.settings, allow_rebase_merge: created ? false : true } };
         if (m === "GET" && p === "/repos/vaoan/x/branches/main") return { status: 200, data: { commit: { sha: "aaa" } } };
         if (m === "GET" && p === "/repos/vaoan/x/branches/develop") return created ? { status: 200, data: { commit: { sha: "aaa" } } } : { status: 404, data: null };
-        if (m === "GET" && p.endsWith("/protection")) return created ? { status: 200, data: apiProtection(policy.requiredChecks[p.includes("/main/") ? "main" : "develop"]) } : { status: 404, data: null };
+        if (m === "GET" && p.endsWith("/protection")) return created ? { status: 200, data: apiProtection(requiredChecksFor(policy, "vaoan/x", p.includes("/main/") ? "main" : "develop")) } : { status: 404, data: null };
         if (m === "GET" && p.startsWith("/repos/vaoan/x/labels")) return { status: 200, data: created ? policy.labels : [] };
         if (m === "GET" && p.includes("/contents/")) return { status: 200, data: { content: Buffer.from("# themis-ci").toString("base64"), encoding: "base64" } };
         if (m === "POST" && p === "/repos/vaoan/x/git/refs") { created = true; return { status: 201, data: {} }; }
