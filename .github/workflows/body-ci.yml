@@ -1,0 +1,141 @@
+# The reusable CI every body calls. It installs nothing of Themis itself: the body's own
+# `@vaoan/themis` dependency (installed from git) provides `pnpm themis ci <verb>`.
+# Job names are the required-check names; do not rename them without changing the policy.
+# In a body they appear as `<caller-job-id> / <job>`, for example `ci / test`.
+#
+# The caller job must grant the permissions below, because a called workflow cannot exceed
+# the permissions of the job that calls it. A body calls it with:
+#
+#   jobs:
+#     ci:
+#       permissions: { contents: read, pull-requests: read, issues: read }
+#       uses: vaoan/Themis/.github/workflows/body-ci.yml@main
+#       with:
+#         database: false   # true starts Supabase and runs `pnpm test:db`
+name: body-ci
+
+on:
+  workflow_call:
+    inputs:
+      database:
+        description: Start a local Supabase and run pnpm test:db
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+
+env:
+  PNPM_VERSION: 11
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - if: ${{ inputs.database }}
+        uses: supabase/setup-cli@v1
+      - if: ${{ inputs.database }}
+        run: supabase start
+      - if: ${{ inputs.database }}
+        run: pnpm test:db
+
+  branch-target:
+    name: branch-target
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm themis ci branch-target
+
+  branch-name:
+    name: branch-name
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm themis ci branch-name
+
+  pr-title:
+    name: pr-title
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm themis ci pr-title
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  config-drift:
+    name: config-drift
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm themis ci config-drift
+
+  branch-sync:
+    name: branch-sync
+    if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'develop'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm themis ci branch-sync
