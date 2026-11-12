@@ -47,8 +47,11 @@ Only what Portia needs, pulled forward from stages 5 and 6 of the AI-layer spec:
 - **The starter**, its own repository and a registered body (Orrery still holds no
   application code). Its contents are cut to what Portia needs:
   - Next.js + Supabase, `next-supabase-mono` class, pnpm workspace;
-  - login through AeleOS (Clerk session, Supabase Third-Party Auth, `identity_sub`,
-    the actors mirror and the picker callback; see "Identity");
+  - login through AeleOS as a **person** first (Clerk session, Supabase Third-Party
+    Auth, `identity_sub`); the actors mirror and the picker callback are built and
+    tested but switched off until the hub is ready (see "Prerequisites");
+  - **owned resources with delegated capabilities**, generic (see below);
+  - the **audit log**, from Libra's `audit` schema;
   - lint, typecheck, tests and CI from the Orrery bundle;
   - a root `CLAUDE.md` under 200 lines and path-scoped `.claude/rules/`, measured by
     `orrery instructions` within the 10,000 / 25,000 token budgets;
@@ -56,12 +59,32 @@ Only what Portia needs, pulled forward from stages 5 and 6 of the AI-layer spec:
 
 Not pulled forward: the plugin, `/lesson`, `orrery corrections`, `orrery-verify`.
 
-**The starter stays thin (builder's call).** It carries only what every future body of
-the class needs: the AeleOS login and actors mirror, `current_user_id()`, the app shell,
-i18n, lint, tests, CI and the AI-layer files. Everything specific to calls lives in
-Portia: delegation, the audit schema, uploads, email, the form builder and the AI. So
-deleting Portia loses nothing the starter needs. Stage 6's separate design still
-applies to everything the starter does not yet carry.
+**The starter carries what every body repeats, and nothing about calls.** The owner,
+2026-11-11: "hay varias cosas que se repiten. En Portia es eso, en la de calendario
+también va a ser así, en la de asistencia probablemente sea así también." So the
+starter carries the AeleOS login, `current_user_id()`, owned resources with delegated
+capabilities, the audit log, the app shell, i18n, lint, tests, CI and the AI-layer
+files. Everything specific to calls stays in Portia: the committee and scoring, uploads,
+email, the form builder and the AI. Deleting Portia loses nothing the starter needs.
+Stage 6's separate design still applies to everything the starter does not yet carry.
+
+**Owned resources with delegated capabilities (in the starter).** Libra's sellers with
+delegated admins, Portia's calls, a calendar's events and an attendance list's sessions
+are the same model with a different resource name. Written once, generically:
+
+- any table can be declared a **resource type**, and each body declares its own
+  **capabilities** for it (Portia: `edit-form`, `manage-committee`, `see-scores`,
+  `decide`, `close`; a calendar would declare others);
+- each resource has one **owner**; **ownership is transferable**, audited;
+- the owner (or anyone holding `manage-delegates`) grants any person a set of
+  capabilities on one resource; no self-delegation, as in Libra's `seller_admins`;
+- **operators** are Portia-wide (body-wide) people who pass every capability check;
+- one SQL function, such as `has_capability(resource_type, resource_id, capability)`,
+  is what row-level security calls; no page can grant itself anything;
+- every grant, revocation and transfer is in the audit log.
+
+Libra's `has_permission()` ignores `resource_id`, which is why this is new rather than
+copied. Libra keeps its own until it chooses to adopt the starter's.
 
 **What `orrery init` provisions (builder's call).** It creates the GitHub repository from
 the template, applies repository policy, writes the pointers and registers the body. It
@@ -97,8 +120,14 @@ Both are AeleOS work, done in parallel, in AeleOS.
 
 **Clerk instance (builder's call).** The starter targets Clerk's production instance for
 deployed environments and the development instance locally, so no later body inherits
-a migration. Portia's login is tested end to end once the hub has moved to production
-and allowlisted Portia; until then the rest is built and tested against local fixtures.
+a migration.
+
+**Person first, fursonas later.** `AeleOS/docs/integrating.md` allows an app to store the
+Clerk `sub` as `identity_sub`, treat the person as the actor, and add the mirror and
+the picker when fursonas matter, with nothing to re-key. The starter does that: the
+person login works from day one, and the fursona sync and picker are switched on by
+configuration once the hub is on production and has allowlisted the body. Neither
+blocks the trial.
 
 ### Where it runs (builder's call)
 
@@ -151,11 +180,10 @@ Nobody is a "committee user" or a "creator user" by account type. Roles exist pe
   into any call, like Libra's admin. Every call-scoped helper lets an operator through,
   and every operator action is audited.
 
-**Authorization lives in the database**, as in Libra: row-level security calling SQL
-helpers, so no page can grant itself anything. Libra's `has_permission()` is global and
-ignores `resource_id`, so Portia needs call-scoped grants: a table such as
-`call_delegates(call_id, user_id, capabilities text[])` and a helper such as
-`has_call_capability(call_id, capability)`, following Libra's `seller_admins` pattern.
+**Authorization lives in the database**, through the starter's owned resources: a call
+is a resource type, and Portia declares the call capabilities listed above. The
+committee is Portia's own: committee membership is a call-scoped role on top of it,
+and blind scoring is Portia's row-level security.
 
 ### Calls and the form builder
 
@@ -185,7 +213,7 @@ ignores `resource_id`, so Portia needs call-scoped grants: a table such as
   means). Their answers and files are deleted. Scores and decisions on past calls
   stay, attached to an anonymous placeholder instead of the person, so rankings
   remain consistent. Audit rows that name them are anonymised the same way. Libra's
-  `log_changes()` keeps full rows, so Portia's audit must support that rewrite from
+  `log_changes()` keeps full rows, so the starter's audit must support that rewrite from
   day one.
 
 ### Reviewing
@@ -238,8 +266,8 @@ ignores `resource_id`, so Portia needs call-scoped grants: a table such as
 
 ### Operations
 
-- An **audit log** of every action, reusing Libra's `audit` schema (`log_changes()`,
-  `enable_tracking(table)`).
+- An **audit log** of every action, from the starter (based on Libra's `audit` schema,
+  `log_changes()` and `enable_tracking(table)`).
 - **Export** of applications and scores to CSV or Excel.
 - Uploads are checked **on the server**: size, type by content rather than by name, and
   safe paths. Libra only checks 5 MB images in the browser, so audio and video are new
@@ -265,8 +293,8 @@ ignores `resource_id`, so Portia needs call-scoped grants: a table such as
 
 | From | What | Verdict |
 |---|---|---|
-| Libra | `audit` schema and triggers | reuse |
-| Libra | permission catalog shape; `seller_admins` delegation pattern | adapt to call scope |
+| Libra | `audit` schema and triggers | adapt, in the starter (must support anonymising) |
+| Libra | permission catalog shape; `seller_admins` delegation pattern | generalise, in the starter |
 | Libra | `toSafeStoragePath`, signed URLs with a TTL, private bucket with RLS | adapt; add server-side checks |
 | Libra | bilingual columns and `next-intl` | reuse the pattern |
 | Libra | `identity_sub` and `current_user_id()` | reuse the pattern |
