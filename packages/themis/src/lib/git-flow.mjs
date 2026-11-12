@@ -29,6 +29,18 @@ const fail = (reason) => ({ ok: false, reason });
 // the thing it renders. "fix-" is rejected only on a `fix/` branch, where it is the redundant
 // task-refinement label repeating the branch's own type; on any other type "fix-typos-in-readme"
 // describes the change.
+//
+// Numeronyms are the exception to shape 3. A numeronym abbreviates a word by counting the letters
+// it skips ("i18n" is internationalization, "a11y" accessibility), so a letter-digit-letter token
+// is a word, not a task label. Only this explicit allowlist is exempt; a new numeronym is added
+// here with a test, and everything else with that shape stays a label:
+//
+//   i18n  internationalization        l10n  localization
+//   a11y  accessibility               g11n  globalization
+//   m17n  multilingualization         k8s   Kubernetes
+//   e2e   end-to-end                  p2p   peer-to-peer
+//   b2b   business-to-business        b2c   business-to-consumer
+const NUMERONYM_WORDS = new Set(["i18n", "l10n", "a11y", "g11n", "m17n", "k8s", "e2e", "p2p", "b2b", "b2c"]);
 const DIGIT_TOKEN = /^[0-9][a-z0-9]*$/;
 const LETTER_DIGIT_TOKEN = /^[a-z][0-9][a-z0-9]*$/;
 const LABEL_WORD = /^(?:phase|task|step|wave|round)$/;
@@ -36,7 +48,7 @@ const LABEL_WORD = /^(?:phase|task|step|wave|round)$/;
 export function planLabel(description, type) {
   const [first, second] = description.split("-");
   if (DIGIT_TOKEN.test(first)) return `"${first}-" is a digit token, which names a phase and not a change`;
-  if (LETTER_DIGIT_TOKEN.test(first)) return `"${first}-" is a letter-and-number label, which names a task and not a change`;
+  if (LETTER_DIGIT_TOKEN.test(first) && !NUMERONYM_WORDS.has(first)) return `"${first}-" is a letter-and-number label, which names a task and not a change`;
   if (LABEL_WORD.test(first) && second !== undefined && DIGIT_TOKEN.test(second)) return `"${first}-${second}-" is a plan label`;
   if (type === "fix" && first === "fix") return `"fix-" repeats the branch's own fix/ type`;
   return null;
