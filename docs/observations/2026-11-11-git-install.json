@@ -1,0 +1,23 @@
+{
+  "date": "2026-11-11",
+  "specifier": "github:vaoan/Themis#main&path:/packages/themis",
+  "fallbackSpecifierTried": false,
+  "authRequired": false,
+  "node": "v24.21.0",
+  "pnpm": "11.28.11",
+  "package": { "name": "@vaoan/themis", "version": "2026.9.9-1" },
+  "firstInstall": { "ok": true, "packages": 735, "pnpmSeconds": 10.1, "wallSeconds": 11.3 },
+  "frozenReinstall": { "ok": true, "pnpmSeconds": 2.9, "wallSeconds": 4.0 },
+  "checks": {
+    "eslintDefaultExportType": "function",
+    "themisHelpExitsZero": true,
+    "afterFrozenReinstall": { "eslintDefaultExportType": "function", "themisHelpExitsZero": true }
+  },
+  "lockfile": {
+    "pinnedCommit": "debfdf1b9c5a3a44421283f0f42b2374cb5b2481",
+    "resolution": "codeload tarball with integrity, path /packages/themis",
+    "hasBin": true
+  },
+  "packageJsonChanged": false,
+  "notes": ["pnpm init via npx pnpm@11 wrote packageManager pnpm@12.18.0 from the global pnpm and broke the next command"]
+}
