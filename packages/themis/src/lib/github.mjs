@@ -1,5 +1,3 @@
-import { execFileSync } from "node:child_process";
-
 export class GithubError extends Error {
   constructor(status, message, path) {
     super(`GitHub ${status} on ${path}: ${message}`);
@@ -8,21 +6,10 @@ export class GithubError extends Error {
   }
 }
 
-function defaultRunGh() {
-  try {
-    // `gh` is a real binary on every platform, not a .cmd shim, so no shell.
-    return execFileSync("gh", ["auth", "token"], { encoding: "utf8" });
-  } catch {
-    return "";
-  }
-}
-
-export function resolveToken(env = process.env, runGh = defaultRunGh) {
-  const token = env.THEMIS_GH_TOKEN || env.GITHUB_TOKEN || runGh().trim();
+export function resolveToken(env = process.env) {
+  const token = env.THEMIS_GH_TOKEN || env.GITHUB_TOKEN || env.GH_TOKEN;
   if (!token) {
-    throw new Error(
-      "no GitHub token: set THEMIS_GH_TOKEN or GITHUB_TOKEN, or log in with gh so `gh auth token` works"
-    );
+    throw new Error("no GitHub token: set THEMIS_GH_TOKEN, GITHUB_TOKEN or GH_TOKEN");
   }
   return token;
 }

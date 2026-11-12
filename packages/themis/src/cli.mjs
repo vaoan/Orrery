@@ -5,6 +5,7 @@ Usage:
   themis repo apply <owner/name> [--dry-run] [--policy <file>]
   themis ci <verb> [--head] [--base] [--title] [--repo] [--head-sha] [--files]
   themis hook <commit-msg|pre-push> [args]
+  themis init <name> --class <class> [--owner vaoan] [--repo-name <Name>] [--template vaoan/Vulkan] [--role planet] [--dry-run]
   themis release [--dry-run] [--version-file <package.json>]
   themis reconcile <repoA> <repoB> [--sample surface=path]... [--out <dir>]
   themis bundle [--rulings docs/decisions/rulings.json] [--package packages/themis]
@@ -16,6 +17,7 @@ Commands:
   repo apply    bring a repository's branches, protection, settings and labels to policy
   ci            run one git-flow check: branch-target, branch-name, pr-title, branch-sync, config-drift
   hook          run a git hook: commit-msg validates the subject, pre-push validates the branch and runs tests
+  init          create a body from the starter template, bring it to policy, register it
   release       cut release/vYYYY.MM.DD.N from develop and open its PR into main
   reconcile     generate the ruling records and rulings.json from two donor repositories
   bundle        generate the physics and class tiers from rulings.json
@@ -28,6 +30,7 @@ const COMMANDS = {
   repo: async (argv) => (await import("./commands/repo.mjs")).default(argv),
   ci: async (argv) => (await import("./commands/ci.mjs")).default(argv),
   hook: async (argv) => (await import("./commands/hook.mjs")).default(argv),
+  init: async (argv) => (await import("./commands/init.mjs")).default(argv),
   release: async (argv) => (await import("./commands/release.mjs")).default(argv),
   reconcile: async (argv) => (await import("./commands/reconcile.mjs")).default(argv),
   bundle: async (argv) => (await import("./commands/bundle.mjs")).default(argv),
