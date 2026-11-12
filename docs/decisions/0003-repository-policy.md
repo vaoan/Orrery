@@ -50,6 +50,12 @@ The policy file is the record of the values; this ADR is the record of why.
   caller job (`<job> / test`), so the marker-based `requiredChecks` would name
   checks that never report; the check-name contract must be designed in
   Phase 2d before any body enables the shared CI.
+  Resolved 2026-11-12, when vaoan/Vulkan's first PR (#1) reported its checks as
+  `ci / test`, `ci / branch-target`, `ci / branch-name`, `ci / pr-title`,
+  `ci / config-drift` and `ci / branch-sync`: `repo apply` gives every repository
+  other than `selfRepository` (Themis) the names prefixed with `bodyCheckPrefix`
+  (`ci / `), and Themis keeps the bare ones (`requiredChecksFor` in
+  `packages/themis/src/lib/repo-policy.mjs`).
 - Tool-authored commits (`themis release`'s bump) carry no agent trailers, by
   design.
 - Until the GitHub App exists, the bot login is the account that owns the bot
@@ -67,6 +73,7 @@ The policy file is the record of the values; this ADR is the record of why.
 | Puck | 2026-09-09 | deferred | 14 operations (dry run 2026-09-09; apply deferred to the production cut-over by the owner's decision; nightly observe stays in report mode) |
 | eclipse-con | 2026-09-09 | deferred | 16 operations (dry run 2026-09-09; apply deferred to the production cut-over by the owner's decision; nightly observe stays in report mode) |
 | Janus | 2026-09-09 | deferred | 14 operations (dry run 2026-09-09; apply deferred to the production cut-over by the owner's decision; nightly observe stays in report mode) |
+| Vulkan | 2026-11-12 | applied | created empty; settings, default develop, protection and 12 labels; no required checks until a `# themis-ci` ci.yml is on develop |
 
 The flow was exercised end to end on Themis before any body: release v2026.09.09.1 (PR #7, merge commit), hotfix through main (PR #9), automatic back-merge (PR #8).
 

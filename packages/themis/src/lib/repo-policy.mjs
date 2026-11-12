@@ -32,9 +32,19 @@ export function normaliseProtection(api) {
   return normalised;
 }
 
+// The required-check names a repository's protection lists. Themis runs ci.yml itself, so its
+// checks report under their bare job names. A body calls body-ci.yml from a caller job, and
+// GitHub reports a called workflow's checks as `<caller job> / <job>`: measured as `ci / test`
+// on vaoan/Vulkan's first PR, 2026-11-12. GitHub compares owner/name without regard to case.
+export function requiredChecksFor(policy, repo, branch) {
+  const checks = policy.requiredChecks[branch];
+  const isSelf = repo.toLowerCase() === policy.selfRepository.toLowerCase();
+  return (isSelf ? [...checks] : checks.map((check) => `${policy.bodyCheckPrefix}${check}`)).sort();
+}
+
 export function desiredProtection(policy, branch, state) {
   const contexts = state.sharedCi
-    ? [...policy.requiredChecks[branch]].sort()
+    ? requiredChecksFor(policy, state.repo, branch)
     : [...(state.protection[branch]?.required_status_checks?.contexts ?? [])].sort();
 
   return {
@@ -136,6 +146,7 @@ export async function readRepoState(github, repo, policy = { protectedBranches: 
   }
 
   return {
+    repo,
     settings,
     defaultBranch: repoData.default_branch,
     branches,
