@@ -2,8 +2,9 @@
 // target or a backticked token, and a command is a pnpm or themis line. Nothing is fetched or resolved here.
 
 export const EXAMPLE_MARK = /<!--\s*themis:\s*example\s*-->/;
-export const BLOCK_START = /<!--\s*themis:\s*examples\s*-->/;
-export const BLOCK_END = /<!--\s*themis:\s*end\s*-->/;
+// A marker counts only when it is alone on its line; mentioned inline it is plain text.
+export const BLOCK_START = /^\s*<!--\s*themis:\s*examples\s*-->\s*$/;
+export const BLOCK_END = /^\s*<!--\s*themis:\s*end\s*-->\s*$/;
 const EXT = /\.(md|mjs|js|ts|tsx|json|yml|yaml|sql|css|toml|sh)$/;
 const PATH_CHARS = /^[\w.\-/*{}[\]~$<>,:+@()]+$/;
 
@@ -23,17 +24,21 @@ function classify(token) {
 const ILLUSTRATIVE_LINE = /^\s*\|.*\|\s*$|\be\.g\.|\bexamples?\b|\bsuch as\b|\bcreates?:|\bnamed? like\b/i;
 
 // kind: link | path | command | skill | agent. `why` is set when the token cannot be verified.
-// Returns { refs, unclosed }: `unclosed` is the line of a `themis: examples` block that never ends.
+// Returns { refs, unclosed, strays }: `unclosed` is the line of a `themis: examples` block that never
+// ends, `strays` the lines of a `themis: end` with no block open. Markers inside a fence are text.
 export function extractRefs(text) {
   const refs = [];
   let fence = false, comment = false, block = null, blockFirst = 0;
+  const strays = [];
   const closeBlock = (endLine) => { for (let k = blockFirst; k < refs.length; k++) refs[k].why = `example (lines ${block}-${endLine})`; };
   const lines = lf(text).split("\n");
   for (const [i, raw] of lines.entries()) {
     const line = i + 1;
-    if (BLOCK_START.test(raw) && block === null) { block = line; blockFirst = refs.length; continue; }
-    if (BLOCK_END.test(raw) && block !== null) { closeBlock(line); block = null; continue; }
     if (/^\s*(```|~~~)/.test(raw)) { fence = !fence; continue; }
+    if (!fence) {
+      if (BLOCK_START.test(raw) && block === null) { block = line; blockFirst = refs.length; }
+      else if (BLOCK_END.test(raw)) { if (block !== null) { closeBlock(line); block = null; } else strays.push(line); }
+    }
     const example = EXAMPLE_MARK.test(raw);
     const illustrative = ILLUSTRATIVE_LINE.test(raw);
     const add = (kind, token, extra = {}) => refs.push({ kind, token, line, ...(example ? { why: "example" } : {}), ...(illustrative ? { illustrative: true } : {}), ...extra });
@@ -67,7 +72,7 @@ export function extractRefs(text) {
     }
   }
   if (block !== null) { for (let k = blockFirst; k < refs.length; k++) refs[k].why = `example (lines ${block}-end)`; }
-  return { refs, unclosed: block };
+  return { refs, unclosed: block, strays };
 }
 
 function addCommand(text, add) {

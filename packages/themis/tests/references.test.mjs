@@ -81,8 +81,10 @@ describe("precision rules", () => {
   });
 
   it("5. branch names are not paths unless a top-level directory has that name", async () => {
-    await ok({ "CLAUDE.md": "branch `feat/GH-42_User-Auth` from `release/*` and `fix/x`" });
+    await ok({ "CLAUDE.md": "branch `feat/GH-42_User-Auth` from `release/*` and `fix/the-thing`" });
     await bad({ "CLAUDE.md": "`docs/gone.md`", "docs/a.md": "x" });
+    await bad({ "CLAUDE.md": "`docs/lessons/` and `feat/x/y` and `release/v2025.01.09.1`", "src/a.ts": "x" });
+    await ok({ "CLAUDE.md": "`docs/*` and `feat/reconcile-records-command` and `fix/<name>`", "src/a.ts": "x" });
     await ok({ "CLAUDE.md": "`docs/a.md`", "docs/a.md": "x" });
   });
 
@@ -90,9 +92,11 @@ describe("precision rules", () => {
     await ok({ "CLAUDE.md": "branches `feature/` and `fix/`" });
   });
 
-  it("2b. a bare directory name passes when any directory has it, fails when none does", async () => {
-    await ok({ "CLAUDE.md": "layers `domain/`", "src/features/a/domain/x.ts": "x" });
-    await bad({ "CLAUDE.md": "layers `domain/`", "src/a/x.ts": "x" });
+  it("2b. a bare directory name resolves from the root, the file's dir or the file's own package, not anywhere", async () => {
+    const ui = { "packages/ui/package.json": JSON.stringify({ name: "ui" }), "packages/ui/src/domain/x.ts": "x" };
+    await bad(ws({ ...ui, "CLAUDE.md": "layers `domain/`" }));
+    await ok(ws({ ...ui, "CLAUDE.md": "x", "packages/ui/CLAUDE.md": "layers `domain/`" }));
+    await bad(ws({ ...ui, "CLAUDE.md": "x", "packages/other/package.json": JSON.stringify({ name: "other" }), "packages/other/CLAUDE.md": "layers `domain/`" }));
   });
 
   it("6. eslint rule ids of a dependency are not paths", async () => {
@@ -103,13 +107,14 @@ describe("precision rules", () => {
   });
 
   it("7. a repository slug with a registry owner is not a path", async () => {
-    await ok({ "CLAUDE.md": "`vaoan/AeleOS`" });
+    await ok({ "CLAUDE.md": "`vaoan/AeleOS`" }); // owners come from Themis's registry
     await bad({ "CLAUDE.md": "`acme/AeleOS`" });
   });
 
   it("8. a /name that names a directory or workspace app is a route, not a skill", async () => {
-    await ok(ws({ "CLAUDE.md": "`/auth` and `/shared`", "apps/auth/package.json": JSON.stringify({ name: "auth" }), "src/shared/a.ts": "x" }));
+    await ok(ws({ "CLAUDE.md": "`/auth` `/shared` `/cart`", "apps/auth/package.json": JSON.stringify({ name: "auth" }), "shared/a.ts": "x", "apps/auth/src/app/cart/page.tsx": "x" }));
     await bad({ "CLAUDE.md": "`/auth`" });
+    await bad(ws({ "CLAUDE.md": "`/deep`", "src/lib/deep/a.ts": "x" }));
   });
 
   it("9. an unknown /name is external-unverified when plugins are enabled, broken otherwise", async () => {
@@ -149,6 +154,16 @@ describe("example blocks", () => {
     await bad({ "CLAUDE.md": `${table}\n` });
     await bad({ "CLAUDE.md": `<!-- themis: examples -->\n${table}\n<!-- themis: end -->\n\`src/gone.ts\`\n` });
   });
+  it("counts a marker only alone on its line and outside a fence", async () => {
+    await bad({ "CLAUDE.md": "wrap in `<!-- themis: examples -->` ... `<!-- themis: end -->`\n`src/gone.ts`\n" });
+    await bad({ "CLAUDE.md": "```\n<!-- themis: examples -->\n```\n`src/gone.ts`\n" });
+    await ok({ "CLAUDE.md": "  <!-- themis: examples -->  \n`src/gone.ts`\n<!-- themis: end -->\n" });
+  });
+  it("fails a stray end, naming file and line", async () => {
+    const r = await run({ "CLAUDE.md": "a\n<!-- themis: end -->\n" });
+    expect(r.code).toBe(1);
+    expect(r.q.err()).toContain("CLAUDE.md:2");
+  });
   it("fails an unclosed block, naming file and line", async () => {
     const r = await run({ "CLAUDE.md": `a\n<!-- themis: examples -->\n${table}\n` });
     expect(r.code).toBe(1);
@@ -162,12 +177,12 @@ describe("example blocks", () => {
     const q = quiet();
     expect(await references([], deps)).toBe(2);
     expect(q.err()).toContain("themis: examples");
-    const dir = body({ "CLAUDE.md": "| a | `Foo.tsx` |\nsee `src/gone.ts`\n" });
+    const dir = body({ "CLAUDE.md": "| a | `Foo.tsx` | `src/Bar.tsx` |\nsee `src/gone.ts`\n" });
     const report = tmp();
     await references([dir, "--report", report], deps);
     const md = fs.readFileSync(path.join(report, "2026-11-11-references.md"), "utf8");
     expect(md).toContain("Mark examples, do not weaken the check");
-    expect(md).toMatch(/Likely stale[^\n]*\n[\s\S]*src\/gone\.ts[\s\S]*Likely illustrative[^\n]*\n[\s\S]*Foo\.tsx/);
+    expect(md).toMatch(/Likely stale[^\n]*\n[\s\S]*src\/gone\.ts[\s\S]*Ambiguous[^\n]*\n[\s\S]*Foo\.tsx[\s\S]*Likely illustrative[^\n]*\n[\s\S]*Bar\.tsx/);
   });
 });
 

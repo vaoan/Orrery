@@ -15,7 +15,7 @@ const BUILTIN_SLASH = new Set(["help", "clear", "compact", "init", "review", "co
 const BRANCH_TYPES = new Set(["feat", "fix", "chore", "docs", "refactor", "test", "perf", "ci", "build", "style", "release", "hotfix", "back-merge", "type", "feature"]);
 
 function owners() {
-  try { return new Set(Object.values(loadRegistry().bodies ?? {}).map((b) => b.repo.split("/")[0])); } catch { return new Set(["vaoan"]); }
+  try { return new Set(Object.values(loadRegistry().bodies ?? {}).map((b) => b.repo.split("/")[0])); } catch { return new Set(); } // no registry, no slug rule
 }
 
 function readJson(dir, rel) {
@@ -82,8 +82,7 @@ export function bodyContext(dir, files = listBodyFiles(dir)) {
   const commands = new Set(files.filter((f) => /^\.claude\/commands\/.+\.md$/.test(f)).map((f) => f.slice(".claude/commands/".length, -3).replace(/\//g, ":")));
   const plugins = Object.keys(readJson(dir, ".claude/settings.json")?.enabledPlugins ?? {});
   const topDirs = new Set(files.filter((f) => f.includes("/")).map((f) => f.split("/")[0]));
-  const dirNames = new Set([...dirSet].map((d) => path.posix.basename(d)));
-  return { dir, files, fileSet, dirSet, basenames, topDirs, dirNames, packages, scripts, skills, agents, commands, plugins, owners: owners(), eslintPlugins: pluginIds(depNames) };
+  return { dir, files, fileSet, dirSet, basenames, topDirs, packages, scripts, skills, agents, commands, plugins, owners: owners(), eslintPlugins: pluginIds(depNames) };
 }
 
 // Brackets alone are a literal, such as a Next.js route `[id]`; `*` and `{}` make a glob.
@@ -100,17 +99,20 @@ function globMatches(ctx, base, pattern) {
 
 // Where a relative token may resolve from: the body root, the file's directory, then each workspace
 // package root and its src/.
-function bases(ctx, fileRel) {
+// A bare directory name (`domain/`) is far more ambiguous than a path, so it resolves only from the
+// package the referring file lives in.
+function bases(ctx, fileRel, own = false) {
   const fileDir = path.posix.dirname(fileRel);
-  return ["", ...(fileDir === "." ? [] : [fileDir]), ...ctx.packages.flatMap((p) => [p.dir, `${p.dir}/src`])];
+  const pkgs = own ? ctx.packages.filter((p) => fileRel.startsWith(`${p.dir}/`)) : ctx.packages;
+  return ["", ...(fileDir === "." ? [] : [fileDir]), ...pkgs.flatMap((p) => [p.dir, `${p.dir}/src`])];
 }
 
-function resolveLiteral(ctx, fileRel, clean) {
+function resolveLiteral(ctx, fileRel, clean, own = false) {
   const join = (b, p) => path.posix.normalize(b ? `${b}/${p}` : p);
   if (!clean.includes("/") && !clean.endsWith("/") && hasExtension(clean) && !isGlob(clean)) {
     if (ctx.basenames.has(clean)) return true; // a bare file name: any file anywhere with it
   }
-  return bases(ctx, fileRel).some((b) => { const p = join(b, clean); return !p.startsWith("..") && exists(ctx, p); });
+  return bases(ctx, fileRel, own).some((b) => { const p = join(b, clean); return !p.startsWith("..") && exists(ctx, p); });
 }
 
 function resolveGlob(ctx, fileRel, clean) {
@@ -132,6 +134,18 @@ function resolveInPackage(ctx, clean) {
   return false;
 }
 
+// A branch name: a git-flow type, then a glob, a placeholder or a kebab-case description with a hyphen.
+// Never something path-like (an extension, another slash), and never when a top-level directory has the type's name
+// and the rest could be inside it.
+function isBranch(ctx, token, segs) {
+  if (!BRANCH_TYPES.has(segs[0]) || ctx.topDirs.has(segs[0])) return false;
+  if (segs.length === 1) return token.endsWith("/"); // a bare prefix such as `feature/`
+  if (segs.length !== 2) return false;
+  const rest = segs[1];
+  if (rest.includes(".")) return false; // path-like: an extension or a version
+  return rest === "*" || isGlob(rest) || isPlaceholderSeg(rest) || /^[A-Za-z0-9_.]+(-[A-Za-z0-9_.]+)+$/.test(rest);
+}
+
 // Returns { ok } or { skip } with the reason the token is not a path to check.
 function checkPath(ctx, fileRel, token, kind) {
   const clean = token.replace(/^\.\//, "").replace(/\/$/, "");
@@ -143,13 +157,12 @@ function checkPath(ctx, fileRel, token, kind) {
   if (/^\.\.?\//.test(token) && !hasExtension(clean)) return { skip: "import specifier" };
   if (token === ".." || token === "../") return { skip: "import specifier" };
   if (segs.length >= 2 && ctx.owners.has(segs[0])) return { skip: "repository name" };
-  // A single directory name such as `domain/`: it exists when any directory in the body has that name.
-  if (segs.length === 1 && token.endsWith("/") && !isGlob(clean) && ctx.dirNames.has(clean)) return { ok: true };
-  if (kind === "path" && !hasFileExtension(clean) && BRANCH_TYPES.has(segs[0]) && (segs.length >= 2 || token.endsWith("/")) && !ctx.topDirs.has(segs[0])) return { skip: "branch name" };
+  if (kind === "path" && isBranch(ctx, token, segs)) return { skip: "branch name" };
   if (segs.length === 2 && !hasExtension(clean) && ctx.eslintPlugins.has(segs[0])) return { skip: "eslint rule" };
   if (segs.length === 3 && segs[0].startsWith("@") && !hasExtension(clean) && ctx.eslintPlugins.has(`${segs[0]}/${segs[1]}`)) return { skip: "eslint rule" };
 
-  const run = (c) => isGlob(c) ? resolveGlob(ctx, fileRel, c) : resolveLiteral(ctx, fileRel, c) || resolveInPackage(ctx, c);
+  const bareDir = segs.length === 1 && token.endsWith("/");
+  const run = (c) => isGlob(c) ? resolveGlob(ctx, fileRel, c) : resolveLiteral(ctx, fileRel, c, bareDir) || resolveInPackage(ctx, c);
   if (run(clean)) return { ok: true };
 
   const at = segs.findIndex(isPlaceholderSeg);
@@ -165,7 +178,8 @@ function checkPath(ctx, fileRel, token, kind) {
 // Returns { checked, broken, exceptions, external } for one file's text.
 export function checkText(ctx, fileRel, text) {
   const res = { checked: 0, broken: [], exceptions: [], external: [] };
-  const { refs, unclosed } = extractRefs(text);
+  const { refs, unclosed, strays } = extractRefs(text);
+  for (const line of strays) res.broken.push({ file: fileRel, line, kind: "marker", token: "themis: end", reason: "end with no examples block open", likely: "stale" });
   if (unclosed !== null) res.broken.push({ file: fileRel, line: unclosed, kind: "marker", token: "themis: examples", reason: "block opened and never closed with themis: end", likely: "stale" });
   for (const r of refs) {
     const at = { file: fileRel, line: r.line, kind: r.kind, token: r.token };
@@ -174,7 +188,7 @@ export function checkText(ctx, fileRel, text) {
       const c = checkPath(ctx, fileRel, r.token, r.kind);
       if (c.skip) { res.exceptions.push({ ...at, why: c.skip }); continue; }
       res.checked++;
-      if (!c.ok) res.broken.push({ ...at, reason: c.broken ?? (isGlob(r.token) ? "glob matches no file" : "no such file"), likely: r.kind === "path" && (r.illustrative || (!r.token.includes("/") && !isGlob(r.token)) || /\bpath\/to\b|YYYY|\{|<|\[/.test(r.token)) ? "illustrative" : "stale", probe: c.probe });
+      if (!c.ok) res.broken.push({ ...at, reason: c.broken ?? (isGlob(r.token) ? "glob matches no file" : "no such file"), likely: r.kind === "path" && !r.token.includes("/") && !isGlob(r.token) ? "ambiguous" : r.kind === "path" && (r.illustrative || /\bpath\/to\b|YYYY|\{|<|\[/.test(r.token)) ? "illustrative" : "stale", probe: c.probe });
       continue;
     }
     if (r.kind === "command") {
@@ -189,7 +203,7 @@ export function checkText(ctx, fileRel, text) {
     const name = r.token;
     if (name.includes(":")) { res.external.push({ ...at, plugin: name.split(":")[0] }); res.checked++; continue; }
     // A `/name` that names a directory or a workspace app is a route, not a skill.
-    if (r.slash && (ctx.dirNames.has(name) || ctx.packages.some((p) => path.posix.basename(p.dir) === name))) { res.exceptions.push({ ...at, why: "route" }); continue; }
+    if (r.slash && (ctx.topDirs.has(name) || ctx.packages.some((p) => path.posix.basename(p.dir) === name || ctx.dirSet.has(`${p.dir}/src/app/${name}`)))) { res.exceptions.push({ ...at, why: "route" }); continue; }
     res.checked++;
     const known = r.kind === "agent" ? ctx.agents.has(name) : ctx.skills.has(name) || ctx.agents.has(name) || ctx.commands.has(name) || BUILTIN_SLASH.has(name);
     if (known) continue;

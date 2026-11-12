@@ -8,8 +8,8 @@ export const MAX_DESCRIPTION = 1024;
 // 1% of a 200,000-token window is 2,000 tokens.
 export const SKILL_LISTING_BUDGET = 2000;
 const KEBAB = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-// "Use when", "when ", "use this", "before ", "after ", or "for ... when": a bare "used" or "if" says nothing.
-const WHEN = /\bwhen\b|\buse this\b|\bbefore\b|\bafter\b/i;
+// "Use when", "when ", "use this", "before ", "after ", "proactively", or "for ... when": a bare "used" or "if" says nothing.
+const WHEN = /\bwhen\b|\buse this\b|\bbefore\b|\bafter\b|\bproactively\b/i;
 export const KNOWN_TOOLS = new Set(["Bash", "BashOutput", "KillShell", "KillBash", "Read", "Write", "Edit", "MultiEdit", "NotebookEdit", "NotebookRead", "Glob", "Grep", "LS", "WebFetch", "WebSearch", "Task", "Agent", "TodoWrite", "ExitPlanMode", "EnterPlanMode", "Skill", "SlashCommand", "AskUserQuestion", "Monitor", "TaskStop", "TaskOutput", "LSP", "EnterWorktree", "ExitWorktree", "ToolSearch", "ListMcpResourcesTool", "ReadMcpResourceTool"]);
 
 // A small reader for the subset of YAML that skill and agent frontmatter uses: scalars, folded and

@@ -52,6 +52,7 @@ describe("themis skills", () => {
     expect((await run({ ".claude/skills/a/SKILL.md": skill("a", "Used by the team, if at all.") })).code).toBe(1);
     expect((await run({ ".claude/skills/a/SKILL.md": skill("a", "Deploy helper. Use this for releases.") })).code).toBe(0);
     expect((await run({ ".claude/skills/a/SKILL.md": skill("a", "Release helper. Run before tagging.") })).code).toBe(0);
+    expect((await run({ ".claude/skills/a/SKILL.md": skill("a", "Release helper. Invoke proactively.") })).code).toBe(0);
   });
 
   it("counts skills only against the listing budget, agents excluded", async () => {
