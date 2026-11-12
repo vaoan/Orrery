@@ -50,12 +50,6 @@ The policy file is the record of the values; this ADR is the record of why.
   caller job (`<job> / test`), so the marker-based `requiredChecks` would name
   checks that never report; the check-name contract must be designed in
   Phase 2d before any body enables the shared CI.
-  Resolved 2026-11-12, when vaoan/Vulkan's first PR (#1) reported its checks as
-  `ci / test`, `ci / branch-target`, `ci / branch-name`, `ci / pr-title`,
-  `ci / config-drift` and `ci / branch-sync`: `repo apply` gives every repository
-  other than `selfRepository` (Themis) the names prefixed with `bodyCheckPrefix`
-  (`ci / `), and Themis keeps the bare ones (`requiredChecksFor` in
-  `packages/themis/src/lib/repo-policy.mjs`).
 - Tool-authored commits (`themis release`'s bump) carry no agent trailers, by
   design.
 - Until the GitHub App exists, the bot login is the account that owns the bot
@@ -104,3 +98,10 @@ The flow was exercised end to end on Themis before any body: release v2026.09.09
   everyone should have it… we gain more by having it." The rule is enforced
   everywhere through the reusable `themis ci branch-name` check and the
   pre-push hook, both of which call the same `checkBranchName`.
+- **2026-11-12 — body check names (see Known limits):** Resolved 2026-11-12,
+  when vaoan/Vulkan's first PR (#1) reported its checks as `ci / test`,
+  `ci / branch-target`, `ci / branch-name`, `ci / pr-title`, `ci / config-drift`
+  and `ci / branch-sync`: `repo apply` gives every repository other than
+  `selfRepository` (Themis) the names prefixed with `bodyCheckPrefix` (`ci / `),
+  and Themis keeps the bare ones (`requiredChecksFor` in
+  `packages/themis/src/lib/repo-policy.mjs`).
