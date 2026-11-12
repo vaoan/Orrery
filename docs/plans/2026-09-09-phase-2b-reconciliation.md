@@ -4,16 +4,16 @@
 
 **Goal:** Generate the constellation's tooling bundle once from aeleos and libra under the strictest-wins ordering, record every ruling, and prove the bundle by observing both donors read-only: their own tools, a config that only imports the bundle, and exactly the predicted violations.
 
-**Architecture:** Pure reconcilers per tool turn two parsed configs into ruling rows `{ tool, surface, key, a, b, chosen, test, tier }`; a record writer turns rows into one decision file per tool; a bundle writer turns rows into generated config code under `physics/` and `classes/next-supabase-mono/`, every export a function of the body's `orrery.config.mjs`. `orrery observe` runs a body's tools against a scratch config that imports the bundle and compares effective config to the rows and violations to a committed prediction. Everything that touches a donor is read-only.
+**Architecture:** Pure reconcilers per tool turn two parsed configs into ruling rows `{ tool, surface, key, a, b, chosen, test, tier }`; a record writer turns rows into one decision file per tool; a bundle writer turns rows into generated config code under `physics/` and `classes/next-supabase-mono/`, every export a function of the body's `themis.config.mjs`. `themis observe` runs a body's tools against a scratch config that imports the bundle and compares effective config to the rows and violations to a committed prediction. Everything that touches a donor is read-only.
 
-**Tech Stack:** Node ≥24 (`fs.globSync`, built-in `fetch`), pnpm, ESM `.mjs`, vitest. The bundle's plugins become dependencies of `packages/orrery` (the design doc's intent: they leave every body's devDependencies).
+**Tech Stack:** Node ≥24 (`fs.globSync`, built-in `fetch`), pnpm, ESM `.mjs`, vitest. The bundle's plugins become dependencies of `packages/themis` (the design doc's intent: they leave every body's devDependencies).
 
 **Spec:** `docs/specs/2026-09-08-phase-2b-reconciliation-design.md`
 
 ## Global Constraints
 
-- Node `>=24`; pnpm; ESM only; `.mjs` source under `packages/orrery/`. This repository contains no application code.
-- **No body is modified.** Every command that touches `Z:/Github/aeleos` or `Z:/Github/libra` is read-only: `--print-config`, running a tool with `--config` pointing into Orrery, `git rev-parse`. Never `pnpm install`, never a write, never a git command that changes state, in a donor.
+- Node `>=24`; pnpm; ESM only; `.mjs` source under `packages/themis/`. This repository contains no application code.
+- **No body is modified.** Every command that touches `Z:/Github/aeleos` or `Z:/Github/libra` is read-only: `--print-config`, running a tool with `--config` pointing into Themis, `git rev-parse`. Never `pnpm install`, never a write, never a git command that changes state, in a donor.
 - **Ruling order:** stricter wins; if strictness is undefined, the more consistent option; then the option that benefits the code most. Project data (paths, element types, words, aliases) is a parameter, never a ruling.
 - **Everything is shared unless it names one specific file.** Local means a named-file exception in `eslint.local.mjs`.
 - **Deterministic:** every reconciler is a pure function; every generated file is byte-stable across runs (sorted keys, fixed order).
@@ -36,7 +36,7 @@
 
   The app-router layout resolves to the same rule set as `component` in both donors, so it is not a separate surface.
 - `fs.globSync` exists on Node v24.19.0.
-- Every tool in the set accepts an explicit config path: eslint `-c … --no-config-lookup` (out-of-tree config with plugins resolved from the body, type-aware parsing across the boundary: proven by spike), stylelint `--config`, knip `-c`, jscpd `-c`, cspell `lint -c`, ls-lint `-config` (single dash), syncpack `lint --config`; tsconfig `extends` resolves `@vaoan/orrery/tsconfig` through a package `exports` entry.
+- Every tool in the set accepts an explicit config path: eslint `-c … --no-config-lookup` (out-of-tree config with plugins resolved from the body, type-aware parsing across the boundary: proven by spike), stylelint `--config`, knip `-c`, jscpd `-c`, cspell `lint -c`, ls-lint `-config` (single dash), syncpack `lint --config`; tsconfig `extends` resolves `@vaoan/themis/tsconfig` through a package `exports` entry.
 - Plugin prefixes present across the two effective configs: core, `@next/next`, `@tanstack/query`, `@typescript-eslint`, `better-tailwindcss`, `boundaries`, `i18next`, `import`, `jsdoc`, `jsx-a11y`, `react`, `react-hooks`, `security`, `sonarjs`, `tsdoc`, `unicorn`, `unused-imports`. Every one is placed in the tier map of Task 3.
 - Pre-rulings for the conflicts where strictness alone does not decide, from the real values in ADR 0002:
 
@@ -57,7 +57,7 @@
 ## File structure
 
 ```
-packages/orrery/
+packages/themis/
 ├── src/lib/surfaces.mjs                 SURFACES, findSurfaceSamples(repoDir, overrides)
 ├── src/lib/reconcile/
 │   ├── ordering.mjs                     severityRank, ORDINAL_OPTIONS, EXEMPTION_KEY, PARAMETER_KEYS, PRE_RULINGS, stricter()
@@ -79,8 +79,8 @@ packages/orrery/
 │   ├── version.mjs                      versionDrift(bodyDir, run)
 │   ├── pointers.mjs                     pointerDrift(bodyDir, templates)
 │   └── code.mjs                         codeDrift(bodyDir, bundleDir, prediction, exec)
-├── src/commands/reconcile.mjs           orrery reconcile <repoA> <repoB> [--sample surface=path] [--out <dir>]
-├── src/commands/observe.mjs             orrery observe <bodyDir>... [--predict] [--report <dir>]
+├── src/commands/reconcile.mjs           themis reconcile <repoA> <repoB> [--sample surface=path] [--out <dir>]
+├── src/commands/observe.mjs             themis observe <bodyDir>... [--predict] [--report <dir>]
 ├── physics/                             generated by reconcile; committed
 ├── classes/next-supabase-mono/          generated by reconcile; committed; schema.mjs hand-written
 └── templates/next-supabase-mono/        pointer files init will write; observe compares bytes
@@ -108,10 +108,10 @@ rule option happening to be named `union`, `fromSide`, or `parameter` can never 
 ### Task 1: Surfaces and the donor reader
 
 **Files:**
-- Create: `packages/orrery/src/lib/surfaces.mjs`
-- Create: `packages/orrery/src/lib/donors.mjs`
-- Test: `packages/orrery/tests/surfaces.test.mjs`
-- Test: `packages/orrery/tests/donors.test.mjs`
+- Create: `packages/themis/src/lib/surfaces.mjs`
+- Create: `packages/themis/src/lib/donors.mjs`
+- Test: `packages/themis/tests/surfaces.test.mjs`
+- Test: `packages/themis/tests/donors.test.mjs`
 
 **Interfaces:**
 - Consumes: `readEffectiveConfig(repoDir, file, exec?)` from `src/lib/effective-config.mjs` (Phase 2a).
@@ -123,7 +123,7 @@ rule option happening to be named `union`, `fromSide`, or `parameter` can never 
 - [ ] **Step 1: Write the failing tests**
 
 ```javascript
-// packages/orrery/tests/surfaces.test.mjs
+// packages/themis/tests/surfaces.test.mjs
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
@@ -135,7 +135,7 @@ const touch = (rel) => {
   fs.mkdirSync(path.join(repo, path.dirname(rel)), { recursive: true });
   fs.writeFileSync(path.join(repo, rel), "");
 };
-beforeEach(() => { repo = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-surf-")); });
+beforeEach(() => { repo = fs.mkdtempSync(path.join(os.tmpdir(), "themis-surf-")); });
 afterEach(() => fs.rmSync(repo, { recursive: true, force: true }));
 
 describe("SURFACES", () => {
@@ -193,7 +193,7 @@ describe("findSurfaceSamples", () => {
 ```
 
 ```javascript
-// packages/orrery/tests/donors.test.mjs
+// packages/themis/tests/donors.test.mjs
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
@@ -205,7 +205,7 @@ const write = (rel, text) => {
   fs.mkdirSync(path.join(repo, path.dirname(rel)), { recursive: true });
   fs.writeFileSync(path.join(repo, rel), text);
 };
-beforeEach(() => { repo = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-donor-")); });
+beforeEach(() => { repo = fs.mkdtempSync(path.join(os.tmpdir(), "themis-donor-")); });
 afterEach(() => fs.rmSync(repo, { recursive: true, force: true }));
 
 describe("stripJsonComments", () => {
@@ -218,7 +218,7 @@ describe("stripJsonComments", () => {
 describe("readDonor", () => {
   it("reads one effective eslint config per surface and every static config, null when absent", async () => {
     write("tsconfig.base.json", '{"compilerOptions":{"strict":true}}');
-    write("cspell.json", '{ "version": "0.2", // words\n "words": ["orrery"] }');
+    write("cspell.json", '{ "version": "0.2", // words\n "words": ["themis"] }');
     write(".jscpd.json", '{"threshold":5}');
     write("knip.json", '{"workspaces":{}}');
     write(".syncpackrc.json", '{"versionGroups":[]}');
@@ -233,7 +233,7 @@ describe("readDonor", () => {
     expect(donor.eslint.source.rules["for:a.ts"]).toEqual(["error"]);
     expect(donor.eslint.component.rules["for:b.tsx"]).toEqual(["error"]);
     expect(donor.tsconfig.compilerOptions.strict).toBe(true);
-    expect(donor.cspell.words).toEqual(["orrery"]);
+    expect(donor.cspell.words).toEqual(["themis"]);
     expect(donor.jscpd.threshold).toBe(5);
     expect(donor.knip.workspaces).toEqual({});
     expect(donor.syncpack.versionGroups).toEqual([]);
@@ -259,13 +259,13 @@ describe("readDonor", () => {
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `pnpm vitest run packages/orrery/tests/surfaces.test.mjs packages/orrery/tests/donors.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/surfaces.test.mjs packages/themis/tests/donors.test.mjs`
 Expected: FAIL — cannot resolve the two modules
 
 - [ ] **Step 3: Write the implementation**
 
 ```javascript
-// packages/orrery/src/lib/surfaces.mjs
+// packages/themis/src/lib/surfaces.mjs
 import fs from "node:fs";
 import path from "node:path";
 
@@ -322,7 +322,7 @@ export function findSurfaceSamples(repoDirectory, overrides = {}) {
 ```
 
 ```javascript
-// packages/orrery/src/lib/donors.mjs
+// packages/themis/src/lib/donors.mjs
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
@@ -395,15 +395,15 @@ export async function readDonor(repoDirectory, samples, { exec, run = defaultRun
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `pnpm vitest run packages/orrery/tests/surfaces.test.mjs packages/orrery/tests/donors.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/surfaces.test.mjs packages/themis/tests/donors.test.mjs`
 Expected: PASS — 6 + 3 tests
 
 - [ ] **Step 5: Real-repo check, read-only**
 
-Run from `Z:\Github\Orrery`:
+Run from `Z:\Github\Themis`:
 
 ```
-node -e "import('./packages/orrery/src/lib/surfaces.mjs').then(m => { for (const r of ['Z:/Github/aeleos','Z:/Github/libra']) console.log(r, JSON.stringify(m.findSurfaceSamples(r), null, 1)); })"
+node -e "import('./packages/themis/src/lib/surfaces.mjs').then(m => { for (const r of ['Z:/Github/aeleos','Z:/Github/libra']) console.log(r, JSON.stringify(m.findSurfaceSamples(r), null, 1)); })"
 ```
 
 Expected: the twelve paths in the "Verified before writing" table, exactly. If a path differs, the pattern order is wrong; fix the pattern, not the table, and record the actual path.
@@ -412,7 +412,7 @@ Expected: the twelve paths in the "Verified before writing" table, exactly. If a
 
 ```bash
 git checkout -b feat/2b-surfaces origin/develop
-git add packages/orrery/src/lib/surfaces.mjs packages/orrery/src/lib/donors.mjs packages/orrery/tests/surfaces.test.mjs packages/orrery/tests/donors.test.mjs
+git add packages/themis/src/lib/surfaces.mjs packages/themis/src/lib/donors.mjs packages/themis/tests/surfaces.test.mjs packages/themis/tests/donors.test.mjs
 git commit -m "feat(reconcile): surfaces and the donor reader [GH-000]"
 git push -u origin HEAD
 gh pr create --base develop --title "feat(reconcile): surfaces and the donor reader [GH-000]" --body "Task 1 of the 2b plan."
@@ -426,8 +426,8 @@ gh pr merge --squash --auto
 Pure functions that decide one eslint rule. This is where the spec's ruling order lives; every branch has a test.
 
 **Files:**
-- Create: `packages/orrery/src/lib/reconcile/ordering.mjs`
-- Test: `packages/orrery/tests/reconcile-ordering.test.mjs`
+- Create: `packages/themis/src/lib/reconcile/ordering.mjs`
+- Test: `packages/themis/tests/reconcile-ordering.test.mjs`
 
 **Interfaces:**
 - Consumes: nothing.
@@ -450,7 +450,7 @@ Pure functions that decide one eslint rule. This is where the spec's ruling orde
 - [ ] **Step 1: Write the failing test**
 
 ```javascript
-// packages/orrery/tests/reconcile-ordering.test.mjs
+// packages/themis/tests/reconcile-ordering.test.mjs
 import { describe, it, expect } from "vitest";
 import { severityOf, optionsOf, stricter, PRE_RULINGS, namesProject, splitRestrictions } from "../src/lib/reconcile/ordering.mjs";
 
@@ -676,7 +676,7 @@ describe("splitRestrictions", () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `pnpm vitest run packages/orrery/tests/reconcile-ordering.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/reconcile-ordering.test.mjs`
 Expected: FAIL — cannot resolve `../src/lib/reconcile/ordering.mjs`
 
 - [ ] **Step 3: Write the implementation**
@@ -966,14 +966,14 @@ export function stricter(rule, a, b, surface) {
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `pnpm vitest run packages/orrery/tests/reconcile-ordering.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/reconcile-ordering.test.mjs`
 Expected: PASS — 14 tests
 
 - [ ] **Step 5: Commit and land**
 
 ```bash
 git checkout -b feat/2b-ordering origin/develop
-git add packages/orrery/src/lib/reconcile/ordering.mjs packages/orrery/tests/reconcile-ordering.test.mjs
+git add packages/themis/src/lib/reconcile/ordering.mjs packages/themis/tests/reconcile-ordering.test.mjs
 git commit -m "feat(reconcile): the ruling order for one eslint rule [GH-000]"
 git push -u origin HEAD && gh pr create --base develop --title "feat(reconcile): the ruling order for one eslint rule [GH-000]" --body "Task 2 of the 2b plan." && gh pr merge --squash --auto
 ```
@@ -983,10 +983,10 @@ git push -u origin HEAD && gh pr create --base develop --title "feat(reconcile):
 ### Task 3: Tiers and the eslint reconciler
 
 **Files:**
-- Create: `packages/orrery/src/lib/reconcile/tiers.mjs`
-- Create: `packages/orrery/src/lib/reconcile/eslint.mjs`
-- Test: `packages/orrery/tests/reconcile-tiers.test.mjs`
-- Test: `packages/orrery/tests/reconcile-eslint.test.mjs`
+- Create: `packages/themis/src/lib/reconcile/tiers.mjs`
+- Create: `packages/themis/src/lib/reconcile/eslint.mjs`
+- Test: `packages/themis/tests/reconcile-tiers.test.mjs`
+- Test: `packages/themis/tests/reconcile-eslint.test.mjs`
 
 **Interfaces:**
 - Consumes: `diffRules` (2a `rule-diff.mjs`); `stricter`, `severityOf` (Task 2).
@@ -997,7 +997,7 @@ git push -u origin HEAD && gh pr create --base develop --title "feat(reconcile):
 - [ ] **Step 1: Write the failing tests**
 
 ```javascript
-// packages/orrery/tests/reconcile-tiers.test.mjs
+// packages/themis/tests/reconcile-tiers.test.mjs
 import { describe, it, expect } from "vitest";
 import { tierOf, TIER_BY_PLUGIN } from "../src/lib/reconcile/tiers.mjs";
 
@@ -1022,7 +1022,7 @@ describe("tierOf", () => {
 ```
 
 ```javascript
-// packages/orrery/tests/reconcile-eslint.test.mjs
+// packages/themis/tests/reconcile-eslint.test.mjs
 import { describe, it, expect } from "vitest";
 import { reconcileEslint, resolveMarkers, withoutElementType } from "../src/lib/reconcile/eslint.mjs";
 import { literal } from "../src/lib/bundle/eslint.mjs";
@@ -1269,13 +1269,13 @@ describe("reconcileEslint", () => {
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `pnpm vitest run packages/orrery/tests/reconcile-tiers.test.mjs packages/orrery/tests/reconcile-eslint.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/reconcile-tiers.test.mjs packages/themis/tests/reconcile-eslint.test.mjs`
 Expected: FAIL — cannot resolve the two modules
 
 - [ ] **Step 3: Write the implementation**
 
 ```javascript
-// packages/orrery/src/lib/reconcile/tiers.mjs
+// packages/themis/src/lib/reconcile/tiers.mjs
 // The boundary rule: physics is true for a repository that does not exist yet; a plugin that
 // needs Next.js, React, Tailwind, TanStack Query, i18n, Playwright or Vitest to make sense is class.
 // `boundaries` is class because the element layout it encodes (app/features/shared/proxy) is the
@@ -1578,14 +1578,14 @@ and change the import line to `import { reconcileEslint } from "../src/lib/recon
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `pnpm vitest run packages/orrery/tests/reconcile-tiers.test.mjs packages/orrery/tests/reconcile-eslint.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/reconcile-tiers.test.mjs packages/themis/tests/reconcile-eslint.test.mjs`
 Expected: PASS — 22 + 5 tests (the four above plus the marker-resolution test added below)
 
 - [ ] **Step 5: Commit and land**
 
 ```bash
 git checkout -b feat/2b-eslint-reconcile origin/develop
-git add packages/orrery/src/lib/reconcile/tiers.mjs packages/orrery/src/lib/reconcile/eslint.mjs packages/orrery/tests/reconcile-tiers.test.mjs packages/orrery/tests/reconcile-eslint.test.mjs
+git add packages/themis/src/lib/reconcile/tiers.mjs packages/themis/src/lib/reconcile/eslint.mjs packages/themis/tests/reconcile-tiers.test.mjs packages/themis/tests/reconcile-eslint.test.mjs
 git commit -m "feat(reconcile): tier placement and the eslint reconciler [GH-000]"
 git push -u origin HEAD && gh pr create --base develop --title "feat(reconcile): tier placement and the eslint reconciler [GH-000]" --body "Task 3 of the 2b plan." && gh pr merge --squash --auto
 ```
@@ -1597,12 +1597,12 @@ git push -u origin HEAD && gh pr create --base develop --title "feat(reconcile):
 Each tool has its own meaning of "stricter" (spec table). Every reconciler is pure, takes the two donors' parsed configs, and emits rows with `tool` set and `surface: "*"`.
 
 **Files:**
-- Create: `packages/orrery/src/lib/reconcile/tsconfig.mjs`
-- Create: `packages/orrery/src/lib/reconcile/stylelint.mjs`
-- Create: `packages/orrery/src/lib/reconcile/simple.mjs`
-- Create: `packages/orrery/src/lib/reconcile/knip.mjs`
-- Create: `packages/orrery/src/lib/reconcile/syncpack.mjs`
-- Test: `packages/orrery/tests/reconcile-tools.test.mjs`
+- Create: `packages/themis/src/lib/reconcile/tsconfig.mjs`
+- Create: `packages/themis/src/lib/reconcile/stylelint.mjs`
+- Create: `packages/themis/src/lib/reconcile/simple.mjs`
+- Create: `packages/themis/src/lib/reconcile/knip.mjs`
+- Create: `packages/themis/src/lib/reconcile/syncpack.mjs`
+- Test: `packages/themis/tests/reconcile-tools.test.mjs`
 
 **Interfaces:**
 - Consumes: nothing from other tasks except the row shape.
@@ -1611,7 +1611,7 @@ Each tool has its own meaning of "stricter" (spec table). Every reconciler is pu
 - [ ] **Step 1: Write the failing test**
 
 ```javascript
-// packages/orrery/tests/reconcile-tools.test.mjs
+// packages/themis/tests/reconcile-tools.test.mjs
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -1772,7 +1772,7 @@ describe("syncpack", () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `pnpm vitest run packages/orrery/tests/reconcile-tools.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/reconcile-tools.test.mjs`
 Expected: FAIL — cannot resolve the modules
 
 - [ ] **Step 3: Write the implementations**
@@ -1780,7 +1780,7 @@ Expected: FAIL — cannot resolve the modules
 Shared helpers live at the top of `simple.mjs` and are imported by the others.
 
 ```javascript
-// packages/orrery/src/lib/reconcile/simple.mjs
+// packages/themis/src/lib/reconcile/simple.mjs
 export const row = (tool, key, extra) => ({ tool, surface: "*", key, a: null, b: null, chosen: null, test: "agree", tier: "physics", note: "", ...extra });
 export const same = (x, y) => JSON.stringify(x) === JSON.stringify(y);
 export const union = (...lists) => [...new Set(lists.flat().filter((v) => v !== undefined && v !== null))].sort();
@@ -1876,7 +1876,7 @@ export function reconcileLsLint() {
 ```
 
 ```javascript
-// packages/orrery/src/lib/reconcile/tsconfig.mjs
+// packages/themis/src/lib/reconcile/tsconfig.mjs
 import { row, same } from "./simple.mjs";
 
 // true is stricter
@@ -1928,7 +1928,7 @@ export function reconcileTsconfig(a, b) {
 ```
 
 ```javascript
-// packages/orrery/src/lib/reconcile/stylelint.mjs
+// packages/themis/src/lib/reconcile/stylelint.mjs
 import { row, same, union } from "./simple.mjs";
 
 // "off" is an explicit disable (null or false); "absent" is the key not being written at all,
@@ -1976,7 +1976,7 @@ export function reconcileStylelint(a, b) {
 ```
 
 ```javascript
-// packages/orrery/src/lib/reconcile/knip.mjs
+// packages/themis/src/lib/reconcile/knip.mjs
 import { row, union } from "./simple.mjs";
 
 // Every test-file glob form, whichever extension spelling a donor wrote, folds to the one
@@ -2025,7 +2025,7 @@ export function reconcileKnip(a, b) {
 ```
 
 ```javascript
-// packages/orrery/src/lib/reconcile/syncpack.mjs
+// packages/themis/src/lib/reconcile/syncpack.mjs
 import { row, same } from "./simple.mjs";
 
 const shape = (group) => { const { dependencies, label, ...rest } = group; return rest; };
@@ -2056,28 +2056,28 @@ export function reconcileSyncpack(a, b) {
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `pnpm vitest run packages/orrery/tests/reconcile-tools.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/reconcile-tools.test.mjs`
 Expected: PASS — 14 tests
 
 - [ ] **Step 5: Commit and land**
 
 ```bash
 git checkout -b feat/2b-tool-reconcilers origin/develop
-git add packages/orrery/src/lib/reconcile/ packages/orrery/tests/reconcile-tools.test.mjs
+git add packages/themis/src/lib/reconcile/ packages/themis/tests/reconcile-tools.test.mjs
 git commit -m "feat(reconcile): tsconfig, stylelint, jscpd, cspell, lint-staged, hooks, ls-lint, knip, syncpack [GH-000]"
 git push -u origin HEAD && gh pr create --base develop --title "feat(reconcile): the non-eslint reconcilers [GH-000]" --body "Task 4 of the 2b plan." && gh pr merge --squash --auto
 ```
 
 ---
 
-### Task 5: Ruling records, `orrery reconcile`, and the real run
+### Task 5: Ruling records, `themis reconcile`, and the real run
 
 **Files:**
-- Create: `packages/orrery/src/lib/records.mjs`
-- Create: `packages/orrery/src/commands/reconcile.mjs`
-- Modify: `packages/orrery/src/cli.mjs` (register `reconcile`; usage lines)
-- Test: `packages/orrery/tests/records.test.mjs`
-- Test: `packages/orrery/tests/reconcile-command.test.mjs`
+- Create: `packages/themis/src/lib/records.mjs`
+- Create: `packages/themis/src/commands/reconcile.mjs`
+- Modify: `packages/themis/src/cli.mjs` (register `reconcile`; usage lines)
+- Test: `packages/themis/tests/records.test.mjs`
+- Test: `packages/themis/tests/reconcile-command.test.mjs`
 - Create by running: `docs/decisions/rulings.json`, `docs/decisions/0004-eslint.md` … `docs/decisions/0015-hooks.md`
 
 **Interfaces:**
@@ -2085,12 +2085,12 @@ git push -u origin HEAD && gh pr create --base develop --title "feat(reconcile):
 - Produces:
   - `renderRecord({ number, tool, rows, provenance }) => markdown` — `provenance = { a: { name, dir, sha, samples }, b: {...}, date }`.
   - `RECORD_NUMBERS`: `{ eslint: 4, tsconfig: 5, stylelint: 6, prettier: 7, secretlint: 8, jscpd: 9, cspell: 10, "ls-lint": 11, knip: 12, syncpack: 13, "lint-staged": 14, hooks: 15 }`.
-  - `orrery reconcile <repoA> <repoB> [--sample surface=path]... [--out docs/decisions] [--json]` — runs every reconciler, writes `rulings.json` (all rows plus provenance) and one record per tool; prints per-tool counts by test; exits `1` listing every `residue` row, `0` when there is none. Residue means the ordering needs a pre-ruling, which is a corner: stop and ask.
+  - `themis reconcile <repoA> <repoB> [--sample surface=path]... [--out docs/decisions] [--json]` — runs every reconciler, writes `rulings.json` (all rows plus provenance) and one record per tool; prints per-tool counts by test; exits `1` listing every `residue` row, `0` when there is none. Residue means the ordering needs a pre-ruling, which is a corner: stop and ask.
 
 - [ ] **Step 1: Write the failing tests**
 
 ```javascript
-// packages/orrery/tests/records.test.mjs
+// packages/themis/tests/records.test.mjs
 import { describe, it, expect } from "vitest";
 import { renderRecord, RECORD_NUMBERS } from "../src/lib/records.mjs";
 
@@ -2134,7 +2134,7 @@ describe("renderRecord", () => {
 ```
 
 ```javascript
-// packages/orrery/tests/reconcile-command.test.mjs
+// packages/themis/tests/reconcile-command.test.mjs
 import { describe, it, expect, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
@@ -2154,17 +2154,17 @@ const quiet = () => {
 
 const donor = (name, rules) => ({ dir: `/${name}`, sha: name.slice(0, 7), eslint: { source: { rules } }, tsconfig: { compilerOptions: { strict: true } }, stylelint: null, prettier: { endOfLine: "auto" }, secretlint: null, jscpd: null, cspell: null, knip: null, syncpack: null, lintStaged: null, lsLint: null, hooks: { preCommit: null, prePush: null } });
 
-describe("orrery reconcile", () => {
+describe("themis reconcile", () => {
   it("exits 2 without two repositories", async () => {
     const q = quiet();
     expect(await reconcile(["only"])).toBe(2);
-    expect(q.out()).toContain("usage: orrery reconcile <repoA> <repoB>");
+    expect(q.out()).toContain("usage: themis reconcile <repoA> <repoB>");
     q.restore();
   });
 
   it("writes rulings.json and one record per tool, and exits 0 with no residue", async () => {
     const q = quiet();
-    const out = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-rec-"));
+    const out = fs.mkdtempSync(path.join(os.tmpdir(), "themis-rec-"));
     const code = await reconcile(["/a", "/b", "--out", out], {
       findSurfaceSamples: () => ({ source: "x.ts" }),
       readDonor: async (dir) => donor(dir === "/a" ? "aeleos1" : "libra11", { "no-var": ["error"] }),
@@ -2182,7 +2182,7 @@ describe("orrery reconcile", () => {
 
   it("exits 1 and names every residue row", async () => {
     const q = quiet();
-    const out = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-rec-"));
+    const out = fs.mkdtempSync(path.join(os.tmpdir(), "themis-rec-"));
     const code = await reconcile(["/a", "/b", "--out", out], {
       findSurfaceSamples: () => ({ source: "x.ts" }),
       readDonor: async (dir) => donor(dir, { "unicorn/x": ["error", { style: dir === "/a" ? "a" : "b" }] }),
@@ -2196,7 +2196,7 @@ describe("orrery reconcile", () => {
   it("passes --sample overrides through", async () => {
     const q = quiet();
     let seen;
-    const out = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-rec-"));
+    const out = fs.mkdtempSync(path.join(os.tmpdir(), "themis-rec-"));
     await reconcile(["/a", "/b", "--out", out, "--sample", "source=custom.ts", "--sample", "e2e=e.spec.ts"], {
       findSurfaceSamples: (dir, overrides) => { seen = overrides; return { source: "custom.ts" }; },
       readDonor: async (dir) => donor(dir, {}),
@@ -2257,13 +2257,13 @@ describe("orrery reconcile", () => {
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `pnpm vitest run packages/orrery/tests/records.test.mjs packages/orrery/tests/reconcile-command.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/records.test.mjs packages/themis/tests/reconcile-command.test.mjs`
 Expected: FAIL — cannot resolve the modules
 
 - [ ] **Step 3: Write the implementation**
 
 ```javascript
-// packages/orrery/src/lib/records.mjs
+// packages/themis/src/lib/records.mjs
 export const RECORD_NUMBERS = { eslint: 4, tsconfig: 5, stylelint: 6, prettier: 7, secretlint: 8, jscpd: 9, cspell: 10, "ls-lint": 11, knip: 12, syncpack: 13, "lint-staged": 14, hooks: 15 };
 
 const TESTS = ["agree", "adopt", "strictest", "consistency", "benefit", "parameter", "inert", "residue"];
@@ -2278,7 +2278,7 @@ export function renderRecord({ number, tool, rows, provenance }) {
   lines.push(`**Date:** ${provenance.date}`);
   lines.push("**Status:** accepted");
   lines.push("**Spec:** docs/specs/2026-09-08-phase-2b-reconciliation-design.md");
-  lines.push(`**Generated by:** \`orrery reconcile\` from ${provenance.a.name} \`${provenance.a.sha}\` and ${provenance.b.name} \`${provenance.b.sha}\`. Do not edit by hand; re-run and re-commit.`);
+  lines.push(`**Generated by:** \`themis reconcile\` from ${provenance.a.name} \`${provenance.a.sha}\` and ${provenance.b.name} \`${provenance.b.sha}\`. Do not edit by hand; re-run and re-commit.`);
   lines.push("");
   lines.push("Ruling order: stricter wins; if strictness is undefined, the more consistent option; then the option that benefits the code most. Project data is a parameter. `a` is " + provenance.a.name + ", `b` is " + provenance.b.name + ".");
   lines.push("");
@@ -2327,7 +2327,7 @@ export function renderRecord({ number, tool, rows, provenance }) {
 ```
 
 ```javascript
-// packages/orrery/src/commands/reconcile.mjs
+// packages/themis/src/commands/reconcile.mjs
 import fs from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
@@ -2341,7 +2341,7 @@ import { reconcileKnip } from "../lib/reconcile/knip.mjs";
 import { reconcileSyncpack } from "../lib/reconcile/syncpack.mjs";
 import { renderRecord, RECORD_NUMBERS } from "../lib/records.mjs";
 
-const USAGE = "usage: orrery reconcile <repoA> <repoB> [--sample surface=path]... [--out <dir>] [--json]";
+const USAGE = "usage: themis reconcile <repoA> <repoB> [--sample surface=path]... [--out <dir>] [--json]";
 
 const TOOLS = [
   ["eslint", (a, b) => reconcileEslint(a.eslint, b.eslint)],
@@ -2412,17 +2412,17 @@ export default async function reconcile(argv, deps = {}) {
 }
 ```
 
-Register in `cli.mjs` like the other commands, with usage `  orrery reconcile <repoA> <repoB> [--sample surface=path]... [--out <dir>]` and `  reconcile     generate the ruling records and rulings.json from two donor repositories`.
+Register in `cli.mjs` like the other commands, with usage `  themis reconcile <repoA> <repoB> [--sample surface=path]... [--out <dir>]` and `  reconcile     generate the ruling records and rulings.json from two donor repositories`.
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `pnpm vitest run packages/orrery/tests/records.test.mjs packages/orrery/tests/reconcile-command.test.mjs packages/orrery/tests/cli.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/records.test.mjs packages/themis/tests/reconcile-command.test.mjs packages/themis/tests/cli.test.mjs`
 Expected: PASS — 4 + 4 new tests
 
 - [ ] **Step 5: The real run, read-only**
 
 ```
-pnpm orrery reconcile Z:/Github/aeleos Z:/Github/libra --out docs/decisions
+pnpm themis reconcile Z:/Github/aeleos Z:/Github/libra --out docs/decisions
 ```
 
 Expected: twelve records written, `rulings.json` written, per-tool counts printed, exit 0. **If it exits 1 with residue, stop.** Residue means a rule the ordering cannot decide and that the pre-ruling table does not cover. Do not add a pre-ruling on your own judgment: report the residue rows verbatim and reply BLOCKED; the controller brings each one to the owner with the consistency and benefit arguments, and the ruling lands in `PRE_RULINGS` (Task 2's file) with its note before the run is repeated. Expected eslint totals from ADR 0002 on the `component` surface: agree 530, adopt 55, inert 370, and 55 conflicts split between strictest, parameter, consistency and benefit; the other five surfaces produce their own counts, record them in the report.
@@ -2431,7 +2431,7 @@ Expected: twelve records written, `rulings.json` written, per-tool counts printe
 
 ```bash
 git checkout -b feat/2b-reconcile-records origin/develop
-git add packages/orrery/src/lib/records.mjs packages/orrery/src/commands/reconcile.mjs packages/orrery/src/cli.mjs packages/orrery/tests/records.test.mjs packages/orrery/tests/reconcile-command.test.mjs docs/decisions/rulings.json docs/decisions/00*.md
+git add packages/themis/src/lib/records.mjs packages/themis/src/commands/reconcile.mjs packages/themis/src/cli.mjs packages/themis/tests/records.test.mjs packages/themis/tests/reconcile-command.test.mjs docs/decisions/rulings.json docs/decisions/00*.md
 git commit -m "feat(reconcile): ruling records and rulings.json from the two donors [GH-000]"
 git push -u origin HEAD && gh pr create --base develop --title "feat(reconcile): ruling records and rulings.json from the two donors [GH-000]" --body "Task 5 of the 2b plan. Twelve generated records; no residue." && gh pr merge --squash --auto
 ```
@@ -2443,42 +2443,42 @@ git push -u origin HEAD && gh pr create --base develop --title "feat(reconcile):
 The rows become code. Physics exports rules and plugins per surface; the class assembles runnable configs (language options, surface globs, physics rules plus class rules, then `eslint.local.mjs`) as a function of the body's config. The non-eslint tools export functions returning plain config objects. Everything generated carries a header naming the donor commits and its record.
 
 **Files:**
-- Create: `packages/orrery/src/lib/bundle/plugins.mjs` — plugin prefix → import source; the dependency list
-- Create: `packages/orrery/src/lib/bundle/eslint.mjs` — `renderPhysicsEslint(rows, provenance)`, `renderClassEslint(rows, provenance)`
-- Create: `packages/orrery/src/lib/bundle/tools.mjs` — `renderTsconfig`, `renderStylelint`, `renderJson(tool)`, `renderFunction(tool)`
-- Create: `packages/orrery/src/lib/bundle/write.mjs` — `writeBundle(rulings, packageDir)`
-- Create: `packages/orrery/src/lib/body-config.mjs` — `loadBodyConfig(cwd)`, `validateBodyConfig(config, schema)`, `resolveParameter(config, path)`
-- Create: `packages/orrery/classes/next-supabase-mono/schema.mjs` — hand-written: the fields a body may declare, with defaults
-- Create: `packages/orrery/classes/next-supabase-mono/eslint.base.mjs` — hand-written: language options and settings per surface
-- Modify: `packages/orrery/package.json` — `exports` for every tier path; `dependencies` for eslint, the plugins, and the tools
-- Create: `packages/orrery/src/commands/bundle.mjs` — `orrery bundle [--rulings docs/decisions/rulings.json]`; registered in `cli.mjs`
-- Test: `packages/orrery/tests/bundle.test.mjs`, `packages/orrery/tests/body-config.test.mjs`
-- Create by running: `packages/orrery/physics/*`, `packages/orrery/classes/next-supabase-mono/*` (generated files only)
+- Create: `packages/themis/src/lib/bundle/plugins.mjs` — plugin prefix → import source; the dependency list
+- Create: `packages/themis/src/lib/bundle/eslint.mjs` — `renderPhysicsEslint(rows, provenance)`, `renderClassEslint(rows, provenance)`
+- Create: `packages/themis/src/lib/bundle/tools.mjs` — `renderTsconfig`, `renderStylelint`, `renderJson(tool)`, `renderFunction(tool)`
+- Create: `packages/themis/src/lib/bundle/write.mjs` — `writeBundle(rulings, packageDir)`
+- Create: `packages/themis/src/lib/body-config.mjs` — `loadBodyConfig(cwd)`, `validateBodyConfig(config, schema)`, `resolveParameter(config, path)`
+- Create: `packages/themis/classes/next-supabase-mono/schema.mjs` — hand-written: the fields a body may declare, with defaults
+- Create: `packages/themis/classes/next-supabase-mono/eslint.base.mjs` — hand-written: language options and settings per surface
+- Modify: `packages/themis/package.json` — `exports` for every tier path; `dependencies` for eslint, the plugins, and the tools
+- Create: `packages/themis/src/commands/bundle.mjs` — `themis bundle [--rulings docs/decisions/rulings.json]`; registered in `cli.mjs`
+- Test: `packages/themis/tests/bundle.test.mjs`, `packages/themis/tests/body-config.test.mjs`
+- Create by running: `packages/themis/physics/*`, `packages/themis/classes/next-supabase-mono/*` (generated files only)
 
 **Interfaces:**
 - Consumes: `rulings.json` (Task 5): `{ provenance, rows }`.
 - Produces:
-  - `@vaoan/orrery/eslint` → `classes/next-supabase-mono/eslint.mjs` default export `(body?) => FlatConfig[]`; when `body` is omitted it calls `loadBodyConfig(process.cwd())`.
-  - `@vaoan/orrery/eslint/physics` → `physics/eslint.mjs` exporting `PLUGINS` and `rules(surface, body)`.
-  - `@vaoan/orrery/tsconfig` → `classes/next-supabase-mono/tsconfig.json` (extends `../../physics/tsconfig.json`).
-  - `@vaoan/orrery/stylelint`, `/jscpd`, `/cspell`, `/knip`, `/syncpack`, `/lint-staged`, `/prettier`, `/secretlint`, `/ls-lint` → functions `(body?) => object`.
+  - `@vaoan/themis/eslint` → `classes/next-supabase-mono/eslint.mjs` default export `(body?) => FlatConfig[]`; when `body` is omitted it calls `loadBodyConfig(process.cwd())`.
+  - `@vaoan/themis/eslint/physics` → `physics/eslint.mjs` exporting `PLUGINS` and `rules(surface, body)`.
+  - `@vaoan/themis/tsconfig` → `classes/next-supabase-mono/tsconfig.json` (extends `../../physics/tsconfig.json`).
+  - `@vaoan/themis/stylelint`, `/jscpd`, `/cspell`, `/knip`, `/syncpack`, `/lint-staged`, `/prettier`, `/secretlint`, `/ls-lint` → functions `(body?) => object`.
     Decision: EVERY one of them returns an OBJECT, ls-lint included — the generator has one rendering
     path (`literal`) and one contract, and a tool whose own file format is not JSON is serialised at
     the point of use: `materialise` (src/lib/observe/scratch.mjs) turns ls-lint's `{ ls: { <dir>: {
     <ext>: <rule> } } }` into the YAML the binary reads. Returning a pre-formatted string here would
     put a second, hand-written renderer inside the generated bundle, where nothing could diff it
     against the rulings.
-  - `@vaoan/orrery/prettier` is consumed through a `prettier.config.mjs` POINTER, not through
+  - `@vaoan/themis/prettier` is consumed through a `prettier.config.mjs` POINTER, not through
     package.json's `"prettier"` key (C1): the export is a function, as the spec requires of every
     export, and a package.json pointer hands prettier the module itself — an options object that is a
     function, which prettier rejects. The pointer calls it.
-  - `loadBodyConfig(cwd)`: walks up to the nearest `orrery.config.mjs`, imports it, validates it against the class schema, returns `{ root, config }`; throws naming unknown fields.
+  - `loadBodyConfig(cwd)`: walks up to the nearest `themis.config.mjs`, imports it, validates it against the class schema, returns `{ root, config }`; throws naming unknown fields.
   - `resolveParameter(config, "tailwind.entryPoint")` reads a dotted path with the schema default when absent.
   - The class schema (hand-written, the only non-generated policy file in the class):
 
 ```javascript
-// packages/orrery/classes/next-supabase-mono/schema.mjs
-// The fields a body's orrery.config.mjs may carry. No field can hold a severity, a threshold
+// packages/themis/classes/next-supabase-mono/schema.mjs
+// The fields a body's themis.config.mjs may carry. No field can hold a severity, a threshold
 // or a rule name: a body adds data and adds rules, never loosens a shared rule.
 export default {
   class: { type: "string", required: true, enum: ["next-supabase-mono"] },
@@ -2518,7 +2518,7 @@ export default {
 - [ ] **Step 1: Write the failing tests**
 
 ```javascript
-// packages/orrery/tests/body-config.test.mjs
+// packages/themis/tests/body-config.test.mjs
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
@@ -2527,7 +2527,7 @@ import { loadBodyConfig, validateBodyConfig, resolveParameter } from "../src/lib
 import schema from "../classes/next-supabase-mono/schema.mjs";
 
 let dir;
-beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-body-")); });
+beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), "themis-body-")); });
 afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
 
 describe("validateBodyConfig", () => {
@@ -2547,18 +2547,18 @@ describe("validateBodyConfig", () => {
 
 describe("loadBodyConfig", () => {
   it("walks up from a nested directory, validates, and returns the root", async () => {
-    fs.writeFileSync(path.join(dir, "orrery.config.mjs"), 'export default { class: "next-supabase-mono", tailwind: { entryPoint: "apps/a/src/app/globals.css" } };');
+    fs.writeFileSync(path.join(dir, "themis.config.mjs"), 'export default { class: "next-supabase-mono", tailwind: { entryPoint: "apps/a/src/app/globals.css" } };');
     fs.mkdirSync(path.join(dir, "apps/a/src"), { recursive: true });
     const { root, config } = await loadBodyConfig(path.join(dir, "apps/a/src"));
     expect(fs.realpathSync(root)).toBe(fs.realpathSync(dir));
     expect(config.tailwind.entryPoint).toBe("apps/a/src/app/globals.css");
   });
   it("throws naming the field when the config is invalid", async () => {
-    fs.writeFileSync(path.join(dir, "orrery.config.mjs"), 'export default { class: "next-supabase-mono", tailwind: { entryPoint: "x" }, severity: "error" };');
+    fs.writeFileSync(path.join(dir, "themis.config.mjs"), 'export default { class: "next-supabase-mono", tailwind: { entryPoint: "x" }, severity: "error" };');
     await expect(loadBodyConfig(dir)).rejects.toThrow(/unknown field severity/);
   });
   it("throws when no config is found", async () => {
-    await expect(loadBodyConfig(dir)).rejects.toThrow(/no orrery\.config\.mjs found/);
+    await expect(loadBodyConfig(dir)).rejects.toThrow(/no themis\.config\.mjs found/);
   });
 });
 
@@ -2574,7 +2574,7 @@ describe("resolveParameter", () => {
 ```
 
 ```javascript
-// packages/orrery/tests/bundle.test.mjs
+// packages/themis/tests/bundle.test.mjs
 import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
@@ -2619,7 +2619,7 @@ describe("renderPhysicsEslint", () => {
       row({ key: "unicorn/x", chosen: null, test: "inert", tier: null }),
     ];
     const src = renderPhysicsEslint(rows, provenance);
-    expect(src).toMatch(/^\/\/ GENERATED by orrery reconcile from aeleos aaa1111 and libra bbb2222 on 2026-09-09/);
+    expect(src).toMatch(/^\/\/ GENERATED by themis reconcile from aeleos aaa1111 and libra bbb2222 on 2026-09-09/);
     expect(src).toContain('import sonarjs from "eslint-plugin-sonarjs";');
     expect(src).toContain('export const PLUGINS = { "@typescript-eslint": tseslint.plugin, sonarjs };');
     expect(src).toContain('source: (body) => ({\n    "no-var": ["error"],\n    "sonarjs/cognitive-complexity": ["error", 15],\n  })');
@@ -2727,7 +2727,7 @@ describe("generated tool functions satisfy (body?) => object", () => {
   it("returns an object from every generated tool function called with no argument", async () => {
     const rulingsPath = fileURLToPath(new URL("../../../docs/decisions/rulings.json", import.meta.url));
     const rulings = JSON.parse(fs.readFileSync(rulingsPath, "utf8"));
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-contract-"));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "themis-contract-"));
     fs.mkdirSync(path.join(dir, "classes/next-supabase-mono"), { recursive: true });
     fs.writeFileSync(path.join(dir, "classes/next-supabase-mono/schema.mjs"), "export default {};");
     fs.writeFileSync(path.join(dir, "classes/next-supabase-mono/eslint.base.mjs"), "export default {};");
@@ -2755,7 +2755,7 @@ describe("generated tool functions satisfy (body?) => object", () => {
 
 describe("writeBundle", () => {
   it("writes every generated file under the package and nothing else", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-bundle-"));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "themis-bundle-"));
     fs.mkdirSync(path.join(dir, "classes/next-supabase-mono"), { recursive: true });
     fs.writeFileSync(path.join(dir, "classes/next-supabase-mono/schema.mjs"), "export default {};");
     fs.writeFileSync(path.join(dir, "classes/next-supabase-mono/eslint.base.mjs"), "export default {};");
@@ -2770,7 +2770,7 @@ describe("writeBundle", () => {
   });
 });
 
-describe("packages/orrery/package.json declares every dependency the bundle needs", () => {
+describe("packages/themis/package.json declares every dependency the bundle needs", () => {
   // The generated physics/class eslint files import a plugin module per rule prefix they carry,
   // and the materialised tool configs load the tools themselves. `dependenciesFor` is the single
   // list of what that comes to; the package manifest must be a superset of it, or the bundle
@@ -2779,7 +2779,7 @@ describe("packages/orrery/package.json declares every dependency the bundle need
   it("declares at least dependenciesFor(every prefix in the committed rulings.json)", () => {
     const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
     const rulings = JSON.parse(fs.readFileSync(path.join(root, "docs/decisions/rulings.json"), "utf8"));
-    const manifest = JSON.parse(fs.readFileSync(path.join(root, "packages/orrery/package.json"), "utf8"));
+    const manifest = JSON.parse(fs.readFileSync(path.join(root, "packages/themis/package.json"), "utf8"));
     const prefixes = [...new Set(
       rulings.rows
         .filter((r) => r.tool === "eslint" && r.tier && r.chosen !== null)
@@ -2787,20 +2787,20 @@ describe("packages/orrery/package.json declares every dependency the bundle need
     )].filter((p) => PLUGIN_SOURCES[p]);
     const needed = dependenciesFor(prefixes);
     const missing = Object.keys(needed).filter((name) => !(name in manifest.dependencies));
-    expect(missing, "packages/orrery/package.json is missing a dependency the bundle imports").toEqual([]);
+    expect(missing, "packages/themis/package.json is missing a dependency the bundle imports").toEqual([]);
   });
 });
 ```
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `pnpm vitest run packages/orrery/tests/body-config.test.mjs packages/orrery/tests/bundle.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/body-config.test.mjs packages/themis/tests/bundle.test.mjs`
 Expected: FAIL — cannot resolve the modules
 
 - [ ] **Step 3: Write the implementation**
 
 ```javascript
-// packages/orrery/src/lib/bundle/plugins.mjs
+// packages/themis/src/lib/bundle/plugins.mjs
 // Where each rule prefix's plugin comes from. `member` is the expression that yields the plugin
 // object after `import <name> from "<module>"`. Versions are the donors' (libra's where they differ).
 export const PLUGIN_SOURCES = {
@@ -2850,13 +2850,13 @@ export function dependenciesFor(prefixes) {
 ```
 
 ```javascript
-// packages/orrery/src/lib/bundle/eslint.mjs
+// packages/themis/src/lib/bundle/eslint.mjs
 import { SURFACES } from "../surfaces.mjs";
 import { PLUGIN_SOURCES, PRETTIER_OFF_PREFIXES } from "./plugins.mjs";
 import { pluginOf } from "../reconcile/tiers.mjs";
 import { assertMarker } from "../markers.mjs";
 
-const header = (p, record) => `// GENERATED by orrery reconcile from ${p.a.name} ${p.a.sha} and ${p.b.name} ${p.b.sha} on ${p.date}.\n// Record: docs/decisions/${record}. Edit by hand only through a pull request that also updates the record;\n// the donors are never consulted again.\n`;
+const header = (p, record) => `// GENERATED by themis reconcile from ${p.a.name} ${p.a.sha} and ${p.b.name} ${p.b.sha} on ${p.date}.\n// Record: docs/decisions/${record}. Edit by hand only through a pull request that also updates the record;\n// the donors are never consulted again.\n`;
 
 // Stable source rendering: sorted keys, parameters as body reads, spreads for parameter arrays.
 //
@@ -2993,7 +2993,7 @@ export default async function eslintConfig(explicitBody) {
   const { root, config } = explicitBody ? { root: explicitBody.root ?? process.cwd(), config: explicitBody } : await loadBodyConfig(process.cwd());
   const body = withDefaults(config, schema);
   const blocks = ORDER.map((surface) => ({
-    name: \`orrery/next-supabase-mono/\${surface}\`,
+    name: \`themis/next-supabase-mono/\${surface}\`,
     files: SURFACE_FILES[surface],
     // The unit-test globs (**/*.test.{ts,tsx}, **/tests/**/*.{ts,tsx}) also match aeleos's
     // apps/*/tests/e2e/*.spec.ts layout — a flat-config block with overlapping "files" still
@@ -3011,10 +3011,10 @@ export default async function eslintConfig(explicitBody) {
 }
 ```
 
-T3 amendment (this round — `fix/observe-streams-surfaces-and-baseline`): `SURFACE_FILES.unit-test`'s own globs (`**/*.test.{ts,tsx}`, `**/tests/**/*.{ts,tsx}`) also match aeleos's e2e layout, `apps/*/tests/e2e/*.spec.ts` — a flat-config block with overlapping `files` still applies regardless of another block's own `files`/`ignores`, so a file under `apps/*/tests/e2e/` picked up both the `unit-test` block's `testing-library`/`vitest` rules (which should never apply to e2e specs) and the `e2e` block's own rules. Found running `orrery observe` with `--tools eslint` against aeleos for real: 28 `testing-library/*`/`vitest/*` rules present and on in aeleos's e2e effective config, none of them named by any ruling for that surface. The fix is the `unit-test` block's `ignores: ["**/e2e/**"]` above — `ORDER` runs `e2e` after `unit-test`, so the `e2e` block still applies its own rules to the same path; `unit-test` just steps aside for it. `renderClassEslint`'s `SURFACE_FILES` map itself is unchanged (T3 is a rendering-time addition to the generated `blocks` array, not a glob change).
+T3 amendment (this round — `fix/observe-streams-surfaces-and-baseline`): `SURFACE_FILES.unit-test`'s own globs (`**/*.test.{ts,tsx}`, `**/tests/**/*.{ts,tsx}`) also match aeleos's e2e layout, `apps/*/tests/e2e/*.spec.ts` — a flat-config block with overlapping `files` still applies regardless of another block's own `files`/`ignores`, so a file under `apps/*/tests/e2e/` picked up both the `unit-test` block's `testing-library`/`vitest` rules (which should never apply to e2e specs) and the `e2e` block's own rules. Found running `themis observe` with `--tools eslint` against aeleos for real: 28 `testing-library/*`/`vitest/*` rules present and on in aeleos's e2e effective config, none of them named by any ruling for that surface. The fix is the `unit-test` block's `ignores: ["**/e2e/**"]` above — `ORDER` runs `e2e` after `unit-test`, so the `e2e` block still applies its own rules to the same path; `unit-test` just steps aside for it. `renderClassEslint`'s `SURFACE_FILES` map itself is unchanged (T3 is a rendering-time addition to the generated `blocks` array, not a glob change).
 
 ```javascript
-// packages/orrery/src/lib/bundle/tools.mjs
+// packages/themis/src/lib/bundle/tools.mjs
 import { literal } from "./eslint.mjs";
 import { withDefaults } from "../body-config.mjs";
 import schema from "../../../classes/next-supabase-mono/schema.mjs";
@@ -3024,8 +3024,8 @@ import schema from "../../../classes/next-supabase-mono/schema.mjs";
 // uses it to embed each `$parameter`'s default alongside its optional-chain read.
 const DEFAULT_BODY = withDefaults({}, schema);
 
-const header = (p, record) => `// GENERATED by orrery reconcile from ${p.a.name} ${p.a.sha} and ${p.b.name} ${p.b.sha} on ${p.date}. Record: docs/decisions/${record}.\n`;
-const jsonHeader = (p, record) => `GENERATED by orrery reconcile from ${p.a.name} ${p.a.sha} and ${p.b.name} ${p.b.sha} on ${p.date}. Record: docs/decisions/${record}.`;
+const header = (p, record) => `// GENERATED by themis reconcile from ${p.a.name} ${p.a.sha} and ${p.b.name} ${p.b.sha} on ${p.date}. Record: docs/decisions/${record}.\n`;
+const jsonHeader = (p, record) => `GENERATED by themis reconcile from ${p.a.name} ${p.a.sha} and ${p.b.name} ${p.b.sha} on ${p.date}. Record: docs/decisions/${record}.`;
 
 // C1: a row key is a dotted path into the tool's config object — except when the key is itself a
 // glob, and lint-staged's keys always are. `*.{cjs,js,jsx,mjs,ts,tsx}` split on "." produced
@@ -3131,7 +3131,7 @@ is the spread. `renderObject` from the design above was dead code once the splic
 dropped.)
 
 ```javascript
-// packages/orrery/src/lib/bundle/write.mjs
+// packages/themis/src/lib/bundle/write.mjs
 import fs from "node:fs";
 import path from "node:path";
 import { renderPhysicsEslint, renderClassEslint } from "./eslint.mjs";
@@ -3156,7 +3156,7 @@ export function writeBundle({ provenance, rows }, packageDir) {
 ```
 
 ```javascript
-// packages/orrery/src/lib/body-config.mjs
+// packages/themis/src/lib/body-config.mjs
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -3200,7 +3200,7 @@ export function resolveParameter(config, dotted, schema) {
 export async function loadBodyConfig(startDir) {
   let dir = path.resolve(startDir);
   for (;;) {
-    const file = path.join(dir, "orrery.config.mjs");
+    const file = path.join(dir, "themis.config.mjs");
     if (fs.existsSync(file)) {
       const config = (await import(pathToFileURL(file).href)).default;
       const schema = (await import(`../../classes/${config?.class ?? "next-supabase-mono"}/schema.mjs`)).default;
@@ -3209,14 +3209,14 @@ export async function loadBodyConfig(startDir) {
       return { root: dir, config };
     }
     const parent = path.dirname(dir);
-    if (parent === dir) throw new Error(`no orrery.config.mjs found from ${startDir} upward`);
+    if (parent === dir) throw new Error(`no themis.config.mjs found from ${startDir} upward`);
     dir = parent;
   }
 }
 ```
 
 ```javascript
-// packages/orrery/classes/next-supabase-mono/eslint.base.mjs
+// packages/themis/classes/next-supabase-mono/eslint.base.mjs
 // Hand-written: what every block needs besides rules. Language options come from the donors'
 // effective configs (both use typescript-eslint's parser with the project service); settings
 // are what the React and boundaries plugins need to resolve elements and versions.
@@ -3227,10 +3227,10 @@ import tseslint from "typescript-eslint";
 // The resolver is named by ABSOLUTE PATH, not by the short name "typescript". eslint-module-utils
 // (which eslint-plugin-boundaries and eslint-plugin-import both resolve through) loads a named
 // resolver from the linted FILE's own package directory, or from its own directory inside the
-// store — never from Orrery's. Under pnpm's isolated layout that means a body which does not
+// store — never from Themis's. Under pnpm's isolated layout that means a body which does not
 // itself depend on eslint-import-resolver-typescript silently gets no resolver at all, every
 // aliased import becomes an unplaceable element, and boundaries reports nothing while looking
-// healthy. Orrery ships the resolver, so Orrery is the one that can say where it is.
+// healthy. Themis ships the resolver, so Themis is the one that can say where it is.
 const RESOLVER = createRequire(import.meta.url).resolve("eslint-import-resolver-typescript");
 
 const STANDARD_ELEMENTS = [
@@ -3289,9 +3289,9 @@ export default function base(surface, body, root) {
 }
 ```
 
-S1/S2 amendment (this round): both `no-undef` and the missing `package` boundaries element were gaps the first `orrery observe` run against the fixture and libra exposed — `globals` was added to `packages/orrery/package.json` dependencies (it was not there when Task 6 first landed).
+S1/S2 amendment (this round): both `no-undef` and the missing `package` boundaries element were gaps the first `themis observe` run against the fixture and libra exposed — `globals` was added to `packages/themis/package.json` dependencies (it was not there when Task 6 first landed).
 
-`packages/orrery/package.json` gains:
+`packages/themis/package.json` gains:
 
 ```json
 "exports": {
@@ -3315,36 +3315,36 @@ S1/S2 amendment (this round): both `no-undef` and the missing `package` boundari
 "files": ["bin", "src", "physics", "classes", "templates"],
 ```
 
-and `dependencies` from `dependenciesFor(prefixes present in rulings.json)` — write them with a small one-off `node -e` and commit the result; `pnpm install` must succeed at the root (this pulls the plugins into Orrery's node_modules, which the fixture body and `observe` rely on).
+and `dependencies` from `dependenciesFor(prefixes present in rulings.json)` — write them with a small one-off `node -e` and commit the result; `pnpm install` must succeed at the root (this pulls the plugins into Themis's node_modules, which the fixture body and `observe` rely on).
 
-`packages/orrery/src/commands/bundle.mjs`: `orrery bundle [--rulings docs/decisions/rulings.json] [--package packages/orrery]` reads the rulings, calls `writeBundle`, prints the written paths, exits 0; exit 1 if the rulings contain residue. Register in `cli.mjs`.
+`packages/themis/src/commands/bundle.mjs`: `themis bundle [--rulings docs/decisions/rulings.json] [--package packages/themis]` reads the rulings, calls `writeBundle`, prints the written paths, exits 0; exit 1 if the rulings contain residue. Register in `cli.mjs`.
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `pnpm vitest run packages/orrery/tests/body-config.test.mjs packages/orrery/tests/bundle.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/body-config.test.mjs packages/themis/tests/bundle.test.mjs`
 Expected: PASS — 7 + 7 tests
 
 - [ ] **Step 5: Generate the bundle for real and install its dependencies**
 
 ```
-pnpm orrery bundle
-node -e "import('./packages/orrery/src/lib/bundle/plugins.mjs').then(m => { const r = JSON.parse(require('fs').readFileSync('docs/decisions/rulings.json','utf8')); const prefixes = [...new Set(r.rows.filter(x => x.tool==='eslint' && x.tier).map(x => x.key.includes('/') ? x.key.slice(0, x.key.lastIndexOf('/')) : 'core'))]; console.log(JSON.stringify(m.dependenciesFor(prefixes), null, 2)); })"
+pnpm themis bundle
+node -e "import('./packages/themis/src/lib/bundle/plugins.mjs').then(m => { const r = JSON.parse(require('fs').readFileSync('docs/decisions/rulings.json','utf8')); const prefixes = [...new Set(r.rows.filter(x => x.tool==='eslint' && x.tier).map(x => x.key.includes('/') ? x.key.slice(0, x.key.lastIndexOf('/')) : 'core'))]; console.log(JSON.stringify(m.dependenciesFor(prefixes), null, 2)); })"
 ```
 
-Paste the printed object into `packages/orrery/package.json` `dependencies`, then `pnpm install` at the root. Then prove the generated class config loads: `node -e "import('./packages/orrery/classes/next-supabase-mono/eslint.mjs').then(m => m.default({ class: 'next-supabase-mono', tailwind: { entryPoint: 'x.css' }, root: process.cwd() })).then(c => console.log(c.length, 'blocks'))"` prints `7 blocks` (six surfaces, prettier, and zero local). If the import throws on a plugin's export shape (a plugin whose default export is not the plugin object), fix the `member` expression in `plugins.mjs` and note it.
+Paste the printed object into `packages/themis/package.json` `dependencies`, then `pnpm install` at the root. Then prove the generated class config loads: `node -e "import('./packages/themis/classes/next-supabase-mono/eslint.mjs').then(m => m.default({ class: 'next-supabase-mono', tailwind: { entryPoint: 'x.css' }, root: process.cwd() })).then(c => console.log(c.length, 'blocks'))"` prints `7 blocks` (six surfaces, prettier, and zero local). If the import throws on a plugin's export shape (a plugin whose default export is not the plugin object), fix the `member` expression in `plugins.mjs` and note it.
 
 - [ ] **Step 6: Commit and land**
 
 ```bash
 git checkout -b feat/2b-bundle origin/develop
-git add packages/orrery/src/lib/bundle packages/orrery/src/lib/body-config.mjs packages/orrery/src/commands/bundle.mjs packages/orrery/src/cli.mjs packages/orrery/classes packages/orrery/physics packages/orrery/package.json pnpm-lock.yaml packages/orrery/tests/bundle.test.mjs packages/orrery/tests/body-config.test.mjs
+git add packages/themis/src/lib/bundle packages/themis/src/lib/body-config.mjs packages/themis/src/commands/bundle.mjs packages/themis/src/cli.mjs packages/themis/classes packages/themis/physics packages/themis/package.json pnpm-lock.yaml packages/themis/tests/bundle.test.mjs packages/themis/tests/body-config.test.mjs
 git commit -m "feat(bundle): generated physics and class tiers, the body-config loader, the class schema [GH-000]"
 git push -u origin HEAD && gh pr create --base develop --title "feat(bundle): generated tiers, body-config loader and class schema [GH-000]" --body "Task 6 of the 2b plan." && gh pr merge --squash --auto
 ```
 
-S1 amendment, PR #31 review (this round — `fix/observe-streams-surfaces-and-baseline`): `SURFACE_GLOBALS` dropped its `source`/`component`/`package` entries outright rather than setting them to `{ ...globals.browser, ...globals.node }`. Both donors turn `no-undef` off on those three surfaces (rulings.json: agree, chosen `[0, ...]`), and type-aware parsing resolves `window`/`process`/etc. through TypeScript's own lib types, not eslint's globals machinery — so there was no rule left on those surfaces to consume a globals declaration, and declaring one was dead weight the PR #31 review caught. `base()`'s `languageOptions.globals` now reads `SURFACE_GLOBALS[surface] ?? {}` (`?? {}`, not left `undefined`): ESLint's own flat-config validator rejects `languageOptions.globals: undefined` outright (`Key "globals": Expected an object`), so the three surfaces that no longer have a `SURFACE_GLOBALS` entry still need an empty object, not a missing key. `script` keeps `globals.node` (adopted from aeleos, `no-undef` still on there); `unit-test`/`e2e` keep both. `packages/orrery/tests/eslint-base.test.mjs`'s three `source`/`component`/`package` cases were inverted to assert absence instead of presence.
+S1 amendment, PR #31 review (this round — `fix/observe-streams-surfaces-and-baseline`): `SURFACE_GLOBALS` dropped its `source`/`component`/`package` entries outright rather than setting them to `{ ...globals.browser, ...globals.node }`. Both donors turn `no-undef` off on those three surfaces (rulings.json: agree, chosen `[0, ...]`), and type-aware parsing resolves `window`/`process`/etc. through TypeScript's own lib types, not eslint's globals machinery — so there was no rule left on those surfaces to consume a globals declaration, and declaring one was dead weight the PR #31 review caught. `base()`'s `languageOptions.globals` now reads `SURFACE_GLOBALS[surface] ?? {}` (`?? {}`, not left `undefined`): ESLint's own flat-config validator rejects `languageOptions.globals: undefined` outright (`Key "globals": Expected an object`), so the three surfaces that no longer have a `SURFACE_GLOBALS` entry still need an empty object, not a missing key. `script` keeps `globals.node` (adopted from aeleos, `no-undef` still on there); `unit-test`/`e2e` keep both. `packages/themis/tests/eslint-base.test.mjs`'s three `source`/`component`/`package` cases were inverted to assert absence instead of presence.
 
-The same PR #31 review flagged two comment-vs-plan mismatches in `packages/orrery/src/lib/observe/code.mjs`, fixed in the same commit as the T1–T4 work below: `ruledValueMatches`'s closing comment pointed at itself ("They did: see `ruledValueMatches` below") instead of at `tightenedFor`, the actual sibling function the S4 carve-out has to agree with; and `tightenedFor`'s own comment picked up a stray line-wrap versus this plan's mirror. Both are cosmetic — no behaviour changed — but `tightenedFor`'s comment is superseded anyway by the T4b addition below.
+The same PR #31 review flagged two comment-vs-plan mismatches in `packages/themis/src/lib/observe/code.mjs`, fixed in the same commit as the T1–T4 work below: `ruledValueMatches`'s closing comment pointed at itself ("They did: see `ruledValueMatches` below") instead of at `tightenedFor`, the actual sibling function the S4 carve-out has to agree with; and `tightenedFor`'s own comment picked up a stray line-wrap versus this plan's mirror. Both are cosmetic — no behaviour changed — but `tightenedFor`'s comment is superseded anyway by the T4b addition below.
 
 ---
 
@@ -3354,10 +3354,10 @@ A minimal `next-supabase-mono` body inside this repository, wired to the bundle 
 
 **Files:**
 - Modify: `pnpm-workspace.yaml` — add `fixtures/*`
-- Create: `fixtures/next-supabase-mono/package.json`, `orrery.config.mjs`, `eslint.config.mjs`, `eslint.local.mjs`, `tsconfig.json`, `apps/web/src/features/thing/application/use-thing.ts`, `apps/web/src/features/thing/presentation/thing-tile.tsx`, `apps/web/src/app/layout.tsx`, `apps/web/src/app/globals.css`, `apps/web/tests/use-thing.test.ts`, `apps/web/e2e/home.spec.ts`, `packages/core/src/thing.ts`, `scripts/build.mjs`
-- Create: `packages/orrery/templates/next-supabase-mono/` — the pointer files `init` will write: `eslint.config.mjs`, `eslint.local.mjs`, `tsconfig.json`, `.husky/commit-msg`, `.husky/pre-push`, `.husky/pre-commit`, `.github/workflows/ci.yml` (7 files: the "three pointer files" of Step 1 below are `eslint.config.mjs`, `eslint.local.mjs`, and `tsconfig.json`); the fixture's copies are byte-identical to these
-- Test: `packages/orrery/tests/bundle-honesty.test.mjs`
-- Test: `packages/orrery/tests/fixture-pointers.test.mjs`
+- Create: `fixtures/next-supabase-mono/package.json`, `themis.config.mjs`, `eslint.config.mjs`, `eslint.local.mjs`, `tsconfig.json`, `apps/web/src/features/thing/application/use-thing.ts`, `apps/web/src/features/thing/presentation/thing-tile.tsx`, `apps/web/src/app/layout.tsx`, `apps/web/src/app/globals.css`, `apps/web/tests/use-thing.test.ts`, `apps/web/e2e/home.spec.ts`, `packages/core/src/thing.ts`, `scripts/build.mjs`
+- Create: `packages/themis/templates/next-supabase-mono/` — the pointer files `init` will write: `eslint.config.mjs`, `eslint.local.mjs`, `tsconfig.json`, `.husky/commit-msg`, `.husky/pre-push`, `.husky/pre-commit`, `.github/workflows/ci.yml` (7 files: the "three pointer files" of Step 1 below are `eslint.config.mjs`, `eslint.local.mjs`, and `tsconfig.json`); the fixture's copies are byte-identical to these
+- Test: `packages/themis/tests/bundle-honesty.test.mjs`
+- Test: `packages/themis/tests/fixture-pointers.test.mjs`
 
 **Interfaces:**
 - Consumes: the generated bundle (Task 6), `readEffectiveConfig` (2a), `rulings.json` (Task 5).
@@ -3367,12 +3367,12 @@ A minimal `next-supabase-mono` body inside this repository, wired to the bundle 
 
 `fixtures/next-supabase-mono/package.json`:
 ```json
-{ "name": "fixture-next-supabase-mono", "private": true, "type": "module", "devDependencies": { "@vaoan/orrery": "workspace:*", "eslint": "^9.39.5" }, "prettier": "@vaoan/orrery/prettier" }
+{ "name": "fixture-next-supabase-mono", "private": true, "type": "module", "devDependencies": { "@vaoan/themis": "workspace:*", "eslint": "^9.39.5" }, "prettier": "@vaoan/themis/prettier" }
 ```
 
-Accepted deviation from the original sketch (fix round 1): `eslint` is a direct fixture devDependency, at the same range `@vaoan/orrery` itself depends on. `readEffectiveConfig` resolves the ESLint binary by walking `node_modules/eslint` up from the *target* directory on disk, never through Node's own resolver — real bodies (aeleos, libra) satisfy this because each installs its own `eslint` at its own repo root. The fixture's root is `fixtures/next-supabase-mono`, one level below Orrery's own root; `@vaoan/orrery`'s `eslint` lives under `packages/orrery`, which is not an ancestor of the fixture, so without this the walk finds nothing and every `--print-config` call fails with "eslint is not installed". Declaring `eslint` directly on the fixture mirrors what every real body already needs.
+Accepted deviation from the original sketch (fix round 1): `eslint` is a direct fixture devDependency, at the same range `@vaoan/themis` itself depends on. `readEffectiveConfig` resolves the ESLint binary by walking `node_modules/eslint` up from the *target* directory on disk, never through Node's own resolver — real bodies (aeleos, libra) satisfy this because each installs its own `eslint` at its own repo root. The fixture's root is `fixtures/next-supabase-mono`, one level below Themis's own root; `@vaoan/themis`'s `eslint` lives under `packages/themis`, which is not an ancestor of the fixture, so without this the walk finds nothing and every `--print-config` call fails with "eslint is not installed". Declaring `eslint` directly on the fixture mirrors what every real body already needs.
 
-`orrery.config.mjs`:
+`themis.config.mjs`:
 ```javascript
 export default {
   class: "next-supabase-mono",
@@ -3380,32 +3380,32 @@ export default {
   floatingPeers: [],
   tailwind: { entryPoint: "apps/web/src/app/globals.css" },
   boundaries: { elements: [], allow: [] },
-  spelling: ["orrery"],
+  spelling: ["themis"],
 };
 ```
 
 `eslint.config.mjs` (a pointer, byte-identical to the template):
 ```javascript
-import orrery from "@vaoan/orrery/eslint";
-export default await orrery();
+import themis from "@vaoan/themis/eslint";
+export default await themis();
 ```
 
 `eslint.local.mjs`: `export default [];`
 
-`tsconfig.json`: `{ "extends": "@vaoan/orrery/tsconfig", "include": ["apps/*/src", "apps/*/tests", "apps/*/e2e", "packages/*/src", "packages/*/tests"] }`
+`tsconfig.json`: `{ "extends": "@vaoan/themis/tsconfig", "include": ["apps/*/src", "apps/*/tests", "apps/*/e2e", "packages/*/src", "packages/*/tests"] }`
 
-S3 amendment (this round): both donors' per-app tsconfigs include `**/*.ts`, so tests and e2e sit inside their own project — the original two-entry include left the fixture's e2e/unit-test files "not found by the project service". The include list above is what both the template and the fixture's own copy carry now (still byte-identical); `packages/orrery/src/lib/observe/scratch.mjs`'s `tsconfigInclude` default (Task 9) was widened to match.
+S3 amendment (this round): both donors' per-app tsconfigs include `**/*.ts`, so tests and e2e sit inside their own project — the original two-entry include left the fixture's e2e/unit-test files "not found by the project service". The include list above is what both the template and the fixture's own copy carry now (still byte-identical); `packages/themis/src/lib/observe/scratch.mjs`'s `tsconfigInclude` default (Task 9) was widened to match.
 
 Source files are two to five lines each, valid TypeScript and TSX that violate nothing; `globals.css` is `@import "tailwindcss";`.
 
-S5 amendment (this round): the first real `orrery observe` run found the fixture was not actually clean — `sonarjs/prefer-read-only-props` (component/source props must be `readonly`), `jsdoc/require-param` (an `@param` tag per parameter), and `i18next/no-literal-string` (`mode: "all"` flags every string literal, including a template literal's static text). `layout.tsx`'s and `thing-tile.tsx`'s prop types gained `readonly`; `use-thing.ts` and `thing.ts` gained a full `@param`/`@returns` JSDoc block and moved their `"thing-"` prefix into an `UPPER_CASE` module constant (`THING_LABEL_PREFIX`) — eslint-plugin-i18next exempts a literal assigned to an all-uppercase identifier as machine data, not user-facing copy, so the template literal's own quasis carry no literal text once the prefix is interpolated in. No file gained an eslint-disable comment.
+S5 amendment (this round): the first real `themis observe` run found the fixture was not actually clean — `sonarjs/prefer-read-only-props` (component/source props must be `readonly`), `jsdoc/require-param` (an `@param` tag per parameter), and `i18next/no-literal-string` (`mode: "all"` flags every string literal, including a template literal's static text). `layout.tsx`'s and `thing-tile.tsx`'s prop types gained `readonly`; `use-thing.ts` and `thing.ts` gained a full `@param`/`@returns` JSDoc block and moved their `"thing-"` prefix into an `UPPER_CASE` module constant (`THING_LABEL_PREFIX`) — eslint-plugin-i18next exempts a literal assigned to an all-uppercase identifier as machine data, not user-facing copy, so the template literal's own quasis carry no literal text once the prefix is interpolated in. No file gained an eslint-disable comment.
 
-Templates: copy the three pointer files (`eslint.config.mjs`, `eslint.local.mjs`, `tsconfig.json`) and the three `.husky` hooks (`pnpm orrery hook <name>` one-liners) and the five-line `ci.yml` caller (`uses: vaoan/Orrery/.github/workflows/ci.yml@main`) into `packages/orrery/templates/next-supabase-mono/` with the same relative paths — 7 files, matching `fixture-pointers.test.mjs`'s `files.length >= 7`.
+Templates: copy the three pointer files (`eslint.config.mjs`, `eslint.local.mjs`, `tsconfig.json`) and the three `.husky` hooks (`pnpm themis hook <name>` one-liners) and the five-line `ci.yml` caller (`uses: vaoan/Themis/.github/workflows/ci.yml@main`) into `packages/themis/templates/next-supabase-mono/` with the same relative paths — 7 files, matching `fixture-pointers.test.mjs`'s `files.length >= 7`.
 
 - [ ] **Step 2: Write the failing tests**
 
 ```javascript
-// packages/orrery/tests/bundle-honesty.test.mjs
+// packages/themis/tests/bundle-honesty.test.mjs
 // The generated bundle must produce, for the fixture body, exactly the rulings for every surface.
 import { describe, it, expect } from "vitest";
 import fs from "node:fs";
@@ -3430,10 +3430,10 @@ const SAMPLES = {
   script: "scripts/build.mjs",
   package: "packages/core/src/thing.ts",
 };
-const rawBody = (await import(path.join(fixture, "orrery.config.mjs").replace(/^([A-Za-z]):/, "file:///$1:"))).default;
+const rawBody = (await import(path.join(fixture, "themis.config.mjs").replace(/^([A-Za-z]):/, "file:///$1:"))).default;
 // The real bundle always reads a schema-defaulted body (`withDefaults`, in body-config.mjs) — a
 // $parameter such as "e2e.assertFunctionNames" or "i18n.excludedWords" that the fixture's
-// orrery.config.mjs leaves unset resolves to the schema's default ([]), never to `undefined`.
+// themis.config.mjs leaves unset resolves to the schema's default ([]), never to `undefined`.
 // Reading the raw, un-defaulted config here would make `read()` return `undefined` for anything
 // the fixture omits, which JSON.stringify then silently drops — a false "want": {} that does not
 // reflect what the generator actually renders.
@@ -3442,7 +3442,7 @@ const body = withDefaults(rawBody, schema);
 // The honesty comparison itself (canonical key-order-independent matching, the subset "actual can
 // carry a schema-filled default `want` never spelled out" slack, the eslint-config-prettier
 // exemption) lives in src/lib/observe/code.mjs's effectiveMismatches — this is the same function
-// `orrery observe` runs against a real body, so there is one comparison, not two.
+// `themis observe` runs against a real body, so there is one comparison, not two.
 describe.each(Object.entries(SAMPLES))("surface %s", (surface, file) => {
   const effective = readEffectiveConfig(fixture, file);
   const mismatches = effectiveMismatches(effective.rules, rulings.rows, surface, body);
@@ -3486,7 +3486,7 @@ describe("surface e2e (aeleos's nested apps/*/tests/e2e/ layout)", () => {
 
 // Regression pre-check: a ruling can name a rule that does not exist in the plugin version the
 // bundle actually ships (this is exactly how "@next/next/no-location-assign-relative-destination"
-// broke every real ESLint run before packages/orrery/package.json caught up to the version the
+// broke every real ESLint run before packages/themis/package.json caught up to the version the
 // ruling was measured against). This checks rule *existence* against the installed plugins
 // directly — no fixture, no --print-config — so it fails fast and names the exact rule and plugin,
 // rather than surfacing as an opaque `eslint --print-config` crash inside the surface tests above.
@@ -3534,14 +3534,14 @@ describe("every ruled, non-off eslint rule exists in the plugin the bundle ships
 ```
 
 ```javascript
-// packages/orrery/tests/fixture-pointers.test.mjs
+// packages/themis/tests/fixture-pointers.test.mjs
 import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
-const templates = path.join(root, "packages/orrery/templates/next-supabase-mono");
+const templates = path.join(root, "packages/themis/templates/next-supabase-mono");
 const fixture = path.join(root, "fixtures/next-supabase-mono");
 
 describe("fixture pointer files", () => {
@@ -3562,44 +3562,44 @@ describe("fixture pointer files", () => {
 
 - [ ] **Step 3: Run the tests to verify they fail**
 
-Run: `pnpm vitest run packages/orrery/tests/fixture-pointers.test.mjs packages/orrery/tests/bundle-honesty.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/fixture-pointers.test.mjs packages/themis/tests/bundle-honesty.test.mjs`
 Expected: FAIL — templates missing; then, once the fixture exists, the honesty test reports every mismatch by rule. Each mismatch is a real defect in the generator (a parameter not resolved, a surface glob that does not match the sample, a plugin export shape); fix the generator, not the test, and never edit `rulings.json` by hand.
 
 - [ ] **Step 4: Make them pass**
 
-`pnpm install` after adding the workspace entry so the fixture links `@vaoan/orrery`. Run the honesty test; expect it to be green for all six surfaces. Record in the report the runtime per surface.
+`pnpm install` after adding the workspace entry so the fixture links `@vaoan/themis`. Run the honesty test; expect it to be green for all six surfaces. Record in the report the runtime per surface.
 
 - [ ] **Step 5: Commit and land**
 
 ```bash
 git checkout -b feat/2b-fixture-body origin/develop
-git add pnpm-workspace.yaml pnpm-lock.yaml fixtures packages/orrery/templates packages/orrery/tests/bundle-honesty.test.mjs packages/orrery/tests/fixture-pointers.test.mjs
+git add pnpm-workspace.yaml pnpm-lock.yaml fixtures packages/themis/templates packages/themis/tests/bundle-honesty.test.mjs packages/themis/tests/fixture-pointers.test.mjs
 git commit -m "feat(fixture): the fixture body, the pointer templates, and the bundle-honesty test [GH-000]"
 git push -u origin HEAD && gh pr create --base develop --title "feat(fixture): fixture body, pointer templates, bundle-honesty test [GH-000]" --body "Task 7 of the 2b plan." && gh pr merge --squash --auto
 ```
 
-T3 amendment (this round — `fix/observe-streams-surfaces-and-baseline`): added `fixtures/next-supabase-mono/apps/web/tests/e2e/smoke.spec.ts` — aeleos's own nested e2e layout (`apps/*/tests/e2e/`, not the fixture's existing `apps/*/e2e/`), Playwright-style, lint-clean. `packages/orrery/tests/bundle-honesty.test.mjs` gained a second describe block, `"surface e2e (aeleos's nested apps/*/tests/e2e/ layout)"`, checking that file's effective config with `effectiveMismatches` the same way `SAMPLES.e2e` (`apps/web/e2e/home.spec.ts`) already is, plus an explicit assertion that no `testing-library/*` or `vitest/*` rule is on for it — the exact shape of the T3 defect this file exists to catch. Kept as a second, separately-labelled describe block rather than a second key in `SAMPLES`, since `SAMPLES` is a plain object keyed by surface name and both files are surface `"e2e"`.
+T3 amendment (this round — `fix/observe-streams-surfaces-and-baseline`): added `fixtures/next-supabase-mono/apps/web/tests/e2e/smoke.spec.ts` — aeleos's own nested e2e layout (`apps/*/tests/e2e/`, not the fixture's existing `apps/*/e2e/`), Playwright-style, lint-clean. `packages/themis/tests/bundle-honesty.test.mjs` gained a second describe block, `"surface e2e (aeleos's nested apps/*/tests/e2e/ layout)"`, checking that file's effective config with `effectiveMismatches` the same way `SAMPLES.e2e` (`apps/web/e2e/home.spec.ts`) already is, plus an explicit assertion that no `testing-library/*` or `vitest/*` rule is on for it — the exact shape of the T3 defect this file exists to catch. Kept as a second, separately-labelled describe block rather than a second key in `SAMPLES`, since `SAMPLES` is a plain object keyed by surface name and both files are surface `"e2e"`.
 
 ---
 
-### Task 8: `orrery observe`, part one: version drift and pointer drift
+### Task 8: `themis observe`, part one: version drift and pointer drift
 
 **Files:**
-- Create: `packages/orrery/src/lib/observe/version.mjs`
-- Create: `packages/orrery/src/lib/observe/pointers.mjs`
-- Test: `packages/orrery/tests/observe-version.test.mjs`
-- Test: `packages/orrery/tests/observe-pointers.test.mjs`
+- Create: `packages/themis/src/lib/observe/version.mjs`
+- Create: `packages/themis/src/lib/observe/pointers.mjs`
+- Test: `packages/themis/tests/observe-version.test.mjs`
+- Test: `packages/themis/tests/observe-pointers.test.mjs`
 
 **Interfaces:**
 - Consumes: `validateBodyConfig` (Task 6); the templates directory (Task 7).
 - Produces:
-  - `versionDrift(bodyDir, { run, remote = "https://github.com/vaoan/Orrery.git" }) => { installed: sha | null, latest: sha, behind: boolean, note }` — `installed` is the commit recorded for `@vaoan/orrery` in `pnpm-lock.yaml` (`null` when the body does not depend on it yet, which is every body before the cut-over); `latest` is `git ls-remote <remote> refs/heads/main`.
-  - `pointerDrift(bodyDir, templatesDir, schema) => { files: [{ path, state: "identical" | "differs" | "missing" }], local: string[], config: string[] }` — `local` lists violations in `eslint.local.mjs` (an entry without `files`, or a `files` pattern containing `*`), `config` lists schema errors in `orrery.config.mjs` or `["missing"]`.
+  - `versionDrift(bodyDir, { run, remote = "https://github.com/vaoan/Themis.git" }) => { installed: sha | null, latest: sha, behind: boolean, note }` — `installed` is the commit recorded for `@vaoan/themis` in `pnpm-lock.yaml` (`null` when the body does not depend on it yet, which is every body before the cut-over); `latest` is `git ls-remote <remote> refs/heads/main`.
+  - `pointerDrift(bodyDir, templatesDir, schema) => { files: [{ path, state: "identical" | "differs" | "missing" }], local: string[], config: string[] }` — `local` lists violations in `eslint.local.mjs` (an entry without `files`, or a `files` pattern containing `*`), `config` lists schema errors in `themis.config.mjs` or `["missing"]`.
 
 - [ ] **Step 1: Write the failing tests**
 
 ```javascript
-// packages/orrery/tests/observe-version.test.mjs
+// packages/themis/tests/observe-version.test.mjs
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
@@ -3611,14 +3611,14 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../.
 const fixture = path.join(root, "fixtures/next-supabase-mono");
 
 let dir;
-beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-ver-")); });
+beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), "themis-ver-")); });
 afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
 const latest = "0123456789abcdef0123456789abcdef01234567";
 const run = () => `${latest}\trefs/heads/main\n`;
 
 describe("installedCommit", () => {
-  it("finds the git-resolved commit of @vaoan/orrery in a pnpm lockfile", () => {
-    const lock = `packages:\n  '@vaoan/orrery@https://codeload.github.com/vaoan/Orrery/tar.gz/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa':\n    resolution: {tarball: https://codeload.github.com/vaoan/Orrery/tar.gz/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}\n`;
+  it("finds the git-resolved commit of @vaoan/themis in a pnpm lockfile", () => {
+    const lock = `packages:\n  '@vaoan/themis@https://codeload.github.com/vaoan/Themis/tar.gz/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa':\n    resolution: {tarball: https://codeload.github.com/vaoan/Themis/tar.gz/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}\n`;
     expect(installedCommit(lock)).toBe("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
   });
   it("returns null when the lockfile does not mention it", () => {
@@ -3629,32 +3629,32 @@ describe("installedCommit", () => {
 describe("versionDrift", () => {
   it("reports not installed before adoption, with the latest still resolved", () => {
     fs.writeFileSync(path.join(dir, "pnpm-lock.yaml"), "packages: {}\n");
-    expect(versionDrift(dir, { run })).toEqual({ installed: null, latest, behind: false, note: "body does not depend on @vaoan/orrery yet" });
+    expect(versionDrift(dir, { run })).toEqual({ installed: null, latest, behind: false, note: "body does not depend on @vaoan/themis yet" });
   });
   it("reports behind when the installed commit is not the latest", () => {
-    fs.writeFileSync(path.join(dir, "pnpm-lock.yaml"), "  '@vaoan/orrery@https://codeload.github.com/vaoan/Orrery/tar.gz/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb':\n");
+    fs.writeFileSync(path.join(dir, "pnpm-lock.yaml"), "  '@vaoan/themis@https://codeload.github.com/vaoan/Themis/tar.gz/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb':\n");
     const r = versionDrift(dir, { run });
     expect(r.behind).toBe(true);
     expect(r.installed).toBe("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
   });
   it("reports current when they match", () => {
-    fs.writeFileSync(path.join(dir, "pnpm-lock.yaml"), `  '@vaoan/orrery@https://codeload.github.com/vaoan/Orrery/tar.gz/${latest}':\n`);
+    fs.writeFileSync(path.join(dir, "pnpm-lock.yaml"), `  '@vaoan/themis@https://codeload.github.com/vaoan/Themis/tar.gz/${latest}':\n`);
     expect(versionDrift(dir, { run }).behind).toBe(false);
   });
   it("asks git for exactly the main ref of the remote", () => {
     fs.writeFileSync(path.join(dir, "pnpm-lock.yaml"), "");
     let args;
     versionDrift(dir, { run: (c, a) => { args = [c, ...a]; return run(); } });
-    expect(args).toEqual(["git", "ls-remote", "https://github.com/vaoan/Orrery.git", "refs/heads/main"]);
+    expect(args).toEqual(["git", "ls-remote", "https://github.com/vaoan/Themis.git", "refs/heads/main"]);
   });
   it("reports not installed for the real fixture body, which predates the cut-over", () => {
-    expect(versionDrift(fixture, { run })).toEqual({ installed: null, latest, behind: false, note: "body does not depend on @vaoan/orrery yet" });
+    expect(versionDrift(fixture, { run })).toEqual({ installed: null, latest, behind: false, note: "body does not depend on @vaoan/themis yet" });
   });
 });
 ```
 
 ```javascript
-// packages/orrery/tests/observe-pointers.test.mjs
+// packages/themis/tests/observe-pointers.test.mjs
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
@@ -3664,16 +3664,16 @@ import { pointerDrift, localOverrideViolations } from "../src/lib/observe/pointe
 import schema from "../classes/next-supabase-mono/schema.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
-const realTemplates = path.join(root, "packages/orrery/templates/next-supabase-mono");
+const realTemplates = path.join(root, "packages/themis/templates/next-supabase-mono");
 const fixture = path.join(root, "fixtures/next-supabase-mono");
 
 let body, templates;
 const put = (root, rel, text) => { fs.mkdirSync(path.join(root, path.dirname(rel)), { recursive: true }); fs.writeFileSync(path.join(root, rel), text); };
 beforeEach(() => {
-  body = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-ptr-body-"));
-  templates = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-ptr-tpl-"));
-  put(templates, "eslint.config.mjs", 'import orrery from "@vaoan/orrery/eslint";\nexport default await orrery();\n');
-  put(templates, ".husky/pre-push", "pnpm orrery hook pre-push\n");
+  body = fs.mkdtempSync(path.join(os.tmpdir(), "themis-ptr-body-"));
+  templates = fs.mkdtempSync(path.join(os.tmpdir(), "themis-ptr-tpl-"));
+  put(templates, "eslint.config.mjs", 'import themis from "@vaoan/themis/eslint";\nexport default await themis();\n');
+  put(templates, ".husky/pre-push", "pnpm themis hook pre-push\n");
 });
 afterEach(() => { fs.rmSync(body, { recursive: true, force: true }); fs.rmSync(templates, { recursive: true, force: true }); });
 
@@ -3687,10 +3687,10 @@ describe("localOverrideViolations", () => {
 
 describe("pointerDrift", () => {
   it("reports identical, differs and missing per template file, and validates local and config", async () => {
-    put(body, "eslint.config.mjs", 'import orrery from "@vaoan/orrery/eslint";\nexport default await orrery();\n');
-    put(body, ".husky/pre-push", "pnpm orrery hook pre-push\necho extra\n");
+    put(body, "eslint.config.mjs", 'import themis from "@vaoan/themis/eslint";\nexport default await themis();\n');
+    put(body, ".husky/pre-push", "pnpm themis hook pre-push\necho extra\n");
     put(body, "eslint.local.mjs", 'export default [{ files: ["apps/**/*.ts"], rules: {} }];');
-    put(body, "orrery.config.mjs", 'export default { class: "next-supabase-mono", tailwind: { entryPoint: "x.css" }, severity: 1 };');
+    put(body, "themis.config.mjs", 'export default { class: "next-supabase-mono", tailwind: { entryPoint: "x.css" }, severity: 1 };');
     const r = await pointerDrift(body, templates, schema);
     expect(r.files).toEqual([{ path: ".husky/pre-push", state: "differs" }, { path: "eslint.config.mjs", state: "identical" }]);
     expect(r.local).toEqual(['entry 0: files pattern "apps/**/*.ts" is not a named file']);
@@ -3713,13 +3713,13 @@ describe("pointerDrift", () => {
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `pnpm vitest run packages/orrery/tests/observe-version.test.mjs packages/orrery/tests/observe-pointers.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/observe-version.test.mjs packages/themis/tests/observe-pointers.test.mjs`
 Expected: FAIL — cannot resolve the modules
 
 - [ ] **Step 3: Write the implementation**
 
 ```javascript
-// packages/orrery/src/lib/observe/version.mjs
+// packages/themis/src/lib/observe/version.mjs
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
@@ -3728,21 +3728,21 @@ const defaultRun = (command, args) => execFileSync(command, args, { encoding: "u
 
 // pnpm records a git dependency as '<name>@https://codeload.github.com/<owner>/<repo>/tar.gz/<sha>'.
 export function installedCommit(lockText) {
-  const m = /@vaoan\/orrery@[^\n]*?vaoan\/Orrery\/tar\.gz\/([0-9a-f]{40})/.exec(lockText ?? "");
+  const m = /@vaoan\/themis@[^\n]*?vaoan\/Themis\/tar\.gz\/([0-9a-f]{40})/.exec(lockText ?? "");
   return m ? m[1] : null;
 }
 
-export function versionDrift(bodyDir, { run = defaultRun, remote = "https://github.com/vaoan/Orrery.git" } = {}) {
+export function versionDrift(bodyDir, { run = defaultRun, remote = "https://github.com/vaoan/Themis.git" } = {}) {
   const lockFile = path.join(bodyDir, "pnpm-lock.yaml");
   const installed = installedCommit(fs.existsSync(lockFile) ? fs.readFileSync(lockFile, "utf8") : "");
   const latest = run("git", ["ls-remote", remote, "refs/heads/main"]).split(/\s/)[0];
-  if (!installed) return { installed: null, latest, behind: false, note: "body does not depend on @vaoan/orrery yet" };
+  if (!installed) return { installed: null, latest, behind: false, note: "body does not depend on @vaoan/themis yet" };
   return { installed, latest, behind: installed !== latest, note: installed === latest ? "current" : `behind main (${installed.slice(0, 7)} installed, ${latest.slice(0, 7)} latest)` };
 }
 ```
 
 ```javascript
-// packages/orrery/src/lib/observe/pointers.mjs
+// packages/themis/src/lib/observe/pointers.mjs
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -3777,7 +3777,7 @@ export async function pointerDrift(bodyDir, templatesDir, schema) {
   });
   const localFile = path.join(bodyDir, "eslint.local.mjs");
   const local = fs.existsSync(localFile) ? localOverrideViolations(await importDefault(localFile)) : [];
-  const configFile = path.join(bodyDir, "orrery.config.mjs");
+  const configFile = path.join(bodyDir, "themis.config.mjs");
   const config = fs.existsSync(configFile) ? validateBodyConfig(await importDefault(configFile), schema) : ["missing"];
   return { files, local, config };
 }
@@ -3785,37 +3785,37 @@ export async function pointerDrift(bodyDir, templatesDir, schema) {
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `pnpm vitest run packages/orrery/tests/observe-version.test.mjs packages/orrery/tests/observe-pointers.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/observe-version.test.mjs packages/themis/tests/observe-pointers.test.mjs`
 Expected: PASS — 6 + 3 tests
 
 - [ ] **Step 5: Commit and land**
 
 ```bash
 git checkout -b feat/2b-observe-drifts origin/develop
-git add packages/orrery/src/lib/observe packages/orrery/tests/observe-version.test.mjs packages/orrery/tests/observe-pointers.test.mjs
+git add packages/themis/src/lib/observe packages/themis/tests/observe-version.test.mjs packages/themis/tests/observe-pointers.test.mjs
 git commit -m "feat(observe): version drift and pointer drift [GH-000]"
 git push -u origin HEAD && gh pr create --base develop --title "feat(observe): version drift and pointer drift [GH-000]" --body "Task 8 of the 2b plan." && gh pr merge --squash --auto
 ```
 
 ---
 
-### Task 9: `orrery observe`, part two: code drift and the command
+### Task 9: `themis observe`, part two: code drift and the command
 
-The proof. A scratch directory inside the OS temp holds one materialised config per tool, each importing the bundle with the body's config; Orrery's own tool binaries run with `cwd` at the body and `--config` pointing at the scratch. Nothing is written into the body. For eslint the effective config per surface sample is compared to the rulings rule for rule, and the violations are compared to the body's committed prediction.
+The proof. A scratch directory inside the OS temp holds one materialised config per tool, each importing the bundle with the body's config; Themis's own tool binaries run with `cwd` at the body and `--config` pointing at the scratch. Nothing is written into the body. For eslint the effective config per surface sample is compared to the rulings rule for rule, and the violations are compared to the body's committed prediction.
 
-**Ruling made in planning:** the observe run uses Orrery's tool binaries (and therefore Orrery's plugins, the ones the bundle depends on), not the body's. After adoption that is exactly a body's situation, since the plugins leave its devDependencies. Type-aware parsing still needs the body's `node_modules` for its own dependencies' types, so the runner installs the body's dependencies in its clone with `pnpm install --frozen-lockfile` (Task 10); locally the donors are already installed.
+**Ruling made in planning:** the observe run uses Themis's tool binaries (and therefore Themis's plugins, the ones the bundle depends on), not the body's. After adoption that is exactly a body's situation, since the plugins leave its devDependencies. Type-aware parsing still needs the body's `node_modules` for its own dependencies' types, so the runner installs the body's dependencies in its clone with `pnpm install --frozen-lockfile` (Task 10); locally the donors are already installed.
 
 **Files:**
-- Create: `packages/orrery/src/lib/observe/scratch.mjs` — `materialise(bodyDir, bodyConfig, scratchDir) => { eslint, tsconfig, stylelint, jscpd, cspell, lsLint, syncpack }` paths
-- Create: `packages/orrery/src/lib/observe/code.mjs` — `effectiveMismatches(...)`, `violationsByRule(...)`, `compareToPrediction(...)`, `codeDrift(...)`
-- Create: `packages/orrery/src/lib/observe/report.mjs` — `renderObservation(results) => markdown`
-- Create: `packages/orrery/src/commands/observe.mjs` — `orrery observe <bodyDir>... [--predict] [--report docs/observations] [--tools eslint,tsc,...] [--surface <name>]`; registered in `cli.mjs`
-- Test: `packages/orrery/tests/observe-code.test.mjs`, `packages/orrery/tests/observe-command.test.mjs`
+- Create: `packages/themis/src/lib/observe/scratch.mjs` — `materialise(bodyDir, bodyConfig, scratchDir) => { eslint, tsconfig, stylelint, jscpd, cspell, lsLint, syncpack }` paths
+- Create: `packages/themis/src/lib/observe/code.mjs` — `effectiveMismatches(...)`, `violationsByRule(...)`, `compareToPrediction(...)`, `codeDrift(...)`
+- Create: `packages/themis/src/lib/observe/report.mjs` — `renderObservation(results) => markdown`
+- Create: `packages/themis/src/commands/observe.mjs` — `themis observe <bodyDir>... [--predict] [--report docs/observations] [--tools eslint,tsc,...] [--surface <name>]`; registered in `cli.mjs`
+- Test: `packages/themis/tests/observe-code.test.mjs`, `packages/themis/tests/observe-command.test.mjs`
 
 **Interfaces:**
 - Consumes: `findSurfaceSamples` (Task 1), `readEffectiveConfig`/`resolveEslintBin` (2a), the bundle exports (Task 6), `versionDrift`/`pointerDrift` (Task 8), `rulings.json`.
 - Produces:
-  - `materialise` writes `eslint.config.mjs` (`import orrery from "<abs class eslint.mjs>"; export default await orrery({ ...config, root: "<bodyDir>" });`), `tsconfig.json` (`extends` the class tsconfig by absolute path, `include` from the body's tsconfig parameter, `compilerOptions.noEmit`), `stylelint.config.mjs`, `jscpd.json`, `cspell.json`, `.ls-lint.yml`, `syncpack.json` by calling each bundle function with the body config and serialising.
+  - `materialise` writes `eslint.config.mjs` (`import themis from "<abs class eslint.mjs>"; export default await themis({ ...config, root: "<bodyDir>" });`), `tsconfig.json` (`extends` the class tsconfig by absolute path, `include` from the body's tsconfig parameter, `compilerOptions.noEmit`), `stylelint.config.mjs`, `jscpd.json`, `cspell.json`, `.ls-lint.yml`, `syncpack.json` by calling each bundle function with the body config and serialising.
   - `effectiveMismatches(effectiveRules, rows, bodyConfig) => string[]` — the honesty comparison from Task 7, reused: every ruled rule present with its resolved value; extras that are not `off`.
   - `violationsByRule(eslintJsonOutput) => { [rule]: count }`.
   - `compareToPrediction(observed, prediction) => { unexplained: string[], baseline: { [rule]: number }, moved: [{ rule, was, now }], newRules: string[] }` — a rule with violations that is not in `prediction.tightened` is `unexplained` only when it is absent from the prediction's counts or above its predicted count; otherwise it is `baseline` (violated at the baseline, recorded, informational). Count changes on an already-tightened rule are `moved`, informational.
@@ -3825,7 +3825,7 @@ The proof. A scratch directory inside the OS temp holds one materialised config 
 - [ ] **Step 1: Write the failing tests**
 
 ```javascript
-// packages/orrery/tests/observe-code.test.mjs
+// packages/themis/tests/observe-code.test.mjs
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
@@ -3850,7 +3850,7 @@ const FAKE_BODY_POSIX = FAKE_BODY.split(path.sep).join("/");
 
 describe("materialise", () => {
   let scratch;
-  beforeEach(() => { scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-scratch-")); });
+  beforeEach(() => { scratch = fs.mkdtempSync(path.join(os.tmpdir(), "themis-scratch-")); });
   afterEach(() => fs.rmSync(scratch, { recursive: true, force: true }));
 
   it("writes one config per tool that imports the bundle by absolute path and passes the body config", async () => {
@@ -3858,7 +3858,7 @@ describe("materialise", () => {
     const files = await materialise(FAKE_BODY, { class: "next-supabase-mono", tailwind: { entryPoint: "g.css" } }, scratch, { bundleDir, functions: { stylelint: () => ({ rules: {} }), jscpd: () => ({ threshold: 4 }), cspell: () => ({ words: [] }), lsLint: () => "ls:\n", syncpack: () => ({ versionGroups: [] }), tsconfigInclude: ["apps/*/src"] } });
     const eslint = fs.readFileSync(files.eslint, "utf8");
     const eslintEntryUrl = pathToFileURL(`${PACKAGE_DIR_POSIX}/classes/next-supabase-mono/eslint.mjs`).href;
-    expect(eslint).toContain(`import orrery from ${JSON.stringify(eslintEntryUrl)}`);
+    expect(eslint).toContain(`import themis from ${JSON.stringify(eslintEntryUrl)}`);
     expect(eslint).toContain(`"root": ${JSON.stringify(FAKE_BODY_POSIX)}`);
     expect(eslint).toContain('"entryPoint": "g.css"');
     expect(JSON.parse(fs.readFileSync(files.tsconfig, "utf8"))).toEqual({
@@ -4087,12 +4087,12 @@ describe("binField", () => {
 
 describe("codeDrift", () => {
   // F1: eslint is the one binary the rulings and the honesty comparison are measured against,
-  // so it is resolved the mandated way — resolveEslintBin, from packages/orrery — not through
+  // so it is resolved the mandated way — resolveEslintBin, from packages/themis — not through
   // the generic binField used for the other six tools.
-  it("resolves eslint via resolveEslintBin from packages/orrery, not binField", async () => {
+  it("resolves eslint via resolveEslintBin from packages/themis, not binField", async () => {
     const calls = [];
     const run = (command, args) => { calls.push(args); return { stdout: "[]", stderr: "", status: 0 }; };
-    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-test-"));
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "themis-observe-test-"));
     try {
       await codeDrift(FAKE_BODY, { rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: ["eslint"], run, scratchDir: scratch });
     } finally {
@@ -4105,7 +4105,7 @@ describe("codeDrift", () => {
   // F2: a tool crashing must never take the whole observation down. Inject a `run` that throws
   // (as a subprocess spawn failure would) for one tool only.
   it("catches a tool crash as { crashed: true, message }, and the other tools still run", async () => {
-    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-test-"));
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "themis-observe-test-"));
     try {
       const run = (command, args) => {
         if (args.some((a) => typeof a === "string" && a.endsWith("stylelint.config.mjs"))) {
@@ -4127,7 +4127,7 @@ describe("codeDrift", () => {
   // "crashed". A `run` stub standing in for that real shape (status 1, the report on stderr,
   // nothing on stdout) must still produce counts.
   it("reads stylelint's report from stderr, not stdout, even at a non-zero exit", async () => {
-    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-test-"));
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "themis-observe-test-"));
     try {
       const run = () => ({ stdout: "", stderr: JSON.stringify([{ warnings: [{}, {}] }, { warnings: [{}] }]), status: 2 });
       const result = await codeDrift(FAKE_BODY, { rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: ["stylelint"], run, scratchDir: scratch });
@@ -4138,7 +4138,7 @@ describe("codeDrift", () => {
   });
 
   it("reads ls-lint's report from stderr, not stdout, even at a non-zero exit", async () => {
-    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-test-"));
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "themis-observe-test-"));
     try {
       const stderr = "apps/web/src/BadName.ts failed for `.ts` rules: kebabcase\napps/web/src/Other.ts failed for `.ts` rules: kebabcase\n";
       const run = () => ({ stdout: "", stderr, status: 1 });
@@ -4152,7 +4152,7 @@ describe("codeDrift", () => {
   // T1 regression, the other direction: eslint's report stays on stdout, as before — this must
   // not regress when the other tools move to stderr.
   it("still reads eslint's violations report from stdout", async () => {
-    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-test-"));
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "themis-observe-test-"));
     try {
       const eslintJson = JSON.stringify([{ filePath: "a.ts", messages: [{ ruleId: "no-var" }] }]);
       const run = () => ({ stdout: eslintJson, stderr: "some unrelated plugin warning\n", status: 1 });
@@ -4172,7 +4172,7 @@ describe("codeDrift", () => {
     const ownScratchDir = path.dirname(calls[0][calls[0].indexOf("-c") + 1]);
     expect(fs.existsSync(ownScratchDir)).toBe(false);
 
-    const passedScratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-owned-"));
+    const passedScratch = fs.mkdtempSync(path.join(os.tmpdir(), "themis-observe-owned-"));
     try {
       await codeDrift(FAKE_BODY, { rows: [], bodyConfig: {}, samples: {}, bodyEffective: {}, tools: ["eslint"], run, scratchDir: passedScratch });
       expect(fs.existsSync(passedScratch)).toBe(true);
@@ -4181,7 +4181,7 @@ describe("codeDrift", () => {
     }
   });
 
-  // T2: the installed syncpack (packages/orrery/node_modules/syncpack, a Rust binary) panics on
+  // T2: the installed syncpack (packages/themis/node_modules/syncpack, a Rust binary) panics on
   // every `--config` invocation that has real work to do — reproduced directly against the
   // binary, not just through this code path (see this fix's report). The adopted shape drops
   // --config and relies on cosmiconfig-style discovery from the body's own root, exactly how
@@ -4190,7 +4190,7 @@ describe("codeDrift", () => {
   // invocation, not a mocked stand-in for one.
   it("runs the real syncpack against the fixture through codeDrift's own invocation and gets a parseable result, not crashed", async () => {
     const fixture = path.resolve(PACKAGE_DIR, "../../fixtures/next-supabase-mono");
-    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-test-"));
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "themis-observe-test-"));
     try {
       const result = await codeDrift(fixture, {
         rows: [],
@@ -4216,7 +4216,7 @@ describe("codeDrift", () => {
 // crash; a real report at exit 1 is findings.
 describe("codeDrift: a non-zero exit with no report is a crash, not a clean run", () => {
   const withScratch = async (fn) => {
-    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-crash-"));
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "themis-observe-crash-"));
     try {
       return await fn(scratch);
     } finally {
@@ -4295,7 +4295,7 @@ describe("codeDrift: a non-zero exit with no report is a crash, not a clean run"
 // Minor: `apps packages scripts` is the class's shape, not every body's.
 describe("codeDrift: eslint's sweep tolerates a directory the body does not have", () => {
   it("passes --no-error-on-unmatched-pattern", async () => {
-    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-unmatched-"));
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "themis-observe-unmatched-"));
     const calls = [];
     try {
       await codeDrift(FAKE_BODY, {
@@ -4322,7 +4322,7 @@ describe("matches rejects an unknown marker attribute", () => {
 ```
 
 ```javascript
-// packages/orrery/tests/observe-command.test.mjs
+// packages/themis/tests/observe-command.test.mjs
 import { describe, it, expect, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
@@ -4348,17 +4348,17 @@ const fakeDeps = (overrides = {}) => ({
   ...overrides,
 });
 
-describe("orrery observe", () => {
+describe("themis observe", () => {
   it("exits 2 without a body", async () => {
     const q = quiet();
     expect(await observe([])).toBe(2);
-    expect(q.out()).toContain("usage: orrery observe <bodyDir>...");
+    expect(q.out()).toContain("usage: themis observe <bodyDir>...");
     q.restore();
   });
 
   it("writes a report and exits 0 when nothing is unexplained", async () => {
     const q = quiet();
-    const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
+    const report = fs.mkdtempSync(path.join(os.tmpdir(), "themis-obs-"));
     const code = await observe([FAKE_BODY, "--report", report], fakeDeps());
     expect(code).toBe(0);
     const files = fs.readdirSync(report);
@@ -4371,7 +4371,7 @@ describe("orrery observe", () => {
 
   it("exits 1 when a rule violation is unexplained by the prediction or the effective config mismatches", async () => {
     const q = quiet();
-    const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
+    const report = fs.mkdtempSync(path.join(os.tmpdir(), "themis-obs-"));
     // The command computes the comparison itself from the violations: react/x is not in the prediction's tightened set.
     const code = await observe([FAKE_BODY, "--report", report], fakeDeps({ codeDrift: async () => ({ eslint: { mismatches: ["no-var: missing"], violations: { "react/x": 3 } } }) }));
     expect(code).toBe(1);
@@ -4384,7 +4384,7 @@ describe("orrery observe", () => {
   it("with --predict writes the prediction from the observed violations and does not compare", async () => {
     const q = quiet();
     const deps = fakeDeps({ loadPrediction: () => null });
-    const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
+    const report = fs.mkdtempSync(path.join(os.tmpdir(), "themis-obs-"));
     expect(await observe([FAKE_BODY, "--predict", "--report", report], deps)).toBe(0);
     expect(deps.writePrediction).toHaveBeenCalledWith("x", expect.objectContaining({ tightened: expect.any(Array), counts: { "no-var": 2 } }));
     fs.rmSync(report, { recursive: true, force: true });
@@ -4393,7 +4393,7 @@ describe("orrery observe", () => {
 
   it("without a prediction and without --predict exits 1 saying so", async () => {
     const q = quiet();
-    const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
+    const report = fs.mkdtempSync(path.join(os.tmpdir(), "themis-obs-"));
     expect(await observe([FAKE_BODY, "--report", report], fakeDeps({ loadPrediction: () => null }))).toBe(1);
     expect(q.out()).toMatch(/no prediction for x; run with --predict/);
     fs.rmSync(report, { recursive: true, force: true });
@@ -4405,7 +4405,7 @@ describe("orrery observe", () => {
   // write the report regardless, with the other tools' results intact.
   it("exits 1 and still writes the report when a tool crashed, with the other tools' results present", async () => {
     const q = quiet();
-    const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
+    const report = fs.mkdtempSync(path.join(os.tmpdir(), "themis-obs-"));
     const code = await observe(
       [FAKE_BODY, "--report", report],
       fakeDeps({ codeDrift: async () => ({ eslint: { crashed: true, message: "boom" }, stylelint: { count: 0 } }) })
@@ -4425,24 +4425,24 @@ describe("orrery observe", () => {
   });
 
   // I1: pointer drift is drift. A body whose eslint.config.mjs no longer matches the template it
-  // points at, whose eslint.local.mjs breaks the named-files rule, or whose orrery.config.mjs the
+  // points at, whose eslint.local.mjs breaks the named-files rule, or whose themis.config.mjs the
   // schema rejects, is a body that has drifted — the run must fail, not mention it in a report
   // nobody reads. `config: ["missing"]` alone stays a pass: that is a body before adoption.
-  it("exits 1 when orrery.config.mjs is present but invalid", async () => {
+  it("exits 1 when themis.config.mjs is present but invalid", async () => {
     const q = quiet();
-    const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
+    const report = fs.mkdtempSync(path.join(os.tmpdir(), "themis-obs-"));
     const code = await observe([FAKE_BODY, "--report", report], fakeDeps({
       pointerDrift: async () => ({ files: [{ path: "eslint.config.mjs", state: "missing" }], local: [], config: ["unknown field nonsense"] }),
     }));
     expect(code).toBe(1);
-    expect(q.out()).toMatch(/orrery\.config\.mjs is invalid: unknown field nonsense/);
+    expect(q.out()).toMatch(/themis\.config\.mjs is invalid: unknown field nonsense/);
     fs.rmSync(report, { recursive: true, force: true });
     q.restore();
   });
 
   it("exits 1 on any eslint.local.mjs violation", async () => {
     const q = quiet();
-    const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
+    const report = fs.mkdtempSync(path.join(os.tmpdir(), "themis-obs-"));
     const code = await observe([FAKE_BODY, "--report", report], fakeDeps({
       pointerDrift: async () => ({ files: [{ path: "eslint.config.mjs", state: "missing" }], local: ["entry 0: has no files; a local entry must name the files it applies to"], config: ["missing"] }),
     }));
@@ -4454,7 +4454,7 @@ describe("orrery observe", () => {
 
   it("exits 1 on a pointer that differs once the body has any pointer file", async () => {
     const q = quiet();
-    const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
+    const report = fs.mkdtempSync(path.join(os.tmpdir(), "themis-obs-"));
     const code = await observe([FAKE_BODY, "--report", report], fakeDeps({
       pointerDrift: async () => ({ files: [{ path: "eslint.config.mjs", state: "identical" }, { path: "tsconfig.json", state: "differs" }], local: [], config: ["missing"] }),
     }));
@@ -4466,10 +4466,10 @@ describe("orrery observe", () => {
 
   // Both donors are pre-adoption bodies with an eslint.config.mjs and a .husky/pre-commit of their
   // own at exactly the template's paths: every pointer reads `differs`, none reads `identical`.
-  // That is not drift, it is a body that has not adopted Orrery yet.
+  // That is not drift, it is a body that has not adopted Themis yet.
   it("does not fail a body with its own files at the template paths and no adopted pointer", async () => {
     const q = quiet();
-    const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
+    const report = fs.mkdtempSync(path.join(os.tmpdir(), "themis-obs-"));
     const code = await observe([FAKE_BODY, "--report", report], fakeDeps({
       pointerDrift: async () => ({ files: [{ path: "eslint.config.mjs", state: "differs" }, { path: ".husky/pre-commit", state: "differs" }, { path: "tsconfig.json", state: "missing" }], local: [], config: ["missing"] }),
     }));
@@ -4480,7 +4480,7 @@ describe("orrery observe", () => {
 
   it("does not fail an un-adopted body whose pointer files are all simply missing", async () => {
     const q = quiet();
-    const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
+    const report = fs.mkdtempSync(path.join(os.tmpdir(), "themis-obs-"));
     const code = await observe([FAKE_BODY, "--report", report], fakeDeps({
       pointerDrift: async () => ({ files: [{ path: "eslint.config.mjs", state: "missing" }, { path: "tsconfig.json", state: "missing" }], local: [], config: ["missing"] }),
     }));
@@ -4490,11 +4490,11 @@ describe("orrery observe", () => {
   });
 
   // I2: a body's own config wins over the prediction's record of what it used to be.
-  it("prefers the body's own orrery.config.mjs over the prediction's bodyConfig", async () => {
+  it("prefers the body's own themis.config.mjs over the prediction's bodyConfig", async () => {
     const q = quiet();
-    const body = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-body-"));
-    const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
-    fs.writeFileSync(path.join(body, "orrery.config.mjs"), 'export default { class: "next-supabase-mono", spelling: ["fromthebody"] };\n');
+    const body = fs.mkdtempSync(path.join(os.tmpdir(), "themis-body-"));
+    const report = fs.mkdtempSync(path.join(os.tmpdir(), "themis-obs-"));
+    fs.writeFileSync(path.join(body, "themis.config.mjs"), 'export default { class: "next-supabase-mono", spelling: ["fromthebody"] };\n');
     let seen;
     const deps = fakeDeps({
       loadPrediction: () => ({ tightened: ["no-var"], counts: { "no-var": 2 }, bodyConfig: { class: "next-supabase-mono", spelling: ["fromtheprediction"] } }),
@@ -4509,7 +4509,7 @@ describe("orrery observe", () => {
 
   it("records a failure to read the body's own effective config and fails the run", async () => {
     const q = quiet();
-    const report = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-obs-"));
+    const report = fs.mkdtempSync(path.join(os.tmpdir(), "themis-obs-"));
     const code = await observe([FAKE_BODY, "--report", report], fakeDeps({
       readEffectiveConfig: () => { throw new Error("eslint --print-config failed"); },
     }));
@@ -4541,13 +4541,13 @@ describe("pointerFailures", () => {
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `pnpm vitest run packages/orrery/tests/observe-code.test.mjs packages/orrery/tests/observe-command.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/observe-code.test.mjs packages/themis/tests/observe-command.test.mjs`
 Expected: FAIL — cannot resolve the modules
 
 - [ ] **Step 3: Write the implementation**
 
 ```javascript
-// packages/orrery/src/lib/observe/scratch.mjs
+// packages/themis/src/lib/observe/scratch.mjs
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -4607,8 +4607,8 @@ export async function materialise(bodyDir, bodyConfig, scratchDir, { bundleDir, 
   return {
     eslint: write(
       "eslint.config.mjs",
-      `import orrery from ${JSON.stringify(pathToFileURL(`${klass}/eslint.mjs`).href)};\n` +
-        `const config = await orrery(${JSON.stringify(body, null, 2)});\n` +
+      `import themis from ${JSON.stringify(pathToFileURL(`${klass}/eslint.mjs`).href)};\n` +
+        `const config = await themis(${JSON.stringify(body, null, 2)});\n` +
         `export default [{ ignores: ${JSON.stringify(GLOBAL_IGNORES)} }, ...config];\n`
     ),
     tsconfig: write(
@@ -4633,7 +4633,7 @@ Amendments folded into the block above (previously undocumented drift from the l
 - S3 (this round): `tsconfigInclude`'s default widened from `["apps/*/src", "packages/*/src"]` to `["apps/*/src", "apps/*/tests", "apps/*/e2e", "packages/*/src", "packages/*/tests"]`, matching the template's own `tsconfig.json` include list.
 
 ```javascript
-// packages/orrery/src/lib/observe/code.mjs
+// packages/themis/src/lib/observe/code.mjs
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -4652,7 +4652,7 @@ const packageDir = path.resolve(here, "../../..");
 // relative path: those paths are not consistent across packages (stylelint's is
 // "bin/stylelint.mjs", syncpack's is "./index.cjs", @ls-lint/ls-lint's bin key is the short
 // "ls-lint", not its scoped package name) and drift with every dependency bump. Found directly
-// under packages/orrery/node_modules — Orrery's own tools, per the observe ruling — rather than
+// under packages/themis/node_modules — Themis's own tools, per the observe ruling — rather than
 // through Node's resolver: some of these packages' "exports" maps do not expose "./package.json"
 // as a subpath at all, which createRequire(...).resolve refuses outright.
 export function binField(pkg, binName = pkg) {
@@ -4767,7 +4767,7 @@ export function violationsByRule(eslintJson) {
 // A rule with violations that the prediction did not `tighten` is either `baseline` (already
 // known at or below the count `--predict` last recorded — informational, not a failure) or
 // `unexplained` (absent from the prediction entirely, or worse than what was recorded — a defect
-// in Orrery or a body that is not clean under its own config). Count changes on an
+// in Themis or a body that is not clean under its own config). Count changes on an
 // already-tightened rule are `moved`, informational. A tightened rule the prediction never saw
 // before is `new`. A tightened rule with zero violations now is `resolved`: the body fixed it, or
 // it never fired.
@@ -4837,10 +4837,10 @@ function defaultRun(command, args, cwd) {
   return { stdout: result.stdout ?? "", stderr: result.stderr ?? "", status: result.status };
 }
 
-// Runs Orrery's own tool binaries — never the body's — against the body, read-only: `cwd` is the
+// Runs Themis's own tool binaries — never the body's — against the body, read-only: `cwd` is the
 // body directory, every `--config`/`-c` points into `scratchDir`. The ruling made in planning is
 // that this proves the bundle against the plugins it actually ships, which is exactly a body's
-// situation after adoption (the plugins live in Orrery's devDependencies, not the body's).
+// situation after adoption (the plugins live in Themis's devDependencies, not the body's).
 // syncpack is the one exception (T2): its installed binary panics on `--config` whenever there is
 // real work to do, on every version tried, so it runs against whatever config the body's own root
 // discovers (its own `.syncpackrc*` if it has one, syncpack's built-in defaults if it does not) —
@@ -4887,7 +4887,7 @@ export async function codeDrift(bodyDir, { rows, bodyConfig, samples, bodyEffect
   // Only clean up a scratch directory this call created itself: a caller that passed its own
   // scratchDir may still want it afterward (tests inspect its files).
   const ownScratch = scratchDir === undefined;
-  const dir = scratchDir ?? fs.mkdtempSync(path.join(os.tmpdir(), "orrery-observe-"));
+  const dir = scratchDir ?? fs.mkdtempSync(path.join(os.tmpdir(), "themis-observe-"));
   try {
     const files = await materialise(bodyDir, bodyConfig, dir, { bundleDir: packageDir });
     const results = {};
@@ -4895,7 +4895,7 @@ export async function codeDrift(bodyDir, { rows, bodyConfig, samples, bodyEffect
 
     if (tools.includes("eslint")) {
       attempt(results, "eslint", () => {
-        // Orrery's own eslint, resolved from packages/orrery — never the body's — per the
+        // Themis's own eslint, resolved from packages/themis — never the body's — per the
         // planning ruling: this is the one binary the rulings and the honesty comparison are
         // measured against, so it is resolved the mandated way (resolveEslintBin), not through
         // the generic binField used for the other tools below.
@@ -4946,7 +4946,7 @@ export async function codeDrift(bodyDir, { rows, bodyConfig, samples, bodyEffect
 
     if (tools.includes("stylelint")) {
       attempt(results, "stylelint", () => {
-        // The installed stylelint (packages/orrery/node_modules/stylelint) writes its `-f json`
+        // The installed stylelint (packages/themis/node_modules/stylelint) writes its `-f json`
         // report to stderr, even on a clean, zero-exit run — never stdout. The old stdout-only
         // read silently turned every real stylelint finding into a false "crashed".
         const result = run(node, [binField("stylelint"), "--config", files.stylelint, "-f", "json", "**/*.css"], bodyDir);
@@ -5011,7 +5011,7 @@ export async function codeDrift(bodyDir, { rows, bodyConfig, samples, bodyEffect
     if (tools.includes("syncpack")) {
       attempt(results, "syncpack", () => {
         // T2: the installed syncpack (a Rust binary wrapped by a thin Node launcher — packages/
-        // orrery/node_modules/syncpack) panics with a clap arg-definition mismatch ("Mismatch
+        // themis/node_modules/syncpack) panics with a clap arg-definition mismatch ("Mismatch
         // between definition and access of `config`") whenever --config is combined with any
         // invocation that actually has a package.json to process — reproduced on both the
         // installed 14.3.1 and a from-npm 15.3.3, with a trivial config and with the real
@@ -5038,14 +5038,14 @@ export async function codeDrift(bodyDir, { rows, bodyConfig, samples, bodyEffect
 }
 ```
 
-`binField(pkg, binName)` (in `code.mjs`) reads each package's real `bin` field from its `package.json` under `packages/orrery/node_modules/<pkg>/` — not `createRequire(...).resolve`, which `jscpd` and `cspell` both refuse for `./package.json` (their `exports` maps don't expose it) — used for every tool except eslint. eslint itself is resolved via `resolveEslintBin` (`../effective-config.mjs`), from the `packages/orrery` directory: it is the one binary the rulings and the honesty comparison are measured against, so it gets the mandated resolver, not the generic one. Every tool block in `codeDrift` runs inside its own try/catch (`attempt`): a crash becomes `{ crashed: true, message }` for that tool's entry instead of aborting the run; `observe.mjs` prints `<body>: <tool> crashed: <message>`, fails the exit code, and still writes the report (`report.mjs` renders a crashed entry as `- <tool>: crashed — <message>`). A `scratchDir` `codeDrift` creates for itself (none passed in) is removed in a `finally`; one the caller passed stays, since the caller may still want to inspect it.
+`binField(pkg, binName)` (in `code.mjs`) reads each package's real `bin` field from its `package.json` under `packages/themis/node_modules/<pkg>/` — not `createRequire(...).resolve`, which `jscpd` and `cspell` both refuse for `./package.json` (their `exports` maps don't expose it) — used for every tool except eslint. eslint itself is resolved via `resolveEslintBin` (`../effective-config.mjs`), from the `packages/themis` directory: it is the one binary the rulings and the honesty comparison are measured against, so it gets the mandated resolver, not the generic one. Every tool block in `codeDrift` runs inside its own try/catch (`attempt`): a crash becomes `{ crashed: true, message }` for that tool's entry instead of aborting the run; `observe.mjs` prints `<body>: <tool> crashed: <message>`, fails the exit code, and still writes the report (`report.mjs` renders a crashed entry as `- <tool>: crashed — <message>`). A `scratchDir` `codeDrift` creates for itself (none passed in) is removed in a `finally`; one the caller passed stays, since the caller may still want to inspect it.
 
 Amendments folded into the `code.mjs` block above (previously undocumented drift from the landed source, plus this round's S4 fix):
 - The `--max-old-space-size=6144` argument on the whole-tree violations sweep's node invocation (landed with Task 9 originally; never mirrored here until now) — type-aware linting loads the body's entire TypeScript program into memory, and libra's ~1,100 source files exceeded Node's default old-space ceiling and OOM'd the child process. The per-surface `--print-config` calls are unaffected (single small files) and do not carry the flag.
 - S4 (this round): `tightenedFor` used to compare a body's own pre-bundle rule value straight against `chosen` (`norm(own) !== norm(resolveParameters(r.chosen, body))`), not the ruled-value comparison `effectiveMismatches` uses. That meant a rule eslint-config-prettier always turns off — whose real effective value in the bundle is always `"off"`, never `chosen` — was reported "tightened" whenever a body's own value for it merely differed from `chosen` (seven such rules, observed against libra). `ruledValueMatches` is now the one comparison both functions call; `tightenedFor` also excludes `prettierOffKeys` outright rather than comparing against them, since an always-off rule can never contribute a new violation regardless of what the body's own value happens to be.
 
 ```javascript
-// packages/orrery/src/lib/observe/report.mjs
+// packages/themis/src/lib/observe/report.mjs
 // One markdown document per observation run, with a section per body.
 export function renderObservation(results, date) {
   const lines = [`# Tooling observation — ${date}`, ""];
@@ -5083,7 +5083,7 @@ export function renderObservation(results, date) {
 ```
 
 ```javascript
-// packages/orrery/src/commands/observe.mjs
+// packages/themis/src/commands/observe.mjs
 import fs from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
@@ -5100,7 +5100,7 @@ import schema from "../../classes/next-supabase-mono/schema.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "../../../..");
-const USAGE = "usage: orrery observe <bodyDir>... [--predict] [--report <dir>] [--tools a,b] [--surface <name>]";
+const USAGE = "usage: themis observe <bodyDir>... [--predict] [--report <dir>] [--tools a,b] [--surface <name>]";
 
 const defaults = {
   findSurfaceSamples,
@@ -5121,26 +5121,26 @@ const defaults = {
   today: () => new Date().toISOString().slice(0, 10),
 };
 
-// I2: a body that HAS an orrery.config.mjs is governed by it, full stop. The prediction's
+// I2: a body that HAS a themis.config.mjs is governed by it, full stop. The prediction's
 // `bodyConfig` is a record of what a body's parameters were when the prediction was taken —
 // useful before adoption, when the body has no config of its own, and wrong the moment it does:
 // observing a body against parameters it no longer holds proves nothing about the body.
 // Before adoption the order is: the prediction's recorded parameters, else the schema defaults
 // with a placeholder tailwind entry point good enough to run the bundle against.
 async function resolveBodyConfig(bodyDir, prediction) {
-  const configFile = path.join(bodyDir, "orrery.config.mjs");
-  if (fs.existsSync(configFile)) return { config: (await loadBodyConfig(bodyDir)).config, source: "the body's own orrery.config.mjs" };
+  const configFile = path.join(bodyDir, "themis.config.mjs");
+  if (fs.existsSync(configFile)) return { config: (await loadBodyConfig(bodyDir)).config, source: "the body's own themis.config.mjs" };
   if (prediction?.bodyConfig) return { config: prediction.bodyConfig, source: "the prediction's recorded bodyConfig" };
   return { config: { class: "next-supabase-mono", tailwind: { entryPoint: "apps/*/src/app/globals.css" } }, source: "the schema defaults" };
 }
 
 // I1: a pointer file that a body has but that no longer matches the template, a local override
-// that breaks the "named files only" rule, and an orrery.config.mjs the schema rejects are all
+// that breaks the "named files only" rule, and a themis.config.mjs the schema rejects are all
 // drift the run must FAIL on, not merely mention in the report. The one state that is not a
 // failure is `["missing"]` — a body before adoption has no config of its own and no pointer files
 // yet, and observing it is exactly what `--predict` is for. A `differs` only counts once the body
 // has at least one pointer file the template actually placed there, which is what separates "has
-// not adopted Orrery" from "adopted Orrery and drifted": a body before adoption has an
+// not adopted Themis" from "adopted Themis and drifted": a body before adoption has an
 // eslint.config.mjs and a .husky/pre-commit of its very own, at exactly the paths the templates
 // use, and every one of them reads as `differs` — measured against both donors, where nothing is
 // `identical` at all. One identical pointer is the evidence that the body was adopted, and from
@@ -5150,7 +5150,7 @@ export function pointerFailures(pointers) {
   const failures = [];
   const config = pointers?.config ?? [];
   const configErrors = config.filter((e) => e !== "missing");
-  if (configErrors.length > 0) failures.push(`orrery.config.mjs is invalid: ${configErrors.join("; ")}`);
+  if (configErrors.length > 0) failures.push(`themis.config.mjs is invalid: ${configErrors.join("; ")}`);
   for (const violation of pointers?.local ?? []) failures.push(`eslint.local.mjs: ${violation}`);
   const files = pointers?.files ?? [];
   if (files.some((f) => f.state === "identical")) {
@@ -5183,7 +5183,7 @@ export default async function observe(argv, deps = {}) {
   }
 
   const rulings = d.loadRulings();
-  const templates = path.join(repoRoot, "packages/orrery/templates/next-supabase-mono");
+  const templates = path.join(repoRoot, "packages/themis/templates/next-supabase-mono");
   const results = [];
   let failed = false;
 
@@ -5291,11 +5291,11 @@ export default async function observe(argv, deps = {}) {
 }
 ```
 
-Register `observe` in `cli.mjs` with usage `  orrery observe <bodyDir>... [--predict] [--report <dir>]` and `  observe       version, pointer and code drift of a body against the bundle, read-only`.
+Register `observe` in `cli.mjs` with usage `  themis observe <bodyDir>... [--predict] [--report <dir>]` and `  observe       version, pointer and code drift of a body against the bundle, read-only`.
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `pnpm vitest run packages/orrery/tests/observe-code.test.mjs packages/orrery/tests/observe-command.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/observe-code.test.mjs packages/themis/tests/observe-command.test.mjs`
 Expected: PASS — 5 + 5 tests. As implemented, `observe-code.test.mjs` grew a `codeDrift`
 describe block (F1/F2/the scratch-dir-cleanup minor) and two more `materialise` cases (F4's
 relative-`bodyDir` regression, and the real-`physics/ls-lint.mjs` YAML minor) — 17 tests total
@@ -5306,9 +5306,9 @@ duplicating the comparison — one comparison, not two — with no change in its
 - [ ] **Step 5: First real observation, eslint only, one surface, on the fixture then on libra**
 
 ```
-pnpm orrery observe fixtures/next-supabase-mono --predict --tools eslint --report .superpowers/observe
-pnpm orrery observe fixtures/next-supabase-mono --tools eslint --report .superpowers/observe
-pnpm orrery observe Z:/Github/libra --predict --tools eslint --surface source --report .superpowers/observe
+pnpm themis observe fixtures/next-supabase-mono --predict --tools eslint --report .superpowers/observe
+pnpm themis observe fixtures/next-supabase-mono --tools eslint --report .superpowers/observe
+pnpm themis observe Z:/Github/libra --predict --tools eslint --surface source --report .superpowers/observe
 ```
 
 Expected: the fixture's second run exits 0 with zero mismatches and zero unexplained. libra's run writes `docs/predictions/libra.json` (do not commit it yet; Task 10 records the full predictions) and prints the rule counts. If the eslint run against libra fails to parse (type information), the cause is the scratch config's `tsconfigRootDir`; check it equals libra's root and that libra's `node_modules` is installed. Runtime is minutes; note it.
@@ -5317,16 +5317,16 @@ Expected: the fixture's second run exits 0 with zero mismatches and zero unexpla
 
 ```bash
 git checkout -b feat/2b-observe-code origin/develop
-git add packages/orrery/src/lib/observe packages/orrery/src/commands/observe.mjs packages/orrery/src/cli.mjs packages/orrery/tests/observe-code.test.mjs packages/orrery/tests/observe-command.test.mjs
+git add packages/themis/src/lib/observe packages/themis/src/commands/observe.mjs packages/themis/src/cli.mjs packages/themis/tests/observe-code.test.mjs packages/themis/tests/observe-command.test.mjs
 git commit -m "feat(observe): code drift against the bundle and the observe command [GH-000]"
 git push -u origin HEAD && gh pr create --base develop --title "feat(observe): code drift against the bundle and the observe command [GH-000]" --body "Task 9 of the 2b plan." && gh pr merge --squash --auto
 ```
 
 T1/T2/T4 amendment (this round — `fix/observe-streams-surfaces-and-baseline`, corner report at `.superpowers/sdd/2026-09-09-phase-2b-reconciliation/corner-observe-fixes-report.md`): the first full-tool `observe` run against both real donors (task-10-report.md) found three tool crashes and two semantic gaps this task fixes.
 
-**T1 — `defaultRun` returns streams, not a string.** `execFileSync`'s stdout-only catch (`if (typeof error.stdout === "string" && error.stdout.length) return error.stdout; throw error;`) assumed every tool's report lands on stdout. Measured against the installed binaries (real runs, not documentation): eslint, tsc, jscpd and cspell write their report to stdout; **stylelint and `@ls-lint/ls-lint` write to stderr, even on a clean, zero-exit run** — the old code turned every real stylelint/ls-lint finding into a false `{ crashed: true }`. `defaultRun` now uses `spawnSync` (which never throws on a non-zero exit, only on a real spawn failure) and returns `{ stdout, stderr, status }` unconditionally; each tool's `attempt` block reads the one stream that is actually its report — eslint/tsc/jscpd/cspell read `.stdout`, stylelint/ls-lint read `.stderr`. A genuine crash is still `{ crashed: true, message }`: either `result.error` (a real spawn failure, thrown by `defaultRun`), or a tool's own parser (`JSON.parse` for eslint/stylelint) failing on whatever its stream actually held — a panic trace is not valid JSON, so it still surfaces as a crash rather than a silent zero. ls-lint's own message format is `"<path> failed for \`<ext>\` rules: kebabcase"` (no hyphen, despite the rule being configured as `"kebab-case"`) — the count now matches on `"failed for"` generically, not the old (never-matching) `"kebab-case"` substring, so it counts any rule this config turns on, not just this one. Unrelated to the stream bug but found running the fixture proof for T1: stylelint's config resolution falls back to `cwd` (`stylelint/lib/utils/getModulePath.mjs`) to resolve a named `extends` — the same reason it worked at all against the donors, who have `stylelint-config-standard`/`stylelint-config-tailwindcss` installed as their own devDependencies — but the fixture didn't have either installed, so its own stylelint run failed at config-resolution, before ever reaching the stream question. `fixtures/next-supabase-mono/package.json` gained both as devDependencies (same ranges `packages/orrery/package.json` uses, `^40.0.0`/`^1.0.1`), `pnpm install --filter fixture-next-supabase-mono` at the root.
+**T1 — `defaultRun` returns streams, not a string.** `execFileSync`'s stdout-only catch (`if (typeof error.stdout === "string" && error.stdout.length) return error.stdout; throw error;`) assumed every tool's report lands on stdout. Measured against the installed binaries (real runs, not documentation): eslint, tsc, jscpd and cspell write their report to stdout; **stylelint and `@ls-lint/ls-lint` write to stderr, even on a clean, zero-exit run** — the old code turned every real stylelint/ls-lint finding into a false `{ crashed: true }`. `defaultRun` now uses `spawnSync` (which never throws on a non-zero exit, only on a real spawn failure) and returns `{ stdout, stderr, status }` unconditionally; each tool's `attempt` block reads the one stream that is actually its report — eslint/tsc/jscpd/cspell read `.stdout`, stylelint/ls-lint read `.stderr`. A genuine crash is still `{ crashed: true, message }`: either `result.error` (a real spawn failure, thrown by `defaultRun`), or a tool's own parser (`JSON.parse` for eslint/stylelint) failing on whatever its stream actually held — a panic trace is not valid JSON, so it still surfaces as a crash rather than a silent zero. ls-lint's own message format is `"<path> failed for \`<ext>\` rules: kebabcase"` (no hyphen, despite the rule being configured as `"kebab-case"`) — the count now matches on `"failed for"` generically, not the old (never-matching) `"kebab-case"` substring, so it counts any rule this config turns on, not just this one. Unrelated to the stream bug but found running the fixture proof for T1: stylelint's config resolution falls back to `cwd` (`stylelint/lib/utils/getModulePath.mjs`) to resolve a named `extends` — the same reason it worked at all against the donors, who have `stylelint-config-standard`/`stylelint-config-tailwindcss` installed as their own devDependencies — but the fixture didn't have either installed, so its own stylelint run failed at config-resolution, before ever reaching the stream question. `fixtures/next-supabase-mono/package.json` gained both as devDependencies (same ranges `packages/themis/package.json` uses, `^40.0.0`/`^1.0.1`), `pnpm install --filter fixture-next-supabase-mono` at the root.
 
-**T2 — syncpack has no working `--config` shape.** The installed syncpack (`packages/orrery/node_modules/syncpack`, a Rust binary wrapped by a thin Node launcher) panics with a clap arg-definition mismatch (`Mismatch between definition and access of \`config\`. Could not downcast...`) whenever `--config` is combined with an invocation that has any real package.json to process — reproduced against the fixture, against both donors, with a trivial config and with the real rendered one, on the installed 14.3.1 and (fetched fresh from npm for comparison) on 15.3.3. It only ever succeeds as a true no-op (zero packages discovered) — every earlier-looking "success" during this investigation turned out to be exactly that. `--config` at the top level (`syncpack --config <file> lint`) is not even accepted (clap: `unexpected argument '--config' found`). `--source` with an absolute path, or a relative path containing `..`, silently discovers nothing (no error, just zero packages) — only a path relative to `cwd` with no `..` segments works. Both donors' own `package.json` scripts invoke it as plain `syncpack lint`, cwd at the repo root, config found by the binary's own cosmiconfig-style discovery from there — the shape this task adopts. Since both donors declare `"syncpack": "^14.3.1"`, the same range Orrery already runs, there is no different version to pin to; T2's "no shape works → pin and record" fallback bottoms out at: no shape and no version fixes `--config`, so `codeDrift`'s syncpack block drops `--config` entirely and runs `syncpack lint` with `cwd: bodyDir`. This is a real, reported trade: for a body with its own `.syncpackrc*` (both donors), syncpack now checks the body's **own** current config, not Orrery's class-rendered one — every other tool in `codeDrift` runs Orrery's own rendered config against the body; syncpack cannot, and this is why. Its report is on stderr (`✓ No issues found` / a list of `✘` mismatches), confirmed against the installed binary the same way as T1.
+**T2 — syncpack has no working `--config` shape.** The installed syncpack (`packages/themis/node_modules/syncpack`, a Rust binary wrapped by a thin Node launcher) panics with a clap arg-definition mismatch (`Mismatch between definition and access of \`config\`. Could not downcast...`) whenever `--config` is combined with an invocation that has any real package.json to process — reproduced against the fixture, against both donors, with a trivial config and with the real rendered one, on the installed 14.3.1 and (fetched fresh from npm for comparison) on 15.3.3. It only ever succeeds as a true no-op (zero packages discovered) — every earlier-looking "success" during this investigation turned out to be exactly that. `--config` at the top level (`syncpack --config <file> lint`) is not even accepted (clap: `unexpected argument '--config' found`). `--source` with an absolute path, or a relative path containing `..`, silently discovers nothing (no error, just zero packages) — only a path relative to `cwd` with no `..` segments works. Both donors' own `package.json` scripts invoke it as plain `syncpack lint`, cwd at the repo root, config found by the binary's own cosmiconfig-style discovery from there — the shape this task adopts. Since both donors declare `"syncpack": "^14.3.1"`, the same range Themis already runs, there is no different version to pin to; T2's "no shape works → pin and record" fallback bottoms out at: no shape and no version fixes `--config`, so `codeDrift`'s syncpack block drops `--config` entirely and runs `syncpack lint` with `cwd: bodyDir`. This is a real, reported trade: for a body with its own `.syncpackrc*` (both donors), syncpack now checks the body's **own** current config, not Themis's class-rendered one — every other tool in `codeDrift` runs Themis's own rendered config against the body; syncpack cannot, and this is why. Its report is on stderr (`✓ No issues found` / a list of `✘` mismatches), confirmed against the installed binary the same way as T1.
 
 **T4a — baseline vs. unexplained.** `compareToPrediction` used to call every violated, non-tightened rule `unexplained` outright. That is wrong for a rule a body was already violating when its prediction was recorded and still is, no worse — a real but known condition, not a new defect. A rule is now `unexplained` only when it has violations, is not in `prediction.tightened`, **and** is either absent from `prediction.counts` or worse than what was predicted; at or below its predicted count, it is `baseline` (a new field on `compareToPrediction`'s return, alongside `unexplained`/`moved`/`newRules`/`resolved`) — informational, does not fail the run. `--predict` (`observe.mjs`) now also writes `baseline: { [rule]: count }` into the prediction itself — every violated, non-tightened rule at prediction time, verbatim — so a later run has something to compare against; `renderObservation` (`report.mjs`) prints it alongside the other four. Proven against real data: this is exactly the `boundaries/no-unknown` situation task-10-report.md flagged as "anticipated but unmechanised" — see T4b below for the other half of that fix.
 
@@ -5334,7 +5334,7 @@ T1/T2/T4 amendment (this round — `fix/observe-streams-surfaces-and-baseline`, 
 
 **T4c — `better-tailwindcss` settings, measured.** aeleos's own effective config carries `settings["better-tailwindcss"] = { entryPoint: "apps/hub/src/app/globals.css" }`; libra's carries no `settings["better-tailwindcss"]` at all (`undefined`) — the donors disagree on whether this key should exist, and the class bundle currently sets neither (matching libra, differing from aeleos only by omission). Every rule that needs an entry point already carries its own `entryPoint` option directly (`classes/next-supabase-mono/eslint.mjs`'s `better-tailwindcss/*` rules), so aeleos's settings-level entry point is redundant with what its own per-rule options already say — not a functional gap. Per this task's own instruction ("if the donors disagree in a way that needs a non-obvious ruling, say so and leave the base unchanged for that key"): left `eslint.base.mjs` unchanged for `settings["better-tailwindcss"]`; no schema parameter added.
 
-**S1 amendment, PR #31 review (globals):** see Task 6's amendment above — `packages/orrery/classes/next-supabase-mono/eslint.base.mjs` and its test, not this task's files, but landed in the same commit as T1–T4.
+**S1 amendment, PR #31 review (globals):** see Task 6's amendment above — `packages/themis/classes/next-supabase-mono/eslint.base.mjs` and its test, not this task's files, but landed in the same commit as T1–T4.
 
 ---
 
@@ -5346,18 +5346,18 @@ one and they take care of themselves. i do want the option to trigger from
 here to know whats up but we dont need to be a nightly thing"* … *"remove the
 2e nightly too."* There is no nightly `tooling` job (Step 2, below, is
 withdrawn) and no 2e nightly repository-policy job either — `.github/workflows/observe.yml`
-is deleted outright. `orrery observe` and `orrery repo apply` stay on-demand
-commands, run from Orrery; a body's own CI (Phase 2d's `orrery check`, wired
+is deleted outright. `themis observe` and `themis repo apply` stay on-demand
+commands, run from Themis; a body's own CI (Phase 2d's `themis check`, wired
 by `init`) is what enforces drift against a body going forward.
 
 **Files:**
 - Create by running: `docs/predictions/aeleos.json`, `docs/predictions/libra.json`, `docs/observations/<date>-tooling.md` and `.json`
-- Delete: `.github/workflows/observe.yml` — no scheduled job of any kind ships from Orrery (ADR 0017)
+- Delete: `.github/workflows/observe.yml` — no scheduled job of any kind ships from Themis (ADR 0017)
 - Modify: `.github/workflows/ci.yml` — nothing new: the `test` job already runs the bundle-honesty and fixture tests
 - Create: `docs/decisions/0016-observation-baseline.md` — the first observation of both donors, counts per tool, and the sentence that these are predictions, not rulings
-- Create: `docs/decisions/0017-no-scheduled-observation.md` — the owner's decision that Orrery runs no scheduled job; a body's own CI enforces drift against itself instead
+- Create: `docs/decisions/0017-no-scheduled-observation.md` — the owner's decision that Themis runs no scheduled job; a body's own CI enforces drift against itself instead
 - Modify: `docs/specs/2026-09-08-phase-2b-reconciliation-design.md`, `docs/specs/2026-09-08-phase-2e-repository-policy-design.md`, `docs/decisions/0003-repository-policy.md` — a one-line "Amended by ADR 0017" pointer under each nightly-observation paragraph; the historical text otherwise unchanged
-- Test: `packages/orrery/tests/workflows.test.mjs` — replace the `observe.yml` `tooling`/`repository-policy` assertions with one assertion that the file does not exist
+- Test: `packages/themis/tests/workflows.test.mjs` — replace the `observe.yml` `tooling`/`repository-policy` assertions with one assertion that the file does not exist
 
 **Interfaces:** consumes everything above; produces the committed predictions the spec calls for.
 
@@ -5366,16 +5366,16 @@ by `init`) is what enforces drift against a body going forward.
 Both donors must be at a clean, installed checkout; record their SHAs. Then:
 
 ```
-pnpm orrery observe Z:/Github/aeleos Z:/Github/libra --predict --report docs/observations
+pnpm themis observe Z:/Github/aeleos Z:/Github/libra --predict --report docs/observations
 ```
 
 Expected: `docs/predictions/aeleos.json` and `libra.json` with `bodyConfig` (the parameters `observe` inferred: for the donors the real entry points are `apps/hub/src/app/globals.css` and `apps/store/src/app/globals.css`; pass them by writing a minimal `bodyConfig` into each prediction file before the run, then re-run; record which), `tightened` (the rule set the bundle changes for that body), and `counts`. Then the check run:
 
 ```
-pnpm orrery observe Z:/Github/aeleos Z:/Github/libra --report docs/observations
+pnpm themis observe Z:/Github/aeleos Z:/Github/libra --report docs/observations
 ```
 
-Expected: exit 0, zero effective-config mismatches on every surface for both donors, zero unexplained rules. Any mismatch is a bundle defect: fix the generator or the ordering (through the loop, with a test), regenerate with `orrery bundle`, and repeat. Any unexplained rule is either a bundle defect or a donor that is not clean under its own config; report which with the evidence before deciding.
+Expected: exit 0, zero effective-config mismatches on every surface for both donors, zero unexplained rules. Any mismatch is a bundle defect: fix the generator or the ordering (through the loop, with a test), regenerate with `themis bundle`, and repeat. Any unexplained rule is either a bundle defect or a donor that is not clean under its own config; report which with the evidence before deciding.
 
 Known expectations from the spec: libra shows `unicorn/filename-case` violations in the hundreds (Phase 0's codemod was never run); aeleos shows stylelint findings in `globals.css`; both show sonarjs threshold violations.
 
@@ -5402,7 +5402,7 @@ back-merge.yml, release.yml, the PR template) is unchanged.
 
 ```bash
 git checkout -b feat/donor-predictions-and-nightly-observation origin/develop
-git add docs/predictions docs/observations docs/decisions/0016-observation-baseline.md docs/decisions/0017-no-scheduled-observation.md docs/specs/2026-09-08-phase-2b-reconciliation-design.md docs/specs/2026-09-08-phase-2e-repository-policy-design.md docs/decisions/0003-repository-policy.md packages/orrery/tests/workflows.test.mjs docs/plans/2026-09-09-phase-2b-reconciliation.md
+git add docs/predictions docs/observations docs/decisions/0016-observation-baseline.md docs/decisions/0017-no-scheduled-observation.md docs/specs/2026-09-08-phase-2b-reconciliation-design.md docs/specs/2026-09-08-phase-2e-repository-policy-design.md docs/decisions/0003-repository-policy.md packages/themis/tests/workflows.test.mjs docs/plans/2026-09-09-phase-2b-reconciliation.md
 git rm .github/workflows/observe.yml
 git commit -m "feat(observe): donor predictions, baseline record, and the end of scheduled observation [GH-000]"
 git push -u origin HEAD && gh pr create --base develop --title "feat(observe): donor predictions, baseline record, and the end of scheduled observation [GH-000]" --body "Task 10 of the 2b plan, re-scoped 2026-09-10 (ADR 0017): no nightly job." && gh pr merge --squash --auto
@@ -5433,7 +5433,7 @@ while looking healthy, and all four were true at once: the pre-ruling's `base: "
 read by nothing and silently dropped, so the class shipped `default: "disallow"` with no allowed
 edges at all; there was no `import/resolver`, so every `@/…` specifier was an unplaceable
 "external" element the rule skips by design; the resolver, once added, is loaded by
-eslint-module-utils from the LINTED FILE's package directory, which under pnpm cannot see Orrery's
+eslint-module-utils from the LINTED FILE's package directory, which under pnpm cannot see Themis's
 copy — so it is named by absolute path; and the element `capture` lists bound `feature`/`layer` to
 the `apps/*` wildcard, so every layered edge matched nothing. The base is now a `$fromSide: "a"`
 marker with `withoutElementType: "identity"`, which puts aeleos's nine layered rules into the row's
@@ -5466,7 +5466,7 @@ That is how `base: "a"` shipped. `assertMarker` is the one definition of what a 
 `literal`, `resolveParameters`, `matches` and `resolveMarkers` all call it.
 
 ```javascript
-// packages/orrery/src/lib/markers.mjs
+// packages/themis/src/lib/markers.mjs
 // Markers are the hand-written stand-ins a ruling's `chosen` carries where a real value cannot be
 // written down at reconcile time: `{ $parameter }` (body data, resolved by the bundle writer and
 // by observe), `{ $union }` (both donors' arrays merged, resolved in reconcile), `{ $fromSide }`
@@ -5524,7 +5524,7 @@ export function assertMarker(value) {
 - [ ] **Step 2: The shape tests (C1)**
 
 ```javascript
-// packages/orrery/tests/bundle-shapes.test.mjs
+// packages/themis/tests/bundle-shapes.test.mjs
 // C1: every generated tool file must be usable BY ITS OWN TOOL. The bundle tests next door prove
 // the generator renders what the rulings say; they cannot see that the rendered shape is one the
 // tool refuses — a `prettier` pointer that resolves to a function, a lint-staged key split on its
@@ -5553,12 +5553,12 @@ import knipConfigFn from "../classes/next-supabase-mono/knip.mjs";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const packageDir = path.resolve(here, "..");
 
-const tempDir = (name) => fs.mkdtempSync(path.join(os.tmpdir(), "orrery-shape-" + name + "-"));
+const tempDir = (name) => fs.mkdtempSync(path.join(os.tmpdir(), "themis-shape-" + name + "-"));
 
 describe("prettier", () => {
   // prettier.resolveConfig is prettier's own loader: it discovers the config the way the CLI and
   // every editor integration do, and it is what a `prettier.config.mjs` pointer has to satisfy.
-  // A bare `"prettier": "@vaoan/orrery/prettier"` package.json pointer resolves to the generated
+  // A bare `"prettier": "@vaoan/themis/prettier"` package.json pointer resolves to the generated
   // MODULE — whose default export is a function, per the spec's "every export is a function" —
   // and prettier then has an options object that is a function, which it does not accept.
   it("accepts the generated config through prettier.resolveConfig", async () => {
@@ -5579,11 +5579,11 @@ describe("prettier", () => {
     }
   });
 
-  // The pointer file is the deliverable, not the module: it is what `orrery init` copies into a
+  // The pointer file is the deliverable, not the module: it is what `themis init` copies into a
   // body, so it is a template file and the fixture carries it byte-identically.
   it("ships a prettier.config.mjs pointer that calls the function", () => {
     const pointer = fs.readFileSync(path.join(packageDir, "templates/next-supabase-mono/prettier.config.mjs"), "utf8");
-    expect(pointer).toContain('import prettier from "@vaoan/orrery/prettier"');
+    expect(pointer).toContain('import prettier from "@vaoan/themis/prettier"');
     expect(pointer).toContain("export default prettier();");
   });
 });
@@ -5712,7 +5712,7 @@ known entry in its prediction forever, where it would look exactly like a real r
 one appeared.
 
 ```javascript
-// packages/orrery/tests/boundaries-policy.test.mjs
+// packages/themis/tests/boundaries-policy.test.mjs
 // C2: the boundaries graph must actually place an aliased import and actually refuse a forbidden
 // edge. Three things could each make `boundaries/dependencies` report nothing while looking
 // healthy, and all three were true at once: a policy with no base rules (the `base: "a"` attribute
@@ -5728,7 +5728,7 @@ one appeared.
 // like a real regression the day one appeared. A temporary body says the same thing louder and
 // leaves the fixture honest.
 //
-// It is a SPAWNED run, with the body as the child's cwd, exactly as `orrery observe` invokes it:
+// It is a SPAWNED run, with the body as the child's cwd, exactly as `themis observe` invokes it:
 // eslint-import-resolver-typescript globs its `project` option against `process.cwd()`, so an
 // in-process ESLint API call (whose `cwd` option does not change the process's own) finds no
 // tsconfig and resolves no alias — which is the very failure this test exists to catch.
@@ -5752,7 +5752,7 @@ const write = (rel, text) => {
 };
 
 beforeAll(() => {
-  dir = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-boundaries-"));
+  dir = fs.mkdtempSync(path.join(os.tmpdir(), "themis-boundaries-"));
   // eslint-plugin-import's `order` rule walks up for the nearest package.json to classify an
   // import as external; a directory with none crashes it before boundaries ever runs.
   write("package.json", JSON.stringify({ name: "boundaries-probe", private: true, type: "module" }, null, 2));
@@ -5771,7 +5771,7 @@ beforeAll(() => {
   const body = { class: "next-supabase-mono", root: dir.split(path.sep).join("/"), tailwind: { entryPoint: "apps/web/src/app/globals.css" } };
   write(
     "eslint.config.mjs",
-    `import orrery from ${JSON.stringify(klass)};\nexport default await orrery(${JSON.stringify(body, null, 2)});\n`
+    `import themis from ${JSON.stringify(klass)};\nexport default await themis(${JSON.stringify(body, null, 2)});\n`
   );
 });
 
@@ -5810,7 +5810,7 @@ describe("boundaries/dependencies against the generated class config", () => {
 - [ ] **Step 4: The bundle command's own exit codes**
 
 ```javascript
-// packages/orrery/tests/bundle-command.test.mjs
+// packages/themis/tests/bundle-command.test.mjs
 import { describe, it, expect, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
@@ -5827,14 +5827,14 @@ const provenance = { date: "2026-09-09", a: { name: "aeleos", sha: "aaa1111" }, 
 const row = (extra) => ({ tool: "eslint", surface: "source", key: "no-var", a: null, b: null, chosen: ["error"], test: "agree", tier: "physics", note: "", ...extra });
 
 const packageDir = () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-bundle-cmd-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "themis-bundle-cmd-"));
   fs.mkdirSync(path.join(dir, "classes/next-supabase-mono"), { recursive: true });
   fs.writeFileSync(path.join(dir, "classes/next-supabase-mono/schema.mjs"), "export default {};");
   fs.writeFileSync(path.join(dir, "classes/next-supabase-mono/eslint.base.mjs"), "export default {};");
   return dir;
 };
 
-describe("orrery bundle", () => {
+describe("themis bundle", () => {
   it("exits 0 and lists every file it wrote", async () => {
     const q = quiet();
     const dir = packageDir();
@@ -5873,7 +5873,7 @@ describe("orrery bundle", () => {
   it("exits 2 on an unknown flag", async () => {
     const q = quiet();
     expect(await bundle(["--nonsense"])).toBe(2);
-    expect(q.out()).toContain("usage: orrery bundle");
+    expect(q.out()).toContain("usage: themis bundle");
     q.restore();
   });
 });
@@ -5882,12 +5882,12 @@ describe("orrery bundle", () => {
 
 - [ ] **Step 5: The pointer file prettier now needs (C1)**
 
-`packages/orrery/templates/next-supabase-mono/prettier.config.mjs`, carried byte-identically by the
-fixture, with the `"prettier": "@vaoan/orrery/prettier"` key dropped from the fixture's
+`packages/themis/templates/next-supabase-mono/prettier.config.mjs`, carried byte-identically by the
+fixture, with the `"prettier": "@vaoan/themis/prettier"` key dropped from the fixture's
 `package.json`:
 
 ```javascript
-import prettier from "@vaoan/orrery/prettier";
+import prettier from "@vaoan/themis/prettier";
 export default prettier();
 ```
 
@@ -5900,20 +5900,20 @@ generated tiers, the predictions and the observation are all committed from that
 ## Done when
 
 - `pnpm test` passes: the 214 tests of Phase 2e plus this plan's. Verified 2026-09-09 by extracting every code block into a scratch copy of the package and running it: 85 new unit-level tests pass (299 total with 2e's) before the three environment-bound files (bundle-honesty, fixture-pointers, workflows additions), which run only once the fixture, the bundle and the workflow exist. Report the observed count.
-- `orrery reconcile Z:/Github/aeleos Z:/Github/libra` exits 0 with no residue; twelve records and `rulings.json` are committed; every ruling has a row.
-- `orrery bundle` regenerates `physics/` and `classes/next-supabase-mono/` byte-identically from the committed rulings (a test runs it into a temp dir and diffs against the committed files).
-- `orrery observe Z:/Github/aeleos Z:/Github/libra` exits 0: effective config equals the rulings on every surface for both donors, and every violation comes from a rule the rulings tightened for that body, or is recorded `baseline`. The predictions are committed, alongside ADR 0016 (the baseline record) and ADR 0017 (no scheduled job; see below).
+- `themis reconcile Z:/Github/aeleos Z:/Github/libra` exits 0 with no residue; twelve records and `rulings.json` are committed; every ruling has a row.
+- `themis bundle` regenerates `physics/` and `classes/next-supabase-mono/` byte-identically from the committed rulings (a test runs it into a temp dir and diffs against the committed files).
+- `themis observe Z:/Github/aeleos Z:/Github/libra` exits 0: effective config equals the rulings on every surface for both donors, and every violation comes from a rule the rulings tightened for that body, or is recorded `baseline`. The predictions are committed, alongside ADR 0016 (the baseline record) and ADR 0017 (no scheduled job; see below).
 - No body was modified: `git -C Z:/Github/aeleos status --short` and the same for libra are empty at the end, and both HEADs are the SHAs recorded in the predictions.
-- No scheduled workflow ships from Orrery: `.github/workflows/observe.yml` does not exist. `orrery observe` and `orrery repo apply` remain on-demand commands.
+- No scheduled workflow ships from Themis: `.github/workflows/observe.yml` does not exist. `themis observe` and `themis repo apply` remain on-demand commands.
 
 ## Rulings made while planning, for the controller to confirm or overturn
 
-1. `observe` runs Orrery's tool binaries and plugins against the body, not the body's own; after adoption that is the body's exact situation. The body's `node_modules` is still needed for type-aware parsing.
+1. `observe` runs Themis's tool binaries and plugins against the body, not the body's own; after adoption that is the body's exact situation. The body's `node_modules` is still needed for type-aware parsing.
 2. `import/*` rules are placed in the class, not physics, because neither donor depends on `eslint-plugin-import` directly; the rules arrive through `eslint-config-next`.
 3. `off` agreements from `eslint-config-prettier`'s prefixes (`@stylistic`, `vue`, `flowtype`, …) are not emitted individually; the class appends `eslint-config-prettier` last, which is where both donors get them.
 4. Language options and plugin settings (parser, project service, React version, boundaries elements) are hand-written in `eslint.base.mjs`, not generated: rows cover rules, and both donors agree on these.
 5. The class's surface globs are fixed conventions (`apps/*/src/**/*.ts`, `**/*.test.{ts,tsx}`, …), not derived from the donors' 61 override blocks; the six measured surfaces are what those blocks reduce to.
 6. tsconfig per-app data (`types`, `include`, `paths`) stays in each app's own tsconfig under the class `extends`; the bundle carries only compiler flags.
-7. The fixture body is a pnpm workspace package so its pointer files resolve `@vaoan/orrery` the way a body will.
+7. The fixture body is a pnpm workspace package so its pointer files resolve `@vaoan/themis` the way a body will.
 8. ~~The nightly tooling observation clones only bodies flagged `observe: true` in the registry until the cut-over records predictions for the other three.~~ Overturned 2026-09-10 (ADR 0017): there is no nightly tooling observation, so nothing needs a registry flag to gate it. `registry.json` carries no `observe` field.
 9. A `residue` row at reconcile time stops the executor: pre-rulings are added only after the owner has seen the row, per the stop-when-cornered rule.

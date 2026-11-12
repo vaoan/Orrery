@@ -34,13 +34,13 @@ jobs:
       - name: Open or update the back-merge PR
         if: steps.gap.outputs.behind != '0'
         env:
-          GH_TOKEN: ${{ secrets.ORRERY_BOT_TOKEN }}
+          GH_TOKEN: ${{ secrets.THEMIS_BOT_TOKEN }}
           BEHIND: ${{ steps.gap.outputs.behind }}
         run: |
           # Pushes must use the bot token, not GITHUB_TOKEN: pushes made with GITHUB_TOKEN
           # do not trigger the PR's checks, and a back-merge PR without checks never merges.
-          git config user.name "orrery"
-          git config user.email "orrery@users.noreply.github.com"
+          git config user.name "themis"
+          git config user.email "themis@users.noreply.github.com"
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           # select(. != null) makes an empty result print nothing; without it jq
           # prints the text null and the guard would treat it as a PR.
@@ -58,7 +58,7 @@ jobs:
             gh pr create --repo "$GITHUB_REPOSITORY" --base develop --head "$branch" \
               --title "chore(back-merge): main into develop [GH-000]" \
               --body "Automatic back-merge. main is $BEHIND commit(s) ahead of develop. Merge commit, never squash. Branch created by the back-merge workflow; humans and agents must not create back-merge/* branches." \
-              --label back-merge --label orrery
+              --label back-merge --label themis
             number=$(gh pr list --repo "$GITHUB_REPOSITORY" --base develop --head "$branch" --state open --json number --jq '.[0].number // empty')
           fi
           gh pr merge "$number" --repo "$GITHUB_REPOSITORY" --merge --auto

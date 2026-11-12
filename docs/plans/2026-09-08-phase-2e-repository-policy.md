@@ -2,17 +2,17 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** One git flow for every repository, written as a policy file, applied by `orrery repo apply`, enforced by `orrery ci` verbs and hooks, and exercised first on Orrery itself.
+**Goal:** One git flow for every repository, written as a policy file, applied by `themis repo apply`, enforced by `themis ci` verbs and hooks, and exercised first on Themis itself.
 
-**Architecture:** A small GitHub REST client with an injectable `fetch`; a policy file plus a pure planner that turns "current repo state versus policy" into a list of operations, so idempotence is a property of the planner and is unit-tested with fakes; the CI verbs are pure functions over strings and injected runners, dispatched by one `orrery ci` command that reads the Actions event file; workflows in Orrery carry job structure only and call the verbs.
+**Architecture:** A small GitHub REST client with an injectable `fetch`; a policy file plus a pure planner that turns "current repo state versus policy" into a list of operations, so idempotence is a property of the planner and is unit-tested with fakes; the CI verbs are pure functions over strings and injected runners, dispatched by one `themis ci` command that reads the Actions event file; workflows in Themis carry job structure only and call the verbs.
 
-**Tech Stack:** Node ≥24 (built-in `fetch`), pnpm, ESM `.mjs`, vitest, husky 9. No new runtime dependencies in `packages/orrery`.
+**Tech Stack:** Node ≥24 (built-in `fetch`), pnpm, ESM `.mjs`, vitest, husky 9. No new runtime dependencies in `packages/themis`.
 
 **Spec:** `docs/specs/2026-09-08-phase-2e-repository-policy-design.md`
 
 ## Global Constraints
 
-- Node `>=24`; pnpm; ESM only; source files are `.mjs` under `packages/orrery/`.
+- Node `>=24`; pnpm; ESM only; source files are `.mjs` under `packages/themis/`.
 - This repository contains no application code. Only the governance tool and its assets.
 - Deterministic enforcement: every verb is a script with a test that would fail if it lied. No AI in the loop.
 - Strictest wins; where strictness is undefined, consistency; then benefit.
@@ -21,37 +21,37 @@
 - Routes: `type/*` → `develop` (squash); `release/*` → `main` (merge); `fix/*` → `main` (squash); `main` → `develop` (merge commit, automatic). Rebase disabled.
 - Protection on `main` and `develop`: 0 approvals but a PR required; strict required checks; conversation resolution; admins bound; no force push or deletion; linear history off on both; signatures not required.
 - Squash commit title is the PR title, body is the PR body (ruled during planning: both donors use "commit or PR title", which is unpredictable; the PR title is what the checks validated).
-- No body other than Orrery is modified before Task 13's explicit confirmation.
+- No body other than Themis is modified before Task 13's explicit confirmation.
 - Every commit message ends with:
   `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>` and
   `Claude-Session: https://claude.ai/code/session_01NUi5KvdndoSSt5xHuiuYVK`.
 
 ## Verified before writing (2026-09-08)
 
-- The local `gh` token has scopes `gist, read:org, read:packages, repo, workflow`. `repo` is enough to create a repository, set protection and settings on repositories `vaoan` owns, and open PRs. It has no `delete_repo`, so the integration test uses a persistent fixture repository, `vaoan/orrery-policy-fixture`, reset before each run rather than deleted.
+- The local `gh` token has scopes `gist, read:org, read:packages, repo, workflow`. `repo` is enough to create a repository, set protection and settings on repositories `vaoan` owns, and open PRs. It has no `delete_repo`, so the integration test uses a persistent fixture repository, `vaoan/themis-policy-fixture`, reset before each run rather than deleted.
 - `GET /repos/{o}/{r}` returns `default_branch, allow_squash_merge, allow_merge_commit, allow_rebase_merge, delete_branch_on_merge, allow_auto_merge, allow_update_branch, squash_merge_commit_title, squash_merge_commit_message`. Both donors today: `COMMIT_OR_PR_TITLE` / `COMMIT_MESSAGES`, `allow_update_branch: false`.
 - `GET /repos/{o}/{r}/branches/{b}/protection` returns keys `required_status_checks, enforce_admins, required_pull_request_reviews, required_linear_history, allow_force_pushes, allow_deletions, required_conversation_resolution, required_signatures, lock_branch, allow_fork_syncing, block_creations`, each boolean one as `{ enabled }`.
-- Secrets: aeleos has `GH_TOKEN`; libra and Orrery have none for bots. PRs opened with the default `GITHUB_TOKEN` do not trigger `pull_request` workflows, so bot PRs need a personal token; aeleos already does this.
-- Regexes below were run against real branch and title samples from libra, Puck and Orrery; results are recorded in each test.
+- Secrets: aeleos has `GH_TOKEN`; libra and Themis have none for bots. PRs opened with the default `GITHUB_TOKEN` do not trigger `pull_request` workflows, so bot PRs need a personal token; aeleos already does this.
+- Regexes below were run against real branch and title samples from libra, Puck and Themis; results are recorded in each test.
 
 ---
 
 ### Task 1: GitHub REST client
 
 **Files:**
-- Create: `packages/orrery/src/lib/github.mjs`
-- Test: `packages/orrery/tests/github.test.mjs`
+- Create: `packages/themis/src/lib/github.mjs`
+- Test: `packages/themis/tests/github.test.mjs`
 
 **Interfaces:**
 - Consumes: nothing.
 - Produces:
-  - `resolveToken(env = process.env, runGh = defaultRunGh) => string` — `ORRERY_GH_TOKEN`, then `GITHUB_TOKEN`, then `gh auth token`; throws naming all three when none yields a token.
+  - `resolveToken(env = process.env, runGh = defaultRunGh) => string` — `THEMIS_GH_TOKEN`, then `GITHUB_TOKEN`, then `gh auth token`; throws naming all three when none yields a token.
   - `createGithub({ token, fetchImpl = fetch, baseUrl = "https://api.github.com" }) => { request(method, path, body?) => Promise<{ status, data }> }` — JSON in and out; `404` resolves to `{ status: 404, data: null }`; any other status ≥ 400 throws `GithubError` with `status` and the response `message`.
 
 - [ ] **Step 1: Write the failing test**
 
 ```javascript
-// packages/orrery/tests/github.test.mjs
+// packages/themis/tests/github.test.mjs
 import { describe, it, expect } from "vitest";
 import { createGithub, resolveToken, GithubError } from "../src/lib/github.mjs";
 
@@ -63,14 +63,14 @@ const jsonResponse = (status, body) => ({
 });
 
 describe("resolveToken", () => {
-  it("prefers ORRERY_GH_TOKEN over GITHUB_TOKEN over gh", () => {
-    expect(resolveToken({ ORRERY_GH_TOKEN: "a", GITHUB_TOKEN: "b" }, () => "c")).toBe("a");
+  it("prefers THEMIS_GH_TOKEN over GITHUB_TOKEN over gh", () => {
+    expect(resolveToken({ THEMIS_GH_TOKEN: "a", GITHUB_TOKEN: "b" }, () => "c")).toBe("a");
     expect(resolveToken({ GITHUB_TOKEN: "b" }, () => "c")).toBe("b");
     expect(resolveToken({}, () => "c\n")).toBe("c");
   });
 
   it("throws naming every source when none yields a token", () => {
-    expect(() => resolveToken({}, () => "")).toThrow(/ORRERY_GH_TOKEN.*GITHUB_TOKEN.*gh auth token/s);
+    expect(() => resolveToken({}, () => "")).toThrow(/THEMIS_GH_TOKEN.*GITHUB_TOKEN.*gh auth token/s);
   });
 });
 
@@ -110,13 +110,13 @@ describe("createGithub", () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `pnpm vitest run packages/orrery/tests/github.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/github.test.mjs`
 Expected: FAIL — cannot resolve `../src/lib/github.mjs`
 
 - [ ] **Step 3: Write the implementation**
 
 ```javascript
-// packages/orrery/src/lib/github.mjs
+// packages/themis/src/lib/github.mjs
 import { execFileSync } from "node:child_process";
 
 export class GithubError extends Error {
@@ -137,10 +137,10 @@ function defaultRunGh() {
 }
 
 export function resolveToken(env = process.env, runGh = defaultRunGh) {
-  const token = env.ORRERY_GH_TOKEN || env.GITHUB_TOKEN || runGh().trim();
+  const token = env.THEMIS_GH_TOKEN || env.GITHUB_TOKEN || runGh().trim();
   if (!token) {
     throw new Error(
-      "no GitHub token: set ORRERY_GH_TOKEN or GITHUB_TOKEN, or log in with gh so `gh auth token` works"
+      "no GitHub token: set THEMIS_GH_TOKEN or GITHUB_TOKEN, or log in with gh so `gh auth token` works"
     );
   }
   return token;
@@ -181,13 +181,13 @@ export function createGithub({ token, fetchImpl = fetch, baseUrl = "https://api.
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `pnpm vitest run packages/orrery/tests/github.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/github.test.mjs`
 Expected: PASS — 6 tests
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/orrery/src/lib/github.mjs packages/orrery/tests/github.test.mjs
+git add packages/themis/src/lib/github.mjs packages/themis/tests/github.test.mjs
 git commit -m "feat(github): minimal REST client with injectable fetch and token resolution"
 ```
 
@@ -197,15 +197,15 @@ git commit -m "feat(github): minimal REST client with injectable fetch and token
 
 **Files:**
 - Create: `policy/repository.json`
-- Create: `packages/orrery/src/lib/policy.mjs`
-- Test: `packages/orrery/tests/policy.test.mjs`
+- Create: `packages/themis/src/lib/policy.mjs`
+- Test: `packages/themis/tests/policy.test.mjs`
 
 **Interfaces:**
 - Consumes: nothing.
 - Produces:
   - `loadPolicy(path = defaultPolicyPath) => object` — parses the JSON and throws with every validation error joined if `validatePolicy` returns any.
   - `validatePolicy(policy) => string[]` — empty when valid.
-  - `defaultPolicyPath` — absolute path to `policy/repository.json` at the repository root (two levels above `packages/orrery/src/lib`).
+  - `defaultPolicyPath` — absolute path to `policy/repository.json` at the repository root (two levels above `packages/themis/src/lib`).
   - The policy shape, relied on by Tasks 3–13:
 
 ```jsonc
@@ -215,7 +215,7 @@ git commit -m "feat(github): minimal REST client with injectable fetch and token
   "settings": { /* PATCH /repos body */ },
   "protection": { "main": { /* PUT protection body minus contexts */ }, "develop": { ... } },
   "requiredChecks": { "main": ["..."], "develop": ["..."] },
-  "sharedCiMarker": "# orrery-ci",
+  "sharedCiMarker": "# themis-ci",
   "labels": [{ "name": "...", "color": "hex", "description": "..." }]
 }
 ```
@@ -224,7 +224,7 @@ git commit -m "feat(github): minimal REST client with injectable fetch and token
 
 ```json
 {
-  "$comment": "The constellation's repository policy. Applied by `orrery repo apply`. Spec: docs/specs/2026-09-08-phase-2e-repository-policy-design.md",
+  "$comment": "The constellation's repository policy. Applied by `themis repo apply`. Spec: docs/specs/2026-09-08-phase-2e-repository-policy-design.md",
   "defaultBranch": "develop",
   "protectedBranches": ["main", "develop"],
   "settings": {
@@ -273,7 +273,7 @@ git commit -m "feat(github): minimal REST client with injectable fetch and token
     "main": ["test", "branch-target", "branch-name", "pr-title", "config-drift"],
     "develop": ["test", "branch-target", "branch-name", "pr-title", "config-drift", "branch-sync"]
   },
-  "sharedCiMarker": "# orrery-ci",
+  "sharedCiMarker": "# themis-ci",
   "labels": [
     { "name": "feat", "color": "0e8a16", "description": "A new capability" },
     { "name": "fix", "color": "d73a4a", "description": "A bug fix" },
@@ -285,7 +285,7 @@ git commit -m "feat(github): minimal REST client with injectable fetch and token
     { "name": "revert", "color": "000000", "description": "Reverts a previous change" },
     { "name": "release", "color": "5319e7", "description": "A release branch into main" },
     { "name": "back-merge", "color": "c5def5", "description": "Automatic merge of main into develop" },
-    { "name": "orrery", "color": "1d76db", "description": "Opened by Orrery automation" }
+    { "name": "themis", "color": "1d76db", "description": "Opened by Themis automation" }
   ]
 }
 ```
@@ -293,7 +293,7 @@ git commit -m "feat(github): minimal REST client with injectable fetch and token
 - [ ] **Step 2: Write the failing test**
 
 ```javascript
-// packages/orrery/tests/policy.test.mjs
+// packages/themis/tests/policy.test.mjs
 import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
@@ -353,7 +353,7 @@ describe("validatePolicy", () => {
 
 describe("loadPolicy", () => {
   it("throws listing every error for an invalid file", () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-policy-"));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "themis-policy-"));
     const file = path.join(dir, "bad.json");
     fs.writeFileSync(file, JSON.stringify({ defaultBranch: "x", protectedBranches: [], settings: {}, protection: {}, requiredChecks: {}, labels: [] }));
     expect(() => loadPolicy(file)).toThrow(/defaultBranch x is not in protectedBranches/);
@@ -364,13 +364,13 @@ describe("loadPolicy", () => {
 
 - [ ] **Step 3: Run the test to verify it fails**
 
-Run: `pnpm vitest run packages/orrery/tests/policy.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/policy.test.mjs`
 Expected: FAIL — cannot resolve `../src/lib/policy.mjs`
 
 - [ ] **Step 4: Write the implementation**
 
 ```javascript
-// packages/orrery/src/lib/policy.mjs
+// packages/themis/src/lib/policy.mjs
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -414,13 +414,13 @@ export function loadPolicy(file = defaultPolicyPath) {
 
 - [ ] **Step 5: Run the test to verify it passes**
 
-Run: `pnpm vitest run packages/orrery/tests/policy.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/policy.test.mjs`
 Expected: PASS — 8 tests
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add policy/repository.json packages/orrery/src/lib/policy.mjs packages/orrery/tests/policy.test.mjs
+git add policy/repository.json packages/themis/src/lib/policy.mjs packages/themis/tests/policy.test.mjs
 git commit -m "feat(policy): the constellation repository policy and its loader"
 ```
 
@@ -431,8 +431,8 @@ git commit -m "feat(policy): the constellation repository policy and its loader"
 Pure planner, so idempotence is a unit-tested property, then an applier that executes the plan through the client.
 
 **Files:**
-- Create: `packages/orrery/src/lib/repo-policy.mjs`
-- Test: `packages/orrery/tests/repo-policy.test.mjs`
+- Create: `packages/themis/src/lib/repo-policy.mjs`
+- Test: `packages/themis/tests/repo-policy.test.mjs`
 
 **Interfaces:**
 - Consumes: `createGithub(...).request` (Task 1); the policy shape (Task 2).
@@ -446,7 +446,7 @@ Pure planner, so idempotence is a unit-tested property, then an applier that exe
 - [ ] **Step 1: Write the failing test**
 
 ```javascript
-// packages/orrery/tests/repo-policy.test.mjs
+// packages/themis/tests/repo-policy.test.mjs
 import { describe, it, expect } from "vitest";
 import { loadPolicy } from "../src/lib/policy.mjs";
 import {
@@ -559,12 +559,12 @@ describe("planRepoChanges", () => {
 
   it("creates missing labels and updates ones whose colour or description differs", () => {
     const state = compliantState();
-    state.labels = state.labels.filter((l) => l.name !== "orrery");
+    state.labels = state.labels.filter((l) => l.name !== "themis");
     state.labels.find((l) => l.name === "fix").color = "ffffff";
     const ops = planRepoChanges(state, policy);
     expect(ops.map((o) => [o.kind, o.label.name])).toEqual([
       ["update-label", "fix"],
-      ["create-label", "orrery"],
+      ["create-label", "themis"],
     ]);
   });
 
@@ -584,7 +584,7 @@ describe("readRepoState", () => {
       "GET /repos/vaoan/x/branches/main/protection": { status: 404, data: null },
       "GET /repos/vaoan/x/branches/develop/protection": { status: 404, data: null },
       "GET /repos/vaoan/x/labels?per_page=100": { status: 200, data: [{ name: "bug", color: "d73a4a", description: "x" }] },
-      "GET /repos/vaoan/x/contents/.github/workflows/ci.yml": { status: 200, data: { content: Buffer.from("# orrery-ci\nname: ci\n").toString("base64"), encoding: "base64" } },
+      "GET /repos/vaoan/x/contents/.github/workflows/ci.yml": { status: 200, data: { content: Buffer.from("# themis-ci\nname: ci\n").toString("base64"), encoding: "base64" } },
     };
     const github = { request: async (m, p) => answers[`${m} ${p}`] ?? { status: 404, data: null } };
     const state = await readRepoState(github, "vaoan/x");
@@ -614,7 +614,7 @@ describe("applyRepoPolicy", () => {
         if (m === "GET" && p === "/repos/vaoan/x/branches/develop") return created ? { status: 200, data: { commit: { sha: "aaa" } } } : { status: 404, data: null };
         if (m === "GET" && p.endsWith("/protection")) return created ? { status: 200, data: apiProtection(policy.requiredChecks[p.includes("/main/") ? "main" : "develop"]) } : { status: 404, data: null };
         if (m === "GET" && p.startsWith("/repos/vaoan/x/labels")) return { status: 200, data: created ? policy.labels : [] };
-        if (m === "GET" && p.includes("/contents/")) return { status: 200, data: { content: Buffer.from("# orrery-ci").toString("base64"), encoding: "base64" } };
+        if (m === "GET" && p.includes("/contents/")) return { status: 200, data: { content: Buffer.from("# themis-ci").toString("base64"), encoding: "base64" } };
         if (m === "POST" && p === "/repos/vaoan/x/git/refs") { created = true; return { status: 201, data: {} }; }
         return { status: 200, data: {} };
       },
@@ -652,13 +652,13 @@ describe("applyRepoPolicy", () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `pnpm vitest run packages/orrery/tests/repo-policy.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/repo-policy.test.mjs`
 Expected: FAIL — cannot resolve `../src/lib/repo-policy.mjs`
 
 - [ ] **Step 3: Write the implementation**
 
 ```javascript
-// packages/orrery/src/lib/repo-policy.mjs
+// packages/themis/src/lib/repo-policy.mjs
 
 const PROTECTION_FLAGS = [
   "enforce_admins",
@@ -746,7 +746,7 @@ export function planRepoChanges(state, policy) {
   return ops;
 }
 
-export async function readRepoState(github, repo, policy = { protectedBranches: ["main", "develop"], sharedCiMarker: "# orrery-ci" }) {
+export async function readRepoState(github, repo, policy = { protectedBranches: ["main", "develop"], sharedCiMarker: "# themis-ci" }) {
   const base = `/repos/${repo}`;
   const { data: repoData } = await github.request("GET", base);
   if (!repoData) throw new Error(`repository ${repo} not found or not accessible`);
@@ -764,7 +764,7 @@ export async function readRepoState(github, repo, policy = { protectedBranches: 
 
   const { data: ci } = await github.request("GET", `${base}/contents/.github/workflows/ci.yml`);
   const ciText = ci?.content ? Buffer.from(ci.content, ci.encoding ?? "base64").toString("utf8") : "";
-  const sharedCi = ciText.includes(policy.sharedCiMarker ?? "# orrery-ci");
+  const sharedCi = ciText.includes(policy.sharedCiMarker ?? "# themis-ci");
 
   const settings = {};
   for (const key of ["allow_squash_merge", "allow_merge_commit", "allow_rebase_merge", "delete_branch_on_merge", "allow_auto_merge", "allow_update_branch", "squash_merge_commit_title", "squash_merge_commit_message"]) {
@@ -823,38 +823,38 @@ The `set-protection` comparison in `planRepoChanges` re-normalises both sides th
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `pnpm vitest run packages/orrery/tests/repo-policy.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/repo-policy.test.mjs`
 Expected: PASS — 14 tests
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/orrery/src/lib/repo-policy.mjs packages/orrery/tests/repo-policy.test.mjs
+git add packages/themis/src/lib/repo-policy.mjs packages/themis/tests/repo-policy.test.mjs
 git commit -m "feat(repo-policy): plan and apply the repository policy idempotently"
 ```
 
 ---
 
-### Task 4: `orrery repo apply` command and the fixture-repository integration test
+### Task 4: `themis repo apply` command and the fixture-repository integration test
 
 **Files:**
-- Create: `packages/orrery/src/commands/repo.mjs`
-- Modify: `packages/orrery/src/cli.mjs` (add `repo` to `COMMANDS` and to `USAGE`)
-- Test: `packages/orrery/tests/repo-command.test.mjs`
-- Test: `packages/orrery/tests/repo-apply.integration.test.mjs`
-- Modify: `vitest.config.mjs` (integration tests run only when `ORRERY_FIXTURE_REPO` is set)
+- Create: `packages/themis/src/commands/repo.mjs`
+- Modify: `packages/themis/src/cli.mjs` (add `repo` to `COMMANDS` and to `USAGE`)
+- Test: `packages/themis/tests/repo-command.test.mjs`
+- Test: `packages/themis/tests/repo-apply.integration.test.mjs`
+- Modify: `vitest.config.mjs` (integration tests run only when `THEMIS_FIXTURE_REPO` is set)
 
 **Interfaces:**
 - Consumes: `applyRepoPolicy`, `readRepoState` (Task 3); `loadPolicy` (Task 2); `createGithub`, `resolveToken` (Task 1).
-- Produces: default export `(argv, deps) => Promise<number>`; `orrery repo apply <owner/name> [--dry-run] [--policy <file>]`. Prints one line per operation, `nothing to change` when idempotent. Exit `0` on success, `2` on bad arguments, `1` on API failure.
+- Produces: default export `(argv, deps) => Promise<number>`; `themis repo apply <owner/name> [--dry-run] [--policy <file>]`. Prints one line per operation, `nothing to change` when idempotent. Exit `0` on success, `2` on bad arguments, `1` on API failure.
 
 - [ ] **Step 1: Create the fixture repository once**
 
-Run from `Z:\Github\Orrery`:
+Run from `Z:\Github\Themis`:
 
 ```bash
-gh repo create vaoan/orrery-policy-fixture --private --description "Throwaway target for orrery repo apply tests; reset by the test, never used for anything else" --clone=false
-gh api -X PUT repos/vaoan/orrery-policy-fixture/contents/README.md -f message="chore: seed [GH-000]" -f content="$(printf '# orrery-policy-fixture\n' | base64)"
+gh repo create vaoan/themis-policy-fixture --private --description "Throwaway target for themis repo apply tests; reset by the test, never used for anything else" --clone=false
+gh api -X PUT repos/vaoan/themis-policy-fixture/contents/README.md -f message="chore: seed [GH-000]" -f content="$(printf '# themis-policy-fixture\n' | base64)"
 ```
 
 Expected: the repository exists with one commit on `main`. Record its name in the report.
@@ -862,16 +862,16 @@ Expected: the repository exists with one commit on `main`. Record its name in th
 - [ ] **Step 2: Write the failing command test**
 
 ```javascript
-// packages/orrery/tests/repo-command.test.mjs
+// packages/themis/tests/repo-command.test.mjs
 import { describe, it, expect, vi } from "vitest";
 import repo from "../src/commands/repo.mjs";
 
-describe("orrery repo apply", () => {
+describe("themis repo apply", () => {
   it("exits 2 without a subcommand or repository", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     expect(await repo([])).toBe(2);
     expect(await repo(["apply"])).toBe(2);
-    expect(error.mock.calls.flat().join("\n")).toContain("usage: orrery repo apply <owner/name>");
+    expect(error.mock.calls.flat().join("\n")).toContain("usage: themis repo apply <owner/name>");
     error.mockRestore();
   });
 
@@ -921,19 +921,19 @@ describe("orrery repo apply", () => {
 
 - [ ] **Step 3: Run the test to verify it fails**
 
-Run: `pnpm vitest run packages/orrery/tests/repo-command.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/repo-command.test.mjs`
 Expected: FAIL — cannot resolve `../src/commands/repo.mjs`
 
 - [ ] **Step 4: Write the command and register it**
 
 ```javascript
-// packages/orrery/src/commands/repo.mjs
+// packages/themis/src/commands/repo.mjs
 import { parseArgs } from "node:util";
 import { createGithub as realCreateGithub, resolveToken as realResolveToken } from "../lib/github.mjs";
 import { loadPolicy as realLoadPolicy } from "../lib/policy.mjs";
 import { applyRepoPolicy as realApplyRepoPolicy } from "../lib/repo-policy.mjs";
 
-const USAGE = "usage: orrery repo apply <owner/name> [--dry-run] [--policy <file>]";
+const USAGE = "usage: themis repo apply <owner/name> [--dry-run] [--policy <file>]";
 
 const describeOp = (op) => {
   switch (op.kind) {
@@ -992,7 +992,7 @@ export default async function repo(argv, deps = {}) {
 }
 ```
 
-In `packages/orrery/src/cli.mjs`, add to `COMMANDS`:
+In `packages/themis/src/cli.mjs`, add to `COMMANDS`:
 
 ```javascript
   repo: async (argv) => (await import("./commands/repo.mjs")).default(argv),
@@ -1001,7 +1001,7 @@ In `packages/orrery/src/cli.mjs`, add to `COMMANDS`:
 and add to `USAGE`, under `Usage:` and `Commands:` respectively:
 
 ```
-  orrery repo apply <owner/name> [--dry-run] [--policy <file>]
+  themis repo apply <owner/name> [--dry-run] [--policy <file>]
 ```
 ```
   repo apply    bring a repository's branches, protection, settings and labels to policy
@@ -1009,14 +1009,14 @@ and add to `USAGE`, under `Usage:` and `Commands:` respectively:
 
 - [ ] **Step 5: Run the test to verify it passes**
 
-Run: `pnpm vitest run packages/orrery/tests/repo-command.test.mjs packages/orrery/tests/cli.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/repo-command.test.mjs packages/themis/tests/cli.test.mjs`
 Expected: PASS — 5 new tests, the cli tests still green
 
 - [ ] **Step 6: Write the integration test against the fixture repository**
 
 ```javascript
-// packages/orrery/tests/repo-apply.integration.test.mjs
-// Runs only when ORRERY_FIXTURE_REPO is set (for example vaoan/orrery-policy-fixture).
+// packages/themis/tests/repo-apply.integration.test.mjs
+// Runs only when THEMIS_FIXTURE_REPO is set (for example vaoan/themis-policy-fixture).
 // It resets the fixture to a pre-policy state, applies the policy twice, and asserts
 // the second run is a no-op. It never touches any other repository.
 import { describe, it, expect, beforeAll } from "vitest";
@@ -1024,9 +1024,9 @@ import { createGithub, resolveToken } from "../src/lib/github.mjs";
 import { loadPolicy } from "../src/lib/policy.mjs";
 import { applyRepoPolicy, readRepoState } from "../src/lib/repo-policy.mjs";
 
-const repo = process.env.ORRERY_FIXTURE_REPO;
+const repo = process.env.THEMIS_FIXTURE_REPO;
 
-describe.skipIf(!repo)("orrery repo apply against the fixture repository", () => {
+describe.skipIf(!repo)("themis repo apply against the fixture repository", () => {
   const policy = loadPolicy();
   let github;
 
@@ -1078,33 +1078,33 @@ describe.skipIf(!repo)("orrery repo apply against the fixture repository", () =>
 
 - [ ] **Step 7: Run the integration test for real**
 
-Run (PowerShell): `$env:ORRERY_FIXTURE_REPO="vaoan/orrery-policy-fixture"; pnpm vitest run packages/orrery/tests/repo-apply.integration.test.mjs`
+Run (PowerShell): `$env:THEMIS_FIXTURE_REPO="vaoan/themis-policy-fixture"; pnpm vitest run packages/themis/tests/repo-apply.integration.test.mjs`
 Expected: PASS — 1 test. Then run the whole suite without the variable and confirm the file reports as skipped, not failed.
 
 - [ ] **Step 8: Commit**
 
 ```bash
-git add packages/orrery/src/commands/repo.mjs packages/orrery/src/cli.mjs packages/orrery/tests/repo-command.test.mjs packages/orrery/tests/repo-apply.integration.test.mjs
-git commit -m "feat(repo): orrery repo apply, with a fixture-repository integration test"
+git add packages/themis/src/commands/repo.mjs packages/themis/src/cli.mjs packages/themis/tests/repo-command.test.mjs packages/themis/tests/repo-apply.integration.test.mjs
+git commit -m "feat(repo): themis repo apply, with a fixture-repository integration test"
 ```
 
 ---
 
-### Task 5: Apply the policy to Orrery itself, first pass
+### Task 5: Apply the policy to Themis itself, first pass
 
-Orrery has no `ci.yml` yet, so this pass creates `develop`, sets it default, applies settings and protection with no required checks. Task 9 adds the checks once the workflow exists.
+Themis has no `ci.yml` yet, so this pass creates `develop`, sets it default, applies settings and protection with no required checks. Task 9 adds the checks once the workflow exists.
 
 **Files:** none created. This task is an operation plus a record.
 
 - [ ] **Step 1: Dry run**
 
-Run: `pnpm orrery repo apply vaoan/Orrery --dry-run`
+Run: `pnpm themis repo apply vaoan/Themis --dry-run`
 Expected: lists `create-branch develop`, `update-settings …`, `set-default-branch develop`, `set-protection main`, `set-protection develop`, and eleven `create-label` lines. Paste the output into the report.
 
 - [ ] **Step 2: Apply**
 
-Run: `pnpm orrery repo apply vaoan/Orrery`
-Expected: the same operations, applied. Then `pnpm orrery repo apply vaoan/Orrery` again prints `vaoan/Orrery: nothing to change`.
+Run: `pnpm themis repo apply vaoan/Themis`
+Expected: the same operations, applied. Then `pnpm themis repo apply vaoan/Themis` again prints `vaoan/Themis: nothing to change`.
 
 - [ ] **Step 3: Move the working branch onto the flow**
 
@@ -1117,7 +1117,7 @@ git rev-list --count origin/develop..HEAD   # the branch's own commits; expected
 git rev-list --count origin/main..origin/develop  # expected 0: develop was just created from main
 ```
 
-From this point every PR in this plan targets `develop`. Record in the ledger that Orrery is on the flow as of this commit.
+From this point every PR in this plan targets `develop`. Record in the ledger that Themis is on the flow as of this commit.
 
 - [ ] **Step 4: Commit a decision record**
 
@@ -1131,7 +1131,7 @@ Create `docs/decisions/0003-repository-policy.md`:
 **Spec:** docs/specs/2026-09-08-phase-2e-repository-policy-design.md
 
 Every repository in the constellation runs the two-branch flow defined in
-`policy/repository.json`, applied by `orrery repo apply`. Orrery was the first
+`policy/repository.json`, applied by `themis repo apply`. Themis was the first
 repository brought to policy, on 2026-09-08, before any body.
 
 | Setting | Value | Deciding test |
@@ -1160,8 +1160,8 @@ git commit -m "docs(adr): 0003 one repository policy, applied by command"
 ### Task 6: Git-flow checks as pure functions
 
 **Files:**
-- Create: `packages/orrery/src/lib/git-flow.mjs`
-- Test: `packages/orrery/tests/git-flow.test.mjs`
+- Create: `packages/themis/src/lib/git-flow.mjs`
+- Test: `packages/themis/tests/git-flow.test.mjs`
 
 **Interfaces:**
 - Consumes: nothing.
@@ -1180,7 +1180,7 @@ git commit -m "docs(adr): 0003 one repository policy, applied by command"
 - [ ] **Step 1: Write the failing test**
 
 ```javascript
-// packages/orrery/tests/git-flow.test.mjs
+// packages/themis/tests/git-flow.test.mjs
 import { describe, it, expect } from "vitest";
 import {
   TYPES, branchType, checkBranchName, checkBranchTarget, parsePrTitle, checkPrTitle,
@@ -1294,7 +1294,7 @@ describe("commit messages", () => {
     ["Merge pull request #1 from vaoan/feat/phase-2a-diff-eslint", true],
     ["Merge branch 'main' into develop", true],
     ["Merge remote-tracking branch 'origin/develop' into feat/x", true],
-    ["Scaffold Orrery for development", false],
+    ["Scaffold Themis for development", false],
     ["fixed stuff", false],
     ["feat(cli): x\n\nBody text\n\nCo-Authored-By: someone", true],
   ])("%j -> %s", (message, ok) => {
@@ -1358,13 +1358,13 @@ describe("config drift", () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `pnpm vitest run packages/orrery/tests/git-flow.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/git-flow.test.mjs`
 Expected: FAIL — cannot resolve `../src/lib/git-flow.mjs`
 
 - [ ] **Step 3: Write the implementation**
 
 ```javascript
-// packages/orrery/src/lib/git-flow.mjs
+// packages/themis/src/lib/git-flow.mjs
 
 export const TYPES = ["feat", "fix", "docs", "refactor", "perf", "test", "chore", "revert"];
 const TYPE_ALT = TYPES.join("|");
@@ -1527,37 +1527,37 @@ export async function checkConfigDrift({ run, baseRef, headSha, files }) {
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `pnpm vitest run packages/orrery/tests/git-flow.test.mjs`
-Expected: PASS — 95 tests as landed (the implementation above gained `planLabel`, `hotfix/*`, `back-merge/*` and `isBackMerge` after the descriptive-branch-name blocklist and back-merge work landed post-2e; run `pnpm exec vitest run packages/orrery/tests/git-flow.test.mjs` for the current count). Report the exact count.
+Run: `pnpm vitest run packages/themis/tests/git-flow.test.mjs`
+Expected: PASS — 95 tests as landed (the implementation above gained `planLabel`, `hotfix/*`, `back-merge/*` and `isBackMerge` after the descriptive-branch-name blocklist and back-merge work landed post-2e; run `pnpm exec vitest run packages/themis/tests/git-flow.test.mjs` for the current count). Report the exact count.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/orrery/src/lib/git-flow.mjs packages/orrery/tests/git-flow.test.mjs
+git add packages/themis/src/lib/git-flow.mjs packages/themis/tests/git-flow.test.mjs
 git commit -m "feat(git-flow): branch, target, title, commit, sync and drift checks as pure functions"
 ```
 
 ---
 
-### Task 7: `orrery ci <verb>` command
+### Task 7: `themis ci <verb>` command
 
 Reads the Actions event file, or explicit flags, and runs one verb. Exit `0` pass, `1` fail, `2` bad arguments.
 
 **Files:**
-- Create: `packages/orrery/src/commands/ci.mjs`
-- Modify: `packages/orrery/src/cli.mjs` (register `ci`; add usage lines)
-- Test: `packages/orrery/tests/ci-command.test.mjs`
+- Create: `packages/themis/src/commands/ci.mjs`
+- Modify: `packages/themis/src/cli.mjs` (register `ci`; add usage lines)
+- Test: `packages/themis/tests/ci-command.test.mjs`
 
 **Interfaces:**
 - Consumes: every check in Task 6; `createGithub`/`resolveToken` (Task 1) for `issueExists`.
 - Produces: default export `(argv, deps) => Promise<number>`. Verbs: `branch-target`, `branch-name`, `pr-title`, `branch-sync`, `config-drift`. Context comes from `--head`, `--base`, `--title`, `--repo`, `--head-sha`, or from the JSON at `GITHUB_EVENT_PATH` (`pull_request.head.ref`, `.base.ref`, `.title`, `.head.sha`, `repository.full_name`). `config-drift` also takes `--files a,b,c` with the default list below.
 
-Default drift files (the union of what libra guards plus Orrery's pointers): `eslint.config.mjs, eslint.local.mjs, tsconfig.json, tsconfig.base.json, package.json, pnpm-lock.yaml, pnpm-workspace.yaml, orrery.config.mjs, .github/workflows/ci.yml`.
+Default drift files (the union of what libra guards plus Themis's pointers): `eslint.config.mjs, eslint.local.mjs, tsconfig.json, tsconfig.base.json, package.json, pnpm-lock.yaml, pnpm-workspace.yaml, themis.config.mjs, .github/workflows/ci.yml`.
 
 - [ ] **Step 1: Write the failing test**
 
 ```javascript
-// packages/orrery/tests/ci-command.test.mjs
+// packages/themis/tests/ci-command.test.mjs
 import { describe, it, expect, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
@@ -1565,7 +1565,7 @@ import path from "node:path";
 import ci from "../src/commands/ci.mjs";
 
 const event = (pr) => {
-  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "orrery-event-")), "event.json");
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "themis-event-")), "event.json");
   fs.writeFileSync(file, JSON.stringify({ pull_request: pr, repository: { full_name: "vaoan/x" } }));
   return file;
 };
@@ -1576,12 +1576,12 @@ const quiet = () => {
   return { out: () => [...log.mock.calls, ...error.mock.calls].flat().join("\n"), restore: () => { log.mockRestore(); error.mockRestore(); } };
 };
 
-describe("orrery ci", () => {
+describe("themis ci", () => {
   it("exits 2 on a missing or unknown verb", async () => {
     const q = quiet();
     expect(await ci([])).toBe(2);
     expect(await ci(["nonsense"])).toBe(2);
-    expect(q.out()).toContain("usage: orrery ci <branch-target|branch-name|pr-title|branch-sync|config-drift>");
+    expect(q.out()).toContain("usage: themis ci <branch-target|branch-name|pr-title|branch-sync|config-drift>");
     q.restore();
   });
 
@@ -1652,7 +1652,7 @@ describe("orrery ci", () => {
     expect(await ci(["config-drift"], { env, run })).toBe(0);
     expect(seen[0]).toBe("fetch --no-tags origin develop");
     expect(seen.some((s) => s === "show origin/develop:eslint.config.mjs")).toBe(true);
-    expect(seen.some((s) => s === "show headsha:orrery.config.mjs")).toBe(true);
+    expect(seen.some((s) => s === "show headsha:themis.config.mjs")).toBe(true);
     q.restore();
   });
 });
@@ -1660,13 +1660,13 @@ describe("orrery ci", () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `pnpm vitest run packages/orrery/tests/ci-command.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/ci-command.test.mjs`
 Expected: FAIL — cannot resolve `../src/commands/ci.mjs`
 
 - [ ] **Step 3: Write the command and register it**
 
 ```javascript
-// packages/orrery/src/commands/ci.mjs
+// packages/themis/src/commands/ci.mjs
 import fs from "node:fs";
 import { parseArgs } from "node:util";
 import { execFileSync } from "node:child_process";
@@ -1676,11 +1676,11 @@ import {
 } from "../lib/git-flow.mjs";
 
 const VERBS = ["branch-target", "branch-name", "pr-title", "branch-sync", "config-drift"];
-const USAGE = `usage: orrery ci <${VERBS.join("|")}> [--head <branch>] [--base <branch>] [--title <text>] [--repo <owner/name>] [--head-sha <sha>] [--files a,b,c]`;
+const USAGE = `usage: themis ci <${VERBS.join("|")}> [--head <branch>] [--base <branch>] [--title <text>] [--repo <owner/name>] [--head-sha <sha>] [--files a,b,c]`;
 
 export const DEFAULT_DRIFT_FILES = [
   "eslint.config.mjs", "eslint.local.mjs", "tsconfig.json", "tsconfig.base.json",
-  "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "orrery.config.mjs",
+  "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "themis.config.mjs",
   ".github/workflows/ci.yml",
 ];
 
@@ -1800,7 +1800,7 @@ export default async function ci(argv, deps = {}) {
 }
 ```
 
-Register in `packages/orrery/src/cli.mjs`:
+Register in `packages/themis/src/cli.mjs`:
 
 ```javascript
   ci: async (argv) => (await import("./commands/ci.mjs")).default(argv),
@@ -1809,7 +1809,7 @@ Register in `packages/orrery/src/cli.mjs`:
 Usage lines:
 
 ```
-  orrery ci <verb> [--head] [--base] [--title] [--repo] [--head-sha] [--files]
+  themis ci <verb> [--head] [--base] [--title] [--repo] [--head-sha] [--files]
 ```
 ```
   ci            run one git-flow check: branch-target, branch-name, pr-title, branch-sync, config-drift
@@ -1817,37 +1817,37 @@ Usage lines:
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `pnpm vitest run packages/orrery/tests/ci-command.test.mjs packages/orrery/tests/cli.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/ci-command.test.mjs packages/themis/tests/cli.test.mjs`
 Expected: PASS — 9 new tests
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/orrery/src/commands/ci.mjs packages/orrery/src/cli.mjs packages/orrery/tests/ci-command.test.mjs
-git commit -m "feat(ci): orrery ci verbs reading the Actions event or explicit flags"
+git add packages/themis/src/commands/ci.mjs packages/themis/src/cli.mjs packages/themis/tests/ci-command.test.mjs
+git commit -m "feat(ci): themis ci verbs reading the Actions event or explicit flags"
 ```
 
 ---
 
-### Task 8: Workflows in Orrery: shared CI, back-merge, release creation
+### Task 8: Workflows in Themis: shared CI, back-merge, release creation
 
-YAML carries structure only. Each job calls one verb. Orrery is both the definition and its own first caller: `ci.yml` has `workflow_call` for bodies and `pull_request`/`push` for itself.
+YAML carries structure only. Each job calls one verb. Themis is both the definition and its own first caller: `ci.yml` has `workflow_call` for bodies and `pull_request`/`push` for itself.
 
 **Files:**
 - Create: `.github/workflows/ci.yml`
 - Create: `.github/workflows/back-merge.yml`
 - Create: `.github/workflows/release.yml`
 - Create: `.github/pull_request_template.md`
-- Test: `packages/orrery/tests/workflows.test.mjs`
+- Test: `packages/themis/tests/workflows.test.mjs`
 
 **Interfaces:**
-- Consumes: `orrery ci <verb>` (Task 7); the policy's `requiredChecks` names (Task 2) — **job names must equal the check names in the policy exactly**: `test`, `branch-target`, `branch-name`, `pr-title`, `config-drift`, `branch-sync`.
-- Produces: the shared `ci.yml` bodies will reference as `vaoan/Orrery/.github/workflows/ci.yml@main` (Phase 2d); the marker line `# orrery-ci` on its first line, which `readRepoState` detects.
+- Consumes: `themis ci <verb>` (Task 7); the policy's `requiredChecks` names (Task 2) — **job names must equal the check names in the policy exactly**: `test`, `branch-target`, `branch-name`, `pr-title`, `config-drift`, `branch-sync`.
+- Produces: the shared `ci.yml` bodies will reference as `vaoan/Themis/.github/workflows/ci.yml@main` (Phase 2d); the marker line `# themis-ci` on its first line, which `readRepoState` detects.
 
 - [ ] **Step 1: Write the failing test**
 
 ```javascript
-// packages/orrery/tests/workflows.test.mjs
+// packages/themis/tests/workflows.test.mjs
 import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
@@ -1866,7 +1866,7 @@ describe(".github/workflows/ci.yml", () => {
     expect(yaml.split("\n")[0]).toBe(policy.sharedCiMarker);
   });
 
-  it("is callable by bodies and runs on Orrery's own PRs and pushes", () => {
+  it("is callable by bodies and runs on Themis's own PRs and pushes", () => {
     expect(yaml).toMatch(/^on:\n(?:.*\n)*?  workflow_call:/m);
     expect(yaml).toMatch(/  pull_request:\n    branches: \[develop, main\]/);
     expect(yaml).toMatch(/  push:\n    branches: \[develop, main\]/);
@@ -1885,7 +1885,7 @@ describe(".github/workflows/ci.yml", () => {
 
   it("calls each verb through the package", () => {
     for (const verb of ["branch-target", "branch-name", "pr-title", "branch-sync", "config-drift"]) {
-      expect(yaml).toContain(`pnpm orrery ci ${verb}`);
+      expect(yaml).toContain(`pnpm themis ci ${verb}`);
     }
     expect(yaml).toContain("pnpm test");
   });
@@ -1901,7 +1901,7 @@ describe(".github/workflows/back-merge.yml", () => {
     expect(yaml).not.toContain("--squash");
   });
   it("uses the bot token, not GITHUB_TOKEN, so the PR triggers checks", () => {
-    expect(yaml).toContain("secrets.ORRERY_BOT_TOKEN");
+    expect(yaml).toContain("secrets.THEMIS_BOT_TOKEN");
   });
 });
 
@@ -1927,7 +1927,7 @@ describe(".github/pull_request_template.md", () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `pnpm vitest run packages/orrery/tests/workflows.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/workflows.test.mjs`
 Expected: FAIL — ENOENT on `.github/workflows/ci.yml`
 
 - [ ] **Step 3: Write the workflows**
@@ -1935,8 +1935,8 @@ Expected: FAIL — ENOENT on `.github/workflows/ci.yml`
 `.github/workflows/ci.yml`:
 
 ```yaml
-# orrery-ci
-# The constellation's shared CI. Bodies reference this file at @main; Orrery runs it on itself.
+# themis-ci
+# The constellation's shared CI. Bodies reference this file at @main; Themis runs it on itself.
 # Job names are the required-check names in policy/repository.json and must not be renamed
 # without changing the policy in the same PR.
 name: ci
@@ -1987,7 +1987,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm orrery ci branch-target
+      - run: pnpm themis ci branch-target
 
   branch-name:
     name: branch-name
@@ -2003,7 +2003,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm orrery ci branch-name
+      - run: pnpm themis ci branch-name
 
   pr-title:
     name: pr-title
@@ -2019,7 +2019,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm orrery ci pr-title
+      - run: pnpm themis ci pr-title
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -2039,7 +2039,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm orrery ci config-drift
+      - run: pnpm themis ci config-drift
 
   branch-sync:
     name: branch-sync
@@ -2057,7 +2057,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm orrery ci branch-sync
+      - run: pnpm themis ci branch-sync
 ```
 
 `.github/workflows/back-merge.yml`:
@@ -2091,14 +2091,14 @@ jobs:
       - name: Open or reuse the back-merge PR
         if: steps.gap.outputs.behind != '0'
         env:
-          GH_TOKEN: ${{ secrets.ORRERY_BOT_TOKEN }}
+          GH_TOKEN: ${{ secrets.THEMIS_BOT_TOKEN }}
         run: |
           existing=$(gh pr list --repo "$GITHUB_REPOSITORY" --base develop --head main --state open --json number --jq '.[0].number')
           if [ -z "$existing" ]; then
             gh pr create --repo "$GITHUB_REPOSITORY" --base develop --head main \
               --title "chore(back-merge): main into develop [GH-000]" \
               --body "Automatic back-merge. main is ${{ steps.gap.outputs.behind }} commit(s) ahead of develop. Merge commit, never squash." \
-              --label back-merge --label orrery
+              --label back-merge --label themis
             existing=$(gh pr list --repo "$GITHUB_REPOSITORY" --base develop --head main --state open --json number --jq '.[0].number')
           fi
           gh pr merge "$existing" --repo "$GITHUB_REPOSITORY" --merge --auto
@@ -2153,7 +2153,7 @@ Routes are enforced by the `branch-target` check:
 
 - `type/*` → `develop` (squash) — `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `chore`, `revert`
 - `fix/*` → `main` (squash), then an automatic back-merge into `develop`
-- `release/*` → `main` (merge commit), cut by `orrery release`
+- `release/*` → `main` (merge commit), cut by `themis release`
 
 Title: `type(scope): subject [GH-n]`, with `[GH-000]` for work with no issue.
 
@@ -2165,21 +2165,21 @@ Title: `type(scope): subject [GH-n]`, with `[GH-000]` for work with no issue.
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `pnpm vitest run packages/orrery/tests/workflows.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/workflows.test.mjs`
 Expected: PASS — 9 tests
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add .github/workflows/ci.yml .github/workflows/back-merge.yml .github/workflows/release.yml .github/pull_request_template.md packages/orrery/tests/workflows.test.mjs
+git add .github/workflows/ci.yml .github/workflows/back-merge.yml .github/workflows/release.yml .github/pull_request_template.md packages/themis/tests/workflows.test.mjs
 git commit -m "ci: shared workflow with one job per required check, back-merge and release workflows"
 ```
 
 ---
 
-### Task 9: Open the first PR through the flow, then apply the required checks to Orrery
+### Task 9: Open the first PR through the flow, then apply the required checks to Themis
 
-This task exercises the flow on Orrery before any check is required, then makes the checks required. It is sequenced so that Orrery is never in a state where a required check cannot run.
+This task exercises the flow on Themis before any check is required, then makes the checks required. It is sequenced so that Themis is never in a state where a required check cannot run.
 
 **Files:** none. Operations and a ledger entry.
 
@@ -2187,8 +2187,8 @@ This task exercises the flow on Orrery before any check is required, then makes 
 
 ```bash
 git branch --show-current            # must match type/short-kebab-description
-pnpm orrery ci branch-name --head "$(git branch --show-current)"
-pnpm orrery ci branch-target --head "$(git branch --show-current)" --base develop
+pnpm themis ci branch-name --head "$(git branch --show-current)"
+pnpm themis ci branch-target --head "$(git branch --show-current)" --base develop
 ```
 
 Expected: both print `ok`. If the branch was named before this plan, rename it: `git branch -m feat/phase-2e-repository-policy` and push with `-u`.
@@ -2204,7 +2204,7 @@ Write the PR body first: a summary of Tasks 1–8, the ADR link, and the test co
 
 - [ ] **Step 3: Confirm `readRepoState` now sees the shared CI**
 
-Run: `pnpm orrery repo apply vaoan/Orrery --dry-run`
+Run: `pnpm themis repo apply vaoan/Themis --dry-run`
 Expected: exactly two operations, `set-protection main` and `set-protection develop`, because `ci.yml` with the marker is on `develop` only after merge. If the dry run shows nothing, the marker is not on develop yet: wait for Step 4.
 
 - [ ] **Step 4: Merge the PR and apply the checks**
@@ -2217,35 +2217,35 @@ After it merges (the checks on this PR are the first evidence the flow works):
 
 ```bash
 git checkout develop && git pull --ff-only
-pnpm orrery repo apply vaoan/Orrery
-pnpm orrery repo apply vaoan/Orrery   # prints: nothing to change
-gh api repos/vaoan/Orrery/branches/develop/protection -q '.required_status_checks.contexts'
+pnpm themis repo apply vaoan/Themis
+pnpm themis repo apply vaoan/Themis   # prints: nothing to change
+gh api repos/vaoan/Themis/branches/develop/protection -q '.required_status_checks.contexts'
 ```
 
-Expected: the last command prints the six develop checks. Record in the ledger: "Orrery on the flow with required checks as of <sha>".
+Expected: the last command prints the six develop checks. Record in the ledger: "Themis on the flow with required checks as of <sha>".
 
 From here on, every later task's branch is cut from `develop` (`git checkout -b type/name origin/develop`).
 
 ---
 
-### Task 10: Hooks: `orrery hook commit-msg` and `orrery hook pre-push`, and Orrery's own hooks
+### Task 10: Hooks: `themis hook commit-msg` and `themis hook pre-push`, and Themis's own hooks
 
 **Files:**
-- Create: `packages/orrery/src/commands/hook.mjs`
-- Modify: `packages/orrery/src/cli.mjs` (register `hook`; usage)
+- Create: `packages/themis/src/commands/hook.mjs`
+- Modify: `packages/themis/src/cli.mjs` (register `hook`; usage)
 - Create: `.husky/commit-msg`, `.husky/pre-push`
 - Modify: `package.json` (root: `"prepare": "husky"`, devDependency `husky`)
-- Test: `packages/orrery/tests/hook-command.test.mjs`
-- Test: `packages/orrery/tests/hooks.process.test.mjs`
+- Test: `packages/themis/tests/hook-command.test.mjs`
+- Test: `packages/themis/tests/hooks.process.test.mjs`
 
 **Interfaces:**
 - Consumes: `checkCommitMessage`, `checkBranchName` (Task 6).
-- Produces: `orrery hook commit-msg <file>` exits 1 with the reason on a bad subject; `orrery hook pre-push` checks the current branch name and then runs `pnpm run test --if-present` unless `ORRERY_HOOK_SKIP_TESTS=1`; both exit 0 when clean.
+- Produces: `themis hook commit-msg <file>` exits 1 with the reason on a bad subject; `themis hook pre-push` checks the current branch name and then runs `pnpm run test --if-present` unless `THEMIS_HOOK_SKIP_TESTS=1`; both exit 0 when clean.
 
 - [ ] **Step 1: Write the failing command test**
 
 ```javascript
-// packages/orrery/tests/hook-command.test.mjs
+// packages/themis/tests/hook-command.test.mjs
 import { describe, it, expect, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
@@ -2253,16 +2253,16 @@ import path from "node:path";
 import hook from "../src/commands/hook.mjs";
 
 const msgFile = (text) => {
-  const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "orrery-msg-")), "COMMIT_EDITMSG");
+  const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "themis-msg-")), "COMMIT_EDITMSG");
   fs.writeFileSync(f, text);
   return f;
 };
 
-describe("orrery hook", () => {
+describe("themis hook", () => {
   it("exits 2 on an unknown hook", async () => {
     const e = vi.spyOn(console, "error").mockImplementation(() => {});
     expect(await hook(["nonsense"])).toBe(2);
-    expect(e.mock.calls.flat().join("\n")).toContain("usage: orrery hook <commit-msg|pre-push>");
+    expect(e.mock.calls.flat().join("\n")).toContain("usage: themis hook <commit-msg|pre-push>");
     e.mockRestore();
   });
 
@@ -2297,10 +2297,10 @@ describe("orrery hook", () => {
     e.mockRestore();
   });
 
-  it("pre-push skips tests when ORRERY_HOOK_SKIP_TESTS=1", async () => {
+  it("pre-push skips tests when THEMIS_HOOK_SKIP_TESTS=1", async () => {
     const calls = [];
     const run = (c) => { calls.push(c); return "feat/x\n"; };
-    expect(await hook(["pre-push"], { run, env: { ORRERY_HOOK_SKIP_TESTS: "1" } })).toBe(0);
+    expect(await hook(["pre-push"], { run, env: { THEMIS_HOOK_SKIP_TESTS: "1" } })).toBe(0);
     expect(calls).toEqual(["git"]);
   });
 });
@@ -2308,18 +2308,18 @@ describe("orrery hook", () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `pnpm vitest run packages/orrery/tests/hook-command.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/hook-command.test.mjs`
 Expected: FAIL — cannot resolve `../src/commands/hook.mjs`
 
-- [ ] **Step 3: Write the command, register it, add Orrery's hooks**
+- [ ] **Step 3: Write the command, register it, add Themis's hooks**
 
 ```javascript
-// packages/orrery/src/commands/hook.mjs
+// packages/themis/src/commands/hook.mjs
 import fs from "node:fs";
 import { execFileSync } from "node:child_process";
 import { checkCommitMessage, checkBranchName } from "../lib/git-flow.mjs";
 
-const USAGE = "usage: orrery hook <commit-msg|pre-push> [args]";
+const USAGE = "usage: themis hook <commit-msg|pre-push> [args]";
 
 function defaultRun(command, args) {
   // pnpm is a .cmd shim on Windows; execFileSync needs a shell for it there. The
@@ -2351,7 +2351,7 @@ export default async function hook(argv, deps = {}) {
       console.error(`pre-push: ${nameCheck.reason}`);
       return 1;
     }
-    if (env.ORRERY_HOOK_SKIP_TESTS === "1") return 0;
+    if (env.THEMIS_HOOK_SKIP_TESTS === "1") return 0;
     try {
       run("pnpm", ["run", "test", "--if-present"]);
       return 0;
@@ -2372,26 +2372,26 @@ Register in `cli.mjs`:
   hook: async (argv) => (await import("./commands/hook.mjs")).default(argv),
 ```
 
-Usage lines: `  orrery hook <commit-msg|pre-push> [args]` and `  hook          run a git hook: commit-msg validates the subject, pre-push validates the branch and runs tests`.
+Usage lines: `  themis hook <commit-msg|pre-push> [args]` and `  hook          run a git hook: commit-msg validates the subject, pre-push validates the branch and runs tests`.
 
 Root `package.json`: add `"prepare": "husky"` to `scripts` and `"husky": "^9.1.7"` to `devDependencies`, then `pnpm install`.
 
 `.husky/commit-msg`:
 
 ```sh
-pnpm orrery hook commit-msg "$1"
+pnpm themis hook commit-msg "$1"
 ```
 
 `.husky/pre-push`:
 
 ```sh
-pnpm orrery hook pre-push
+pnpm themis hook pre-push
 ```
 
 - [ ] **Step 4: Write the process test**
 
 ```javascript
-// packages/orrery/tests/hooks.process.test.mjs
+// packages/themis/tests/hooks.process.test.mjs
 // Runs the hook command as a real process inside a temp git repository, so the exit
 // code git would see is the exit code asserted here.
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
@@ -2401,11 +2401,11 @@ import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-const bin = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../bin/orrery.mjs");
+const bin = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../bin/themis.mjs");
 let repo;
 
 beforeEach(() => {
-  repo = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-hooks-"));
+  repo = fs.mkdtempSync(path.join(os.tmpdir(), "themis-hooks-"));
   execFileSync("git", ["init", "-q", "-b", "develop"], { cwd: repo });
   execFileSync("git", ["config", "user.email", "t@example.com"], { cwd: repo });
   execFileSync("git", ["config", "user.name", "t"], { cwd: repo });
@@ -2413,7 +2413,7 @@ beforeEach(() => {
 afterEach(() => fs.rmSync(repo, { recursive: true, force: true }));
 
 const runHook = (args, env = {}) =>
-  spawnSync(process.execPath, [bin, "hook", ...args], { cwd: repo, encoding: "utf8", env: { ...process.env, ORRERY_HOOK_SKIP_TESTS: "1", ...env } });
+  spawnSync(process.execPath, [bin, "hook", ...args], { cwd: repo, encoding: "utf8", env: { ...process.env, THEMIS_HOOK_SKIP_TESTS: "1", ...env } });
 
 describe("hooks as processes", () => {
   it("commit-msg exits 1 on a bad subject and 0 on a good one", () => {
@@ -2437,16 +2437,16 @@ describe("hooks as processes", () => {
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
-Run: `pnpm vitest run packages/orrery/tests/hook-command.test.mjs packages/orrery/tests/hooks.process.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/hook-command.test.mjs packages/themis/tests/hooks.process.test.mjs`
 Expected: PASS — 9 tests. Then make a deliberately bad commit locally (`git commit --allow-empty -m "bad"`) and confirm husky rejects it; amend nothing, the rejection leaves no commit.
 
 - [ ] **Step 6: Commit and open the PR**
 
 ```bash
-git add packages/orrery/src/commands/hook.mjs packages/orrery/src/cli.mjs package.json pnpm-lock.yaml .husky/commit-msg .husky/pre-push packages/orrery/tests/hook-command.test.mjs packages/orrery/tests/hooks.process.test.mjs
-git commit -m "feat(hook): commit-msg and pre-push hooks, wired into Orrery through husky"
+git add packages/themis/src/commands/hook.mjs packages/themis/src/cli.mjs package.json pnpm-lock.yaml .husky/commit-msg .husky/pre-push packages/themis/tests/hook-command.test.mjs packages/themis/tests/hooks.process.test.mjs
+git commit -m "feat(hook): commit-msg and pre-push hooks, wired into Themis through husky"
 git push -u origin HEAD
-gh pr create --base develop --title "feat(hook): commit-msg and pre-push hooks through husky [GH-000]" --body "Task 10 of the 2e plan: the two hooks as orrery verbs, with command and process tests, and Orrery's own .husky pointers."
+gh pr create --base develop --title "feat(hook): commit-msg and pre-push hooks through husky [GH-000]" --body "Task 10 of the 2e plan: the two hooks as themis verbs, with command and process tests, and Themis's own .husky pointers."
 gh pr merge --squash --auto
 ```
 
@@ -2454,27 +2454,27 @@ Wait for the merge before starting Task 11 (the next branch is cut from develop)
 
 ---
 
-### Task 11: `orrery release`
+### Task 11: `themis release`
 
 Computes the next calendar version, cuts the branch from develop, bumps the version, pushes, opens the PR into main. Git and gh calls go through an injected runner so the logic is unit-tested; one guarded real run happens at the end of the phase, not here.
 
 **Files:**
-- Create: `packages/orrery/src/lib/release.mjs`
-- Create: `packages/orrery/src/commands/release.mjs`
-- Modify: `packages/orrery/src/cli.mjs` (register `release`; usage)
-- Test: `packages/orrery/tests/release.test.mjs`
+- Create: `packages/themis/src/lib/release.mjs`
+- Create: `packages/themis/src/commands/release.mjs`
+- Modify: `packages/themis/src/cli.mjs` (register `release`; usage)
+- Test: `packages/themis/tests/release.test.mjs`
 
 **Interfaces:**
 - Consumes: `checkBranchSync` (Task 6) — a release is refused while main is ahead of develop.
 - Produces:
   - `nextVersion(existing: string[], today: Date) => string` — `vYYYY.MM.DD.N`, `N` one above the highest existing for that day, starting at 1. `existing` is any list of names containing versions (tags, branches).
   - `planRelease({ run, today, versionFile }) => { version, branch, steps }`
-  - `orrery release [--dry-run] [--version-file <path>]` — default version file `package.json` at the working directory; for Orrery, `packages/orrery/package.json` is passed explicitly by its own release invocation.
+  - `themis release [--dry-run] [--version-file <path>]` — default version file `package.json` at the working directory; for Themis, `packages/themis/package.json` is passed explicitly by its own release invocation.
 
 - [ ] **Step 1: Write the failing test**
 
 ```javascript
-// packages/orrery/tests/release.test.mjs
+// packages/themis/tests/release.test.mjs
 import { describe, it, expect, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
@@ -2498,7 +2498,7 @@ describe("nextVersion", () => {
 
 describe("planRelease", () => {
   const versionFile = () => {
-    const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "orrery-rel-")), "package.json");
+    const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "themis-rel-")), "package.json");
     fs.writeFileSync(f, JSON.stringify({ name: "x", version: "0.0.0" }, null, 2) + "\n");
     return f;
   };
@@ -2523,7 +2523,7 @@ describe("planRelease", () => {
 
 describe("cutRelease", () => {
   it("runs the git and gh steps in order and rewrites the version file", () => {
-    const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "orrery-rel-")), "package.json");
+    const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "themis-rel-")), "package.json");
     fs.writeFileSync(f, JSON.stringify({ name: "x", version: "0.0.0" }, null, 2) + "\n");
     const calls = [];
     const run = (c, a) => { calls.push([c, ...a].join(" ")); if (a[0] === "rev-list") return "0"; return ""; };
@@ -2537,15 +2537,15 @@ describe("cutRelease", () => {
       `git add ${f}`,
       "git commit -q -m chore(release): v2026.09.08.1 [GH-000]",
       "git push -u origin release/v2026.09.08.1",
-      "gh pr create --base main --head release/v2026.09.08.1 --title chore(release): v2026.09.08.1 [GH-000] --body Release v2026.09.08.1, cut from develop by orrery release. Merge with a merge commit. --label release --label orrery",
+      "gh pr create --base main --head release/v2026.09.08.1 --title chore(release): v2026.09.08.1 [GH-000] --body Release v2026.09.08.1, cut from develop by themis release. Merge with a merge commit. --label release --label themis",
     ]);
   });
 });
 
-describe("orrery release", () => {
+describe("themis release", () => {
   it("prints the plan and stops on --dry-run", async () => {
     const log = vi.spyOn(console, "log").mockImplementation(() => {});
-    const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "orrery-rel-")), "package.json");
+    const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "themis-rel-")), "package.json");
     fs.writeFileSync(f, '{"version":"0.0.0"}\n');
     const calls = [];
     const run = (c, a) => { calls.push(a[0]); if (a[0] === "rev-list") return "0"; return ""; };
@@ -2557,7 +2557,7 @@ describe("orrery release", () => {
 
   it("exits 1 with the reason when a release is refused", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
-    const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "orrery-rel-")), "package.json");
+    const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "themis-rel-")), "package.json");
     fs.writeFileSync(f, '{"version":"0.0.0"}\n');
     expect(await release(["--version-file", f], { run: (c, a) => (a[0] === "rev-list" ? "1" : ""), today })).toBe(1);
     expect(error.mock.calls.flat().join("\n")).toMatch(/develop lacks/);
@@ -2568,13 +2568,13 @@ describe("orrery release", () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `pnpm vitest run packages/orrery/tests/release.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/release.test.mjs`
 Expected: FAIL — cannot resolve `../src/lib/release.mjs`
 
 - [ ] **Step 3: Write the implementation**
 
 ```javascript
-// packages/orrery/src/lib/release.mjs
+// packages/themis/src/lib/release.mjs
 import fs from "node:fs";
 
 // A whole name: a tag `vYYYY.MM.DD.N` or a branch `release/vYYYY.MM.DD.N`. Anything
@@ -2618,7 +2618,7 @@ export function planRelease({ run, today = new Date(), versionFile }) {
     version,
     branch: `release/${version}`,
     title: `chore(release): ${version} [GH-000]`,
-    body: `Release ${version}, cut from develop by orrery release. Merge with a merge commit.`,
+    body: `Release ${version}, cut from develop by themis release. Merge with a merge commit.`,
     versionFile,
   };
 }
@@ -2632,18 +2632,18 @@ export function cutRelease(plan, { run, versionFile = plan.versionFile }) {
   run("git", ["add", versionFile]);
   run("git", ["commit", "-q", "-m", plan.title]);
   run("git", ["push", "-u", "origin", plan.branch]);
-  run("gh", ["pr", "create", "--base", "main", "--head", plan.branch, "--title", plan.title, "--body", plan.body, "--label", "release", "--label", "orrery"]);
+  run("gh", ["pr", "create", "--base", "main", "--head", plan.branch, "--title", plan.title, "--body", plan.body, "--label", "release", "--label", "themis"]);
 }
 ```
 
 ```javascript
-// packages/orrery/src/commands/release.mjs
+// packages/themis/src/commands/release.mjs
 import path from "node:path";
 import { parseArgs } from "node:util";
 import { execFileSync } from "node:child_process";
 import { planRelease, cutRelease } from "../lib/release.mjs";
 
-const USAGE = "usage: orrery release [--dry-run] [--version-file <package.json>]";
+const USAGE = "usage: themis release [--dry-run] [--version-file <package.json>]";
 
 function defaultRun(command, args) {
   return execFileSync(command, args, { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] });
@@ -2680,20 +2680,20 @@ export default async function release(argv, deps = {}) {
 }
 ```
 
-Register in `cli.mjs`: `release: async (argv) => (await import("./commands/release.mjs")).default(argv),` with usage `  orrery release [--dry-run] [--version-file <package.json>]` and `  release       cut release/vYYYY.MM.DD.N from develop and open its PR into main`.
+Register in `cli.mjs`: `release: async (argv) => (await import("./commands/release.mjs")).default(argv),` with usage `  themis release [--dry-run] [--version-file <package.json>]` and `  release       cut release/vYYYY.MM.DD.N from develop and open its PR into main`.
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `pnpm vitest run packages/orrery/tests/release.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/release.test.mjs`
 Expected: PASS — 8 tests. The `cutRelease` expectation `"2026.9.8-1"` is `semverFor("v2026.09.08.1")`; if the reviewer prefers the `.N` to be a build number, that is a ruling for the controller, not a silent change.
 
 - [ ] **Step 5: Commit and open the PR**
 
 ```bash
-git add packages/orrery/src/lib/release.mjs packages/orrery/src/commands/release.mjs packages/orrery/src/cli.mjs packages/orrery/tests/release.test.mjs
+git add packages/themis/src/lib/release.mjs packages/themis/src/commands/release.mjs packages/themis/src/cli.mjs packages/themis/tests/release.test.mjs
 git commit -m "feat(release): cut calendar releases from develop and open the PR into main"
 git push -u origin HEAD
-gh pr create --base develop --title "feat(release): orrery release cuts calendar releases from develop [GH-000]" --body "Task 11 of the 2e plan."
+gh pr create --base develop --title "feat(release): themis release cuts calendar releases from develop [GH-000]" --body "Task 11 of the 2e plan."
 gh pr merge --squash --auto
 ```
 
@@ -2704,21 +2704,21 @@ gh pr merge --squash --auto
 **Files:**
 - Create: `registry.json`
 - Create: `.github/workflows/observe.yml`
-- Create: `packages/orrery/src/lib/registry.mjs`
-- Test: `packages/orrery/tests/registry.test.mjs`
-- Modify: `packages/orrery/tests/workflows.test.mjs` (add the observe assertions)
+- Create: `packages/themis/src/lib/registry.mjs`
+- Test: `packages/themis/tests/registry.test.mjs`
+- Modify: `packages/themis/tests/workflows.test.mjs` (add the observe assertions)
 
 **Interfaces:**
-- Consumes: `orrery repo apply` (Task 4).
-- Produces: `loadRegistry(path = defaultRegistryPath) => { bodies: { [name]: { repo, role, class } } }`; `registry.json` as the design doc specifies, no version field; the nightly workflow runs `repo apply --dry-run` for every body and Orrery, writing `docs/observations/<date>-repository.md`, and switches to a real apply only when the repository variable `ORRERY_APPLY_POLICY` equals `apply` (set in Task 13, never before).
+- Consumes: `themis repo apply` (Task 4).
+- Produces: `loadRegistry(path = defaultRegistryPath) => { bodies: { [name]: { repo, role, class } } }`; `registry.json` as the design doc specifies, no version field; the nightly workflow runs `repo apply --dry-run` for every body and Themis, writing `docs/observations/<date>-repository.md`, and switches to a real apply only when the repository variable `THEMIS_APPLY_POLICY` equals `apply` (set in Task 13, never before).
 
 - [ ] **Step 1: Write the registry**
 
 ```json
 {
-  "$comment": "The constellation map. No version field on purpose: each body pins its own; orrery status reads them live.",
+  "$comment": "The constellation map. No version field on purpose: each body pins its own; themis status reads them live.",
   "bodies": {
-    "orrery":      { "repo": "vaoan/Orrery",      "role": "centre", "class": null },
+    "themis":      { "repo": "vaoan/Themis",      "role": "centre", "class": null },
     "aeleos":      { "repo": "vaoan/AeleOS",      "role": "star",   "class": "next-supabase-mono" },
     "libra":       { "repo": "vaoan/libra",       "role": "planet", "class": "next-supabase-mono" },
     "puck":        { "repo": "vaoan/Puck",        "role": "planet", "class": "next-supabase-mono" },
@@ -2731,20 +2731,20 @@ gh pr merge --squash --auto
 - [ ] **Step 2: Write the failing tests**
 
 ```javascript
-// packages/orrery/tests/registry.test.mjs
+// packages/themis/tests/registry.test.mjs
 import { describe, it, expect } from "vitest";
 import { loadRegistry, defaultRegistryPath } from "../src/lib/registry.mjs";
 
 describe("registry", () => {
-  it("lists Orrery and the five bodies with repo, role and class", () => {
+  it("lists Themis and the five bodies with repo, role and class", () => {
     const { bodies } = loadRegistry();
-    expect(Object.keys(bodies)).toEqual(["orrery", "aeleos", "libra", "puck", "eclipse-con", "janus"]);
+    expect(Object.keys(bodies)).toEqual(["themis", "aeleos", "libra", "puck", "eclipse-con", "janus"]);
     for (const body of Object.values(bodies)) {
       expect(body.repo).toMatch(/^vaoan\/[A-Za-z-]+$/);
       expect(["centre", "star", "planet"]).toContain(body.role);
     }
     expect(bodies.aeleos.class).toBe("next-supabase-mono");
-    expect(bodies.orrery.class).toBeNull();
+    expect(bodies.themis.class).toBeNull();
   });
 
   it("carries no version field, by design", () => {
@@ -2758,7 +2758,7 @@ describe("registry", () => {
 });
 ```
 
-Append to `packages/orrery/tests/workflows.test.mjs`:
+Append to `packages/themis/tests/workflows.test.mjs`:
 
 ```javascript
 describe(".github/workflows/observe.yml", () => {
@@ -2768,25 +2768,25 @@ describe(".github/workflows/observe.yml", () => {
     expect(yaml).toContain("workflow_dispatch:");
   });
   it("dry-runs by default and applies only when the repository variable says so", () => {
-    expect(yaml).toContain("vars.ORRERY_APPLY_POLICY == 'apply'");
+    expect(yaml).toContain("vars.THEMIS_APPLY_POLICY == 'apply'");
     expect(yaml).toContain("--dry-run");
   });
   it("iterates the registry and uses the admin token", () => {
     expect(yaml).toContain("registry.json");
-    expect(yaml).toContain("secrets.ORRERY_ADMIN_TOKEN");
+    expect(yaml).toContain("secrets.THEMIS_ADMIN_TOKEN");
   });
 });
 ```
 
 - [ ] **Step 3: Run the tests to verify they fail**
 
-Run: `pnpm vitest run packages/orrery/tests/registry.test.mjs packages/orrery/tests/workflows.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/registry.test.mjs packages/themis/tests/workflows.test.mjs`
 Expected: FAIL — cannot resolve `../src/lib/registry.mjs`; ENOENT on `observe.yml`
 
 - [ ] **Step 4: Write the loader and the workflow**
 
 ```javascript
-// packages/orrery/src/lib/registry.mjs
+// packages/themis/src/lib/registry.mjs
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -2808,7 +2808,7 @@ export function loadRegistry(file = defaultRegistryPath) {
 
 ```yaml
 # Nightly observation of every registered repository's policy state.
-# Dry-run by default. Set the repository variable ORRERY_APPLY_POLICY=apply to let it
+# Dry-run by default. Set the repository variable THEMIS_APPLY_POLICY=apply to let it
 # re-apply drift; that switch is flipped only after the bodies were brought to policy
 # with explicit confirmation (2e plan, Task 13).
 name: observe
@@ -2839,8 +2839,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Observe every registered repository
         env:
-          ORRERY_GH_TOKEN: ${{ secrets.ORRERY_ADMIN_TOKEN }}
-          MODE: ${{ vars.ORRERY_APPLY_POLICY == 'apply' && 'apply' || 'report' }}
+          THEMIS_GH_TOKEN: ${{ secrets.THEMIS_ADMIN_TOKEN }}
+          MODE: ${{ vars.THEMIS_APPLY_POLICY == 'apply' && 'apply' || 'report' }}
         run: |
           mkdir -p docs/observations
           out="docs/observations/$(date -u +%F)-repository.md"
@@ -2853,17 +2853,17 @@ jobs:
           for repo in $(node -e 'const r=require("./registry.json");console.log(Object.values(r.bodies).map(b=>b.repo).join(" "))'); do
             echo "## $repo" >> "$out"
             if [ "$MODE" = "apply" ]; then
-              pnpm -s orrery repo apply "$repo" >> "$out" 2>&1 || echo "FAILED: $repo" >> "$out"
+              pnpm -s themis repo apply "$repo" >> "$out" 2>&1 || echo "FAILED: $repo" >> "$out"
             else
-              pnpm -s orrery repo apply "$repo" --dry-run >> "$out" 2>&1 || echo "FAILED: $repo" >> "$out"
+              pnpm -s themis repo apply "$repo" --dry-run >> "$out" 2>&1 || echo "FAILED: $repo" >> "$out"
             fi
             echo >> "$out"
           done
           cat "$out"
       - name: Commit the observation
         run: |
-          git config user.name "orrery"
-          git config user.email "orrery@users.noreply.github.com"
+          git config user.name "themis"
+          git config user.email "themis@users.noreply.github.com"
           git add docs/observations
           git diff --cached --quiet || git commit -m "docs(observe): repository policy $(date -u +%F) [GH-000]"
           git push origin HEAD:develop || echo "develop is protected; observation kept in the run log"
@@ -2873,22 +2873,22 @@ Note for the reviewer: pushing to a protected `develop` will be refused, which i
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
-Run: `pnpm vitest run packages/orrery/tests/registry.test.mjs packages/orrery/tests/workflows.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/registry.test.mjs packages/themis/tests/workflows.test.mjs`
 Expected: PASS — 3 registry tests, 12 workflow tests
 
 - [ ] **Step 6: Commit and open the PR**
 
 ```bash
-git add registry.json packages/orrery/src/lib/registry.mjs packages/orrery/tests/registry.test.mjs .github/workflows/observe.yml packages/orrery/tests/workflows.test.mjs
+git add registry.json packages/themis/src/lib/registry.mjs packages/themis/tests/registry.test.mjs .github/workflows/observe.yml packages/themis/tests/workflows.test.mjs
 git commit -m "feat(registry): the constellation map and the nightly repository-policy observation"
 git push -u origin HEAD
-gh pr create --base develop --title "feat(registry): registry and nightly repository-policy observation [GH-000]" --body "Task 12 of the 2e plan. Dry-run only until ORRERY_APPLY_POLICY is set."
+gh pr create --base develop --title "feat(registry): registry and nightly repository-policy observation [GH-000]" --body "Task 12 of the 2e plan. Dry-run only until THEMIS_APPLY_POLICY is set."
 gh pr merge --squash --auto
 ```
 
 ---
 
-### Task 13: Secrets, the first Orrery release, and applying the policy to the bodies
+### Task 13: Secrets, the first Themis release, and applying the policy to the bodies
 
 Two of these steps need the human. The plan stops at each and says exactly what to do.
 
@@ -2896,31 +2896,31 @@ Two of these steps need the human. The plan stops at each and says exactly what 
 
 - [ ] **Step 1: STOP — ask for the two tokens**
 
-Orrery's workflows need two secrets that only the account owner can create. Ask, with these exact instructions, and wait:
+Themis's workflows need two secrets that only the account owner can create. Ask, with these exact instructions, and wait:
 
-> Create two fine-grained personal access tokens at https://github.com/settings/personal-access-tokens/new, both with **Resource owner: vaoan**, **Repository access: Only select repositories** → Orrery, AeleOS, libra, Puck, eclipse-con, Janus, orrery-policy-fixture, expiry 1 year:
+> Create two fine-grained personal access tokens at https://github.com/settings/personal-access-tokens/new, both with **Resource owner: vaoan**, **Repository access: Only select repositories** → Themis, AeleOS, libra, Puck, eclipse-con, Janus, themis-policy-fixture, expiry 1 year:
 >
-> 1. **ORRERY_ADMIN_TOKEN** — Repository permissions: Administration **Read and write**, Contents **Read and write**, Metadata Read. Used only by the nightly observe job to apply protection.
-> 2. **ORRERY_BOT_TOKEN** — Repository permissions: Contents **Read and write**, Pull requests **Read and write**, Issues Read, Metadata Read. Used by back-merge and by 2d's bump bot to open PRs that trigger checks.
+> 1. **THEMIS_ADMIN_TOKEN** — Repository permissions: Administration **Read and write**, Contents **Read and write**, Metadata Read. Used only by the nightly observe job to apply protection.
+> 2. **THEMIS_BOT_TOKEN** — Repository permissions: Contents **Read and write**, Pull requests **Read and write**, Issues Read, Metadata Read. Used by back-merge and by 2d's bump bot to open PRs that trigger checks.
 >
-> Then run, from Z:\Github\Orrery: `gh secret set ORRERY_ADMIN_TOKEN -R vaoan/Orrery` and `gh secret set ORRERY_BOT_TOKEN -R vaoan/Orrery`, pasting each token when prompted. Tell me when both are set.
+> Then run, from Z:\Github\Themis: `gh secret set THEMIS_ADMIN_TOKEN -R vaoan/Themis` and `gh secret set THEMIS_BOT_TOKEN -R vaoan/Themis`, pasting each token when prompted. Tell me when both are set.
 
-Verify: `gh secret list -R vaoan/Orrery` lists both names.
+Verify: `gh secret list -R vaoan/Themis` lists both names.
 
-- [ ] **Step 2: Cut Orrery's first release through the flow**
+- [ ] **Step 2: Cut Themis's first release through the flow**
 
 ```bash
 git checkout develop && git pull --ff-only
-pnpm orrery release --dry-run --version-file packages/orrery/package.json
-pnpm orrery release --version-file packages/orrery/package.json
+pnpm themis release --dry-run --version-file packages/themis/package.json
+pnpm themis release --version-file packages/themis/package.json
 ```
 
-Expected: `release/v2026.MM.DD.1` opened into main; all checks green; merge it with `gh pr merge --merge --auto`. Then: the `release` workflow creates the GitHub Release, the `back-merge` workflow opens main → develop and automerges it. Confirm with `gh release list -R vaoan/Orrery` and `gh pr list -R vaoan/Orrery --state merged --label back-merge`. If back-merge did not fire, the bot token is missing or lacks pull-request write; fix and re-run the workflow with `gh workflow run back-merge.yml`.
+Expected: `release/v2026.MM.DD.1` opened into main; all checks green; merge it with `gh pr merge --merge --auto`. Then: the `release` workflow creates the GitHub Release, the `back-merge` workflow opens main → develop and automerges it. Confirm with `gh release list -R vaoan/Themis` and `gh pr list -R vaoan/Themis --state merged --label back-merge`. If back-merge did not fire, the bot token is missing or lacks pull-request write; fix and re-run the workflow with `gh workflow run back-merge.yml`.
 
 - [ ] **Step 3: Dry-run the five bodies**
 
 ```bash
-for r in vaoan/AeleOS vaoan/libra vaoan/Puck vaoan/eclipse-con vaoan/Janus; do pnpm orrery repo apply "$r" --dry-run; done
+for r in vaoan/AeleOS vaoan/libra vaoan/Puck vaoan/eclipse-con vaoan/Janus; do pnpm themis repo apply "$r" --dry-run; done
 ```
 
 Save the output to the workspace. Expected operations per body, from the 2026-09-08 measurement: aeleos gains `develop` and loses rebase; libra, Puck and Janus gain settings and label changes and keep their existing check contexts (they have no shared `ci.yml` yet); eclipse-con gains everything.
@@ -2936,10 +2936,10 @@ Show the human the five dry-run outputs and this sentence, then wait:
 On confirmation:
 
 ```bash
-for r in vaoan/AeleOS vaoan/libra vaoan/Puck vaoan/eclipse-con vaoan/Janus; do pnpm orrery repo apply "$r"; done
-for r in vaoan/AeleOS vaoan/libra vaoan/Puck vaoan/eclipse-con vaoan/Janus; do pnpm orrery repo apply "$r"; done   # every line: nothing to change
-gh variable set ORRERY_APPLY_POLICY -R vaoan/Orrery --body apply
-gh workflow run observe.yml -R vaoan/Orrery
+for r in vaoan/AeleOS vaoan/libra vaoan/Puck vaoan/eclipse-con vaoan/Janus; do pnpm themis repo apply "$r"; done
+for r in vaoan/AeleOS vaoan/libra vaoan/Puck vaoan/eclipse-con vaoan/Janus; do pnpm themis repo apply "$r"; done   # every line: nothing to change
+gh variable set THEMIS_APPLY_POLICY -R vaoan/Themis --body apply
+gh workflow run observe.yml -R vaoan/Themis
 ```
 
 Expected: the second loop prints `nothing to change` five times; the observe run completes green and its log shows `nothing to change` for all six.
@@ -2953,7 +2953,7 @@ Append to `docs/decisions/0003-repository-policy.md`:
 
 | Date | Repository | Operations | Notes |
 |---|---|---|---|
-| 2026-09-08 | vaoan/Orrery | develop created; settings; protection; labels | first, before any body |
+| 2026-09-08 | vaoan/Themis | develop created; settings; protection; labels | first, before any body |
 | <date> | vaoan/AeleOS | <from the run> | develop created from main |
 | <date> | vaoan/libra | <from the run> | existing check contexts preserved |
 | <date> | vaoan/Puck | <from the run> | |
@@ -2969,18 +2969,18 @@ Also update `CLAUDE.md`'s "Commands the CLI will expose" block to list `repo app
 
 ## Done when
 
-- `pnpm test` passes with every test in this plan. Verified 2026-09-08 by extracting every code block of this plan into a scratch copy of the package and running it: 160 tests pass across 15 files plus the integration file skipped without `ORRERY_FIXTURE_REPO` (41 from Phase 2a, 119 from this plan). Report the observed number.
-- Orrery runs the flow: `develop` default, both branches protected with the six checks required, a release merged through `release/*` with a merge commit, and its back-merge landed automatically.
-- `orrery repo apply` prints `nothing to change` for all six registered repositories.
+- `pnpm test` passes with every test in this plan. Verified 2026-09-08 by extracting every code block of this plan into a scratch copy of the package and running it: 160 tests pass across 15 files plus the integration file skipped without `THEMIS_FIXTURE_REPO` (41 from Phase 2a, 119 from this plan). Report the observed number.
+- Themis runs the flow: `develop` default, both branches protected with the six checks required, a release merged through `release/*` with a merge commit, and its back-merge landed automatically.
+- `themis repo apply` prints `nothing to change` for all six registered repositories.
 - ADR 0003 holds the values, the reasons, and the application log with no placeholders.
 
 ## Rulings made while planning, for the controller to confirm or overturn
 
 1. Squash commit title and body come from the PR title and body (`PR_TITLE` / `PR_BODY`), not the donors' `COMMIT_OR_PR_TITLE`. The PR title is what the checks validate.
-2. Required check contexts are imposed only where `ci.yml` carries the `# orrery-ci` marker; elsewhere a repository's existing contexts are preserved. Otherwise applying the policy to a body today would name checks that do not exist there and block every merge.
+2. Required check contexts are imposed only where `ci.yml` carries the `# themis-ci` marker; elsewhere a repository's existing contexts are preserved. Otherwise applying the policy to a body today would name checks that do not exist there and block every merge.
 3. The `package.json` version for a calendar release is `YYYY.M.D-N` (semver-valid). Bodies install by commit from `main`, so this number is informational.
-4. Two tokens rather than one: an admin token that only Orrery's nightly job holds, and a bot token for PR-opening workflows, because a fine-grained token cannot open PRs that trigger checks without pull-request write, and the admin token should not travel.
-5. The nightly observation dry-runs until `ORRERY_APPLY_POLICY=apply` is set in Task 13, so nothing touches a body before the confirmation the spec requires.
+4. Two tokens rather than one: an admin token that only Themis's nightly job holds, and a bot token for PR-opening workflows, because a fine-grained token cannot open PRs that trigger checks without pull-request write, and the admin token should not travel.
+5. The nightly observation dry-runs until `THEMIS_APPLY_POLICY=apply` is set in Task 13, so nothing touches a body before the confirmation the spec requires.
 6. `pre-push` runs the body's `test` script rather than libra's scoped selection, which is libra-local; the docker health check is not carried into the shared hook.
 
 ## Amendments
@@ -2992,7 +2992,7 @@ Also update `CLAUDE.md`'s "Commands the CLI will expose" block to list `repo app
 - **2026-09-09:** Task 13's application to the five bodies is deferred to the
   production cut-over that closes the whole programme, by the owner's
   decision; until then the nightly observation runs in report mode and
-  Orrery is kept ready.
+  Themis is kept ready.
 - **2026-09-09 (option B):** the back-merge goes through an intermediate
   `back-merge/<sha>` branch so "Update branch" never merges develop into main
   and strict stays on both branches; `back-merge/*` is automation-only,

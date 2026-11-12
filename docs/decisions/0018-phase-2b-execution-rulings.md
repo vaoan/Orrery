@@ -33,7 +33,7 @@ rulings themselves; they are the controller's, recorded under Task 5 below.
 
 **2026-09-09**, on the `resolveEslintBin` corner (Task 6 could not land
 because `NODE_PATH` let a temp-dir `eslint` resolution succeed once eslint
-entered Orrery's own tree):
+entered Themis's own tree):
 
 > "go"
 
@@ -89,7 +89,7 @@ decided, why, what it costs if wrong, and where it lives now.
    paths exactly; a difference is fixed in the pattern order and reported,
    never in the table.** Why: the table is a measurement, not a policy lever;
    the pattern order is the actual mechanism. Cost if wrong: a silently wrong
-   surface-sample seed list. Lives: `packages/orrery/src/lib/surfaces.mjs`
+   surface-sample seed list. Lives: `packages/themis/src/lib/surfaces.mjs`
    (Task 1).
 
 ### Tasks 1–4 review rulings
@@ -101,7 +101,7 @@ decided, why, what it costs if wrong, and where it lives now.
    further would over-fit to two repositories. Cost if wrong: a third body
    with an unusual app-naming scheme needs its own pattern, visible the first
    time surface sampling runs against it. Lives:
-   `packages/orrery/src/lib/surfaces.mjs`.
+   `packages/themis/src/lib/surfaces.mjs`.
 5. **Markers are namespaced `$union` / `$fromSide` / `$parameter`, not bare
    `union`/`fromSide`.** `resolveMarkers` originally sniffed bare option keys,
    so a real ESLint rule option object carrying a key named `union` or
@@ -111,7 +111,7 @@ decided, why, what it costs if wrong, and where it lives now.
    marker object must never be confused, and the `$`-prefix makes that
    syntactically impossible. Cost if wrong: none (the namespacing is a pure
    safety property; nothing depended on the bare-key behaviour). Lives:
-   `packages/orrery/src/lib/markers.mjs`, `packages/orrery/src/lib/reconcile/eslint.mjs`
+   `packages/themis/src/lib/markers.mjs`, `packages/themis/src/lib/reconcile/eslint.mjs`
    (`resolveMarkers`); plan Tasks 2, 3, 6, 9 amended in the same PR.
 6. **Task 4 Ruling F1 (stylelint):** `undefined` means "inherit the preset's
    default" (on, for stylelint-config-standard rules); explicit `null` is a
@@ -122,8 +122,8 @@ decided, why, what it costs if wrong, and where it lives now.
    means when neither side wrote an explicit value. Cost if wrong: aeleos's
    three disabled rules come back on — which is the spec's own stated
    ordering, so "wrong" here would mean the spec itself needs revisiting.
-   Lives: `packages/orrery/src/lib/reconcile/stylelint.mjs`,
-   `packages/orrery/src/lib/bundle/tools.mjs` (`toolRows` skips `$inherit`
+   Lives: `packages/themis/src/lib/reconcile/stylelint.mjs`,
+   `packages/themis/src/lib/bundle/tools.mjs` (`toolRows` skips `$inherit`
    rows).
 7. **Task 4 Ruling F2 (knip):** parameter paths are kind-qualified —
    `knip.apps.extraEntries`, `knip.apps.extraProjects`,
@@ -131,7 +131,7 @@ decided, why, what it costs if wrong, and where it lives now.
    one shared path. Why: apps and packages are different kinds of workspace
    member with different extension semantics; a shared path would conflate
    them. Cost if wrong: none. Lives: `classes/next-supabase-mono/schema.mjs`,
-   `packages/orrery/src/lib/bundle/tools.mjs` (EXTENDERS).
+   `packages/themis/src/lib/bundle/tools.mjs` (EXTENDERS).
 8. **The `{test,spec}` glob fold is anchored** (`/\*\*\/\*\.test\.tsx?$/` and
    the `{ts,tsx}` form both fold to `**/*.{ts,tsx}`), and both-sides-off with
    different spelling (`null` vs `false`) becomes `agree` with chosen `null`
@@ -139,7 +139,7 @@ decided, why, what it costs if wrong, and where it lives now.
    `**/*.test.tsx` into `**/*.{ts,tsx}x` — a latent defect neither donor's
    data happened to trigger; the both-off case is not a real conflict, only a
    spelling difference. Cost if wrong: none. Lives:
-   `packages/orrery/src/lib/reconcile/knip.mjs`.
+   `packages/themis/src/lib/reconcile/knip.mjs`.
 
 ### Task 5's three residue rulings
 
@@ -152,7 +152,7 @@ before this workspace was deleted; summarised here.
    "react"]`.** Both sides already error; the framework argument adds the
    autofix and names the right module. Cost if wrong: none — severity is
    unchanged either way. Lives: `PRE_RULINGS` in
-   `packages/orrery/src/lib/reconcile/ordering.mjs`.
+   `packages/themis/src/lib/reconcile/ordering.mjs`.
 10. **`no-restricted-syntax` (e2e, tier physics) → a hand-written union keyed
     by selector.** Where both donors ban the same selector, aeleos's message
     is kept (it names no body file or helper); libra-only selectors keep
@@ -166,7 +166,7 @@ before this workspace was deleted; summarised here.
     physics-tier message must never name a body file. Cost if wrong: libra
     keeps its Supabase bans only if its own config sets the parameter — the
     donor's prediction must carry it, and it does. Lives: `PRE_RULINGS` in
-    `packages/orrery/src/lib/reconcile/ordering.mjs`; libra's bodyConfig
+    `packages/themis/src/lib/reconcile/ordering.mjs`; libra's bodyConfig
     (`docs/predictions/libra.json`) sets `e2e.restrictedSyntax`.
 11. **`playwright/expect-expect` (e2e, tier class) → `["error", {
     assertFunctionNames: { $parameter: "e2e.assertFunctionNames" } }]`.** A
@@ -185,17 +185,17 @@ before this workspace was deleted; summarised here.
     and passed in by `writeBundle`. Why: the generated `hooks()`/`knip()`
     functions threw when called with no argument, which violated the plan's
     own interface contract and would have broken any caller (including
-    `orrery check`, Phase 2d) that inspects a class's defaults without a real
+    `themis check`, Phase 2d) that inspects a class's defaults without a real
     body. Cost if wrong: none — the defaults are exactly what the schema
-    already declares. Lives: `packages/orrery/src/lib/bundle/eslint.mjs`
-    (`literal`), `packages/orrery/src/commands/bundle.mjs`.
+    already declares. Lives: `packages/themis/src/lib/bundle/eslint.mjs`
+    (`literal`), `packages/themis/src/commands/bundle.mjs`.
 13. **A `chosen` row that is a `$parameter` marker AND an EXTENDERS splice
     target is consumed only by the splice, never also emitted as its own
     field.** The original objectFromRows + EXTENDERS design double-handled
     parameter rows (`knip.apps.extraEntries` appeared both as its own key and
     spliced into `entry`). Cost if wrong: none — the data still reaches
     `entry`/`project` either way; this only removes the stray duplicate key.
-    Lives: `packages/orrery/src/lib/bundle/tools.mjs`.
+    Lives: `packages/themis/src/lib/bundle/tools.mjs`.
 14. **`knip.mjs` returns the class's abstract `{ apps, packages, root }`
     shape, by the plan's own design; the mapping to knip's real `workspaces`
     shape is out of scope for 2b.** Recorded, no action taken in 2b — carried
@@ -204,12 +204,12 @@ before this workspace was deleted; summarised here.
     `node_modules/eslint/package.json`, ignoring `NODE_PATH` and global
     folders**, rather than resolving via `createRequire` (which vitest's
     worker `NODE_PATH` made succeed from any temp dir once eslint entered
-    Orrery's own dependency tree — a corner outside Task 6's own files,
+    Themis's own dependency tree — a corner outside Task 6's own files,
     brought to the owner: "go"). The existing throws-when-not-installed test
     became the regression test; the mechanism is recorded as a hard-won fact
     in `CLAUDE.md`. Cost if wrong: eslint resolution silently succeeds from
     the wrong directory again. Lives:
-    `packages/orrery/src/lib/effective-config.mjs`
+    `packages/themis/src/lib/effective-config.mjs`
     (`resolveEslintBin`/`findEslintManifest`); `CLAUDE.md`.
 
 ### Task 7's rulings
@@ -222,29 +222,29 @@ before this workspace was deleted; summarised here.
     version didn't carry). Not a corner — this executes the plan's own
     stated rule ("versions from donors"); it corrected a wrong plan
     constant, not a plan gap. Cost if wrong: a floor bump on a caret range,
-    nothing structural. Lives: `packages/orrery/src/lib/bundle/plugins.mjs`
-    (`dependenciesFor`), `packages/orrery/package.json`, the lockfile; a
+    nothing structural. Lives: `packages/themis/src/lib/bundle/plugins.mjs`
+    (`dependenciesFor`), `packages/themis/package.json`, the lockfile; a
     regression pre-check in the bundle-honesty test asserts every ruled
     ESLint rule exists in the installed plugin.
 17. **The fixture body declares `eslint` as its own devDependency** (accepted
-    deviation): `resolveEslintBin` walks up from the fixture, and Orrery's
-    own eslint lives under `packages/orrery`, not the workspace root. Whether
-    an adopted body keeps eslint as a direct devDependency, or runs Orrery's
-    binary via `orrery check`, is a Phase 2d design point — recorded, not
+    deviation): `resolveEslintBin` walks up from the fixture, and Themis's
+    own eslint lives under `packages/themis`, not the workspace root. Whether
+    an adopted body keeps eslint as a direct devDependency, or runs Themis's
+    binary via `themis check`, is a Phase 2d design point — recorded, not
     decided here. Cost if wrong: none in 2b; a 2d design choice either way.
-    Lives: `packages/orrery/fixtures/next-supabase-mono/package.json`.
+    Lives: `packages/themis/fixtures/next-supabase-mono/package.json`.
 
 ### Task 8's park
 
 18. **`installedCommit`'s lockfile regex is parked**: it matches only pnpm's
-    codeload-tarball shape for `@vaoan/orrery`, not the `git+https://...#sha`
+    codeload-tarball shape for `@vaoan/themis`, not the `git+https://...#sha`
     / `resolution: {type: git, commit}` shape. The 2b spec (lines 112–119)
     itself defers the exact pnpm subpath/install syntax to Phase 2d, and
     until cut-over every body reads `installed: null` by design, so this is
     not a functional gap yet. Cost if wrong: a wrong "not installed" note
-    surfaces in an on-demand `orrery observe` run after a body adopts via the
+    surfaces in an on-demand `themis observe` run after a body adopts via the
     git+https shape — visible, not silent. Lives:
-    `packages/orrery/src/lib/observe/version.mjs`. Carried to Phase 2d.
+    `packages/themis/src/lib/observe/version.mjs`. Carried to Phase 2d.
 
 ### Task 9's rulings
 
@@ -266,8 +266,8 @@ before this workspace was deleted; summarised here.
     no pre-ruling existed to catch it) — a measurement gap the reconciler
     could not previously detect. Cost if wrong: i18next tightens on libra's
     `source`/`script`/`package` surfaces, visible in its prediction. Lives:
-    `packages/orrery/src/lib/reconcile/ordering.mjs` (`PRE_RULINGS`,
-    `surfaces` field), `packages/orrery/src/lib/reconcile/eslint.mjs`
+    `packages/themis/src/lib/reconcile/ordering.mjs` (`PRE_RULINGS`,
+    `surfaces` field), `packages/themis/src/lib/reconcile/eslint.mjs`
     (lost-RegExp detection).
 20. **`observe` must never die on a single tool's crash.** Each tool inside
     `codeDrift` is caught individually; a crash records `{ crashed: true,
@@ -277,7 +277,7 @@ before this workspace was deleted; summarised here.
     unhandled rejection from one tool's empty-stdout crash previously aborted
     every remaining body and produced no report at all — the opposite of
     what a diagnostic tool should do on partial failure. Cost if wrong: none.
-    Lives: `packages/orrery/src/lib/observe/code.mjs`.
+    Lives: `packages/themis/src/lib/observe/code.mjs`.
 21. **The S1–S6 bundle-gap rulings**, made after Task 9's first real
     observation run against both donors exposed six structural gaps the
     plan's own machinery could not see until run for real:
@@ -310,19 +310,19 @@ before this workspace was deleted; summarised here.
       ["source", "component", "package"]`; on `script`, libra's bare `[2]`
       (plugin default mode) is adopted as before. Cost if wrong: scripts
       keep default-mode i18next, which is what both donors already run.
-    Lives: `packages/orrery/src/physics/eslint.base.mjs`,
-    `packages/orrery/src/lib/boundaries.mjs`,
-    `packages/orrery/templates/next-supabase-mono/tsconfig.json`,
-    `packages/orrery/src/lib/observe/code.mjs` (`tightenedFor`),
-    `packages/orrery/fixtures/next-supabase-mono/`,
-    `packages/orrery/src/lib/reconcile/ordering.mjs`.
-22. **`.husky/pre-commit`'s template stays a `pnpm orrery hook pre-commit`
+    Lives: `packages/themis/src/physics/eslint.base.mjs`,
+    `packages/themis/src/lib/boundaries.mjs`,
+    `packages/themis/templates/next-supabase-mono/tsconfig.json`,
+    `packages/themis/src/lib/observe/code.mjs` (`tightenedFor`),
+    `packages/themis/fixtures/next-supabase-mono/`,
+    `packages/themis/src/lib/reconcile/ordering.mjs`.
+22. **`.husky/pre-commit`'s template stays a `pnpm themis hook pre-commit`
     one-liner; the verb itself is not built in 2b.** In 2b the template is
-    only byte-compared, never executed; `orrery hook` (Phase 2e) knows only
+    only byte-compared, never executed; `themis hook` (Phase 2e) knows only
     `commit-msg` and `pre-push`. The verb belongs next to `init` in Phase 2d,
     which is the first phase that writes the template into a real body. Cost
     if wrong: one verb built later; nothing in 2b depends on it existing yet.
-    Lives: `packages/orrery/templates/next-supabase-mono/.husky/pre-commit`.
+    Lives: `packages/themis/templates/next-supabase-mono/.husky/pre-commit`.
     Carried to Phase 2d.
 
 ### Task 10's rulings
@@ -342,7 +342,7 @@ before this workspace was deleted; summarised here.
     the on-demand diagnostic against an unadopted donor, the syncpack result
     stays informational. Cost if wrong: a syncpack drift in an unadopted
     donor goes unreported by `observe` until adoption. Lives:
-    `packages/orrery/src/lib/observe/code.mjs`. Carried to Phase 2d (a
+    `packages/themis/src/lib/observe/code.mjs`. Carried to Phase 2d (a
     scratch-dir invocation shape, if the binary ever accepts one).
 25. **T3 — the class's unit-test ESLint block gains `ignores:
     ["**/e2e/**"]`.** aeleos's e2e sample glob matched both the unit-test and
@@ -368,7 +368,7 @@ before this workspace was deleted; summarised here.
     wrong: the failure mode this specifically avoids is a permanently "red"
     observation report that never converges — every count stays visible in
     the committed predictions either way. Lives:
-    `packages/orrery/src/lib/observe/code.mjs` (`compareToPrediction`,
+    `packages/themis/src/lib/observe/code.mjs` (`compareToPrediction`,
     `tightenedFor`); `docs/decisions/0016-observation-baseline.md`.
 27. **libra's `(fatal)` eslint-parse count and boundaries-edge counts are
     body data, not bundle gaps.** 91 of 101 `(fatal)` files are
@@ -392,9 +392,9 @@ recorded as its own decision record rather than restated here in full. Its
 mechanical consequences: the nightly `tooling` job and the registry
 `observe` flag were dropped from Task 10's scope before they were built; the
 Phase 2e nightly `.github/workflows/observe.yml` was deleted outright (not
-reduced to one job); `orrery observe <body>` and `orrery repo apply` stay
+reduced to one job); `themis observe <body>` and `themis repo apply` stay
 on-demand commands; the committed predictions and ADR 0016 serve that
-on-demand diagnostic; a body's own reusable CI job (`orrery check`, wired by
+on-demand diagnostic; a body's own reusable CI job (`themis check`, wired by
 `init`) becomes the enforcement point, carried to Phase 2d. See
 `docs/decisions/0017-no-scheduled-observation.md` for the full decision and
 `docs/specs/2026-09-08-phase-2b-reconciliation-design.md` /
@@ -415,9 +415,9 @@ Important findings; the controller ruled each is the spec asserting itself
     left as whole glob strings, never split into a nested object; syncpack
     `versionGroups` rendered as an array, matching its own JSON schema). Cost
     if wrong: none — these are pure bug fixes each tool's own loader now
-    proves. Lives: `packages/orrery/tests/bundle-shapes.test.mjs`,
-    `packages/orrery/src/lib/bundle/tools.mjs`,
-    `packages/orrery/templates/next-supabase-mono/prettier.config.mjs`.
+    proves. Lives: `packages/themis/tests/bundle-shapes.test.mjs`,
+    `packages/themis/src/lib/bundle/tools.mjs`,
+    `packages/themis/templates/next-supabase-mono/prettier.config.mjs`.
 29. **C2 — the class renders a real boundaries base and resolver, and
     marker attributes are enforced everywhere.** aeleos's layered boundaries
     policy becomes the class base (aeleos's own `identity` element moves out
@@ -431,9 +431,9 @@ Important findings; the controller ruled each is the spec asserting itself
     base rules at all, all of which "agreed" only because they'd agreed with
     each other). Cost if wrong: boundaries violations appear in predictions
     where they did not before — which is the rule working as designed, not a
-    regression. Lives: `packages/orrery/src/lib/boundaries.mjs`,
-    `packages/orrery/src/physics/eslint.base.mjs`,
-    `packages/orrery/src/lib/markers.mjs` (`assertMarker`).
+    regression. Lives: `packages/themis/src/lib/boundaries.mjs`,
+    `packages/themis/src/physics/eslint.base.mjs`,
+    `packages/themis/src/lib/markers.mjs` (`assertMarker`).
 30. **C3 — physics carries no body-named opinion.** Adopted
     `no-restricted-syntax`/`no-restricted-imports`/`no-restricted-properties`
     rows whose options named a specific path, file, or framework are
@@ -445,24 +445,24 @@ Important findings; the controller ruled each is the spec asserting itself
     selector bans — is a framework opinion, not physics); a permanent guard
     test asserts no physics row's `chosen` contains a path-like token. Cost
     if wrong: libra sets its own parameters at cut-over — visible, not
-    silent. Lives: `packages/orrery/src/lib/reconcile/tiers.mjs`
+    silent. Lives: `packages/themis/src/lib/reconcile/tiers.mjs`
     (`TIER_OVERRIDES`), `classes/next-supabase-mono/schema.mjs`
     (`restrictions.<surface>` parameters).
 31. **C4 — every rule ships at `error`, never `warn`.** 158 rows that had
     landed at warn were lifted to error (test `"strictest"`, note "no rule
     ships at warn (spec)"); reconcile, bundle, and predictions rerun. Cost if
     wrong: none — the spec's sentence is explicit and unconditional. Lives:
-    `packages/orrery/src/lib/reconcile/ordering.mjs`.
+    `packages/themis/src/lib/reconcile/ordering.mjs`.
 32. **C5 — status-aware crash detection for every tool**, not only eslint:
     exit 0 is clean; non-zero with a parseable report on the tool's own
     stream is findings; anything else is a crash. One regression test per
     tool with empty streams and a non-zero status. Cost if wrong: none.
-    Lives: `packages/orrery/src/lib/observe/code.mjs` (`statusAware`).
+    Lives: `packages/themis/src/lib/observe/code.mjs` (`statusAware`).
 33. **I1 — `observe` fails (not merely warns) on config errors other than
     "missing", on real local violations, and on a pointer that "differs"
     once any pointer file exists.** Cost if wrong: none — these are
     tightenings of what already counted as failure, never a loosening.
-34. **I2 — a body's own `orrery.config.mjs` wins over a prediction's
+34. **I2 — a body's own `themis.config.mjs` wins over a prediction's
     `bodyConfig` when present**; a `bodyEffective` read error is recorded
     and fails the run rather than being swallowed. Cost if wrong: none.
 35. **I6 — `loadLocal` checks file existence and propagates import errors**
@@ -475,7 +475,7 @@ Important findings; the controller ruled each is the spec asserting itself
     only when it restates the branch's own `fix/` type; the other five
     leading words stay type-agnostic (they never coincide with a real
     branch type). One test per leading word, plus both `fix-` cases. Cost if
-    wrong: none. Lives: `packages/orrery/src/lib/git-flow.mjs`
+    wrong: none. Lives: `packages/themis/src/lib/git-flow.mjs`
     (`planLabel`).
 37. **`PLAN_LABEL_PATTERN` is anchored on label+digit tokens**, not on any
     word starting with a plan-shaped prefix: `phase-2b`, `task-5`, `2b-`,
@@ -483,7 +483,7 @@ Important findings; the controller ruled each is the spec asserting itself
     descriptions; `3d-viewer` stays rejected because `3d` is itself a
     digit-token (a real 3D-viewer branch must say `three-d-viewer` or name
     what it renders instead). Cost if wrong: none — one test per case.
-    Lives: `packages/orrery/src/lib/git-flow.mjs` (`planLabel`,
+    Lives: `packages/themis/src/lib/git-flow.mjs` (`planLabel`,
     `DIGIT_TOKEN`, `LETTER_DIGIT_TOKEN`, `LABEL_WORD`).
 
 ### The reports rule's consequences
@@ -517,13 +517,13 @@ The full list, as recorded during execution, lives in
 before this workspace's deletion; restated here so it survives that
 deletion:
 
-- Body-side enforcement: an `orrery check` job in the reusable `ci.yml`,
+- Body-side enforcement: an `themis check` job in the reusable `ci.yml`,
   wired by `init` (`versionDrift`, `pointerDrift`, `effectiveMismatches`) —
   ADR 0017.
 - `installedCommit`'s lockfile regex knows only the codeload-tarball shape;
   the `git+https` shape waits on the install syntax (Task 8's park, ruling
   18 above).
-- The `orrery hook pre-commit` verb (the template points at it; the physics
+- The `themis hook pre-commit` verb (the template points at it; the physics
   `hooks.mjs` defines the check it should run) — ruling 22 above.
 - `knip.mjs` returns the class's abstract `{ apps, packages, root }` shape;
   the mapping to knip's real `workspaces` shape is the pointer writer's job
@@ -573,10 +573,10 @@ Every number in this record's lineage lives in a generated artefact, never
 copied by hand here:
 
 - `docs/decisions/rulings.json` and the per-tool records `docs/decisions/0004-eslint.md`
-  through `0015-hooks.md` — generated by `pnpm orrery reconcile`.
-- `docs/predictions/*.json` — generated by `pnpm orrery observe --predict`.
+  through `0015-hooks.md` — generated by `pnpm themis reconcile`.
+- `docs/predictions/*.json` — generated by `pnpm themis observe --predict`.
 - `docs/observations/2026-09-11-tooling.{md,json}` — generated by
-  `pnpm orrery observe`, the current baseline (superseding the
+  `pnpm themis observe`, the current baseline (superseding the
   `2026-09-10` pair, which PR #35 re-recorded against).
 - `docs/decisions/0016-observation-baseline.md` — the baseline record,
   itself reduced to prose pointing at the observation and prediction files

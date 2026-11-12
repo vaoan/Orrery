@@ -1,2 +1,2 @@
-import orrery from "@vaoan/orrery/eslint";
-export default await orrery();
+import themis from "@vaoan/themis/eslint";
+export default await themis();

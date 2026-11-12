@@ -9,11 +9,11 @@
 (`docs/adr-agent-note-bounds`) that was never opened as a pull request, so it
 never reached `develop`; 0019 has since gone to the AI layer. The text below is
 unchanged. The AI layer (`docs/specs/2026-11-06-ai-layer-design.md`) is where
-this ruling now lands: `orrery instructions` already fails a root `CLAUDE.md` or
+this ruling now lands: `themis instructions` already fails a root `CLAUDE.md` or
 a rule past its line limit, and the bound on nested directory notes belongs to
-`check-agent-notes` in `orrery check`.
+`check-agent-notes` in `themis check`.
 
-Hand-written. Not a `orrery reconcile` output — the two donor repositories did
+Hand-written. Not a `themis reconcile` output — the two donor repositories did
 not disagree about this. Neither had noticed it.
 
 ## The finding
@@ -97,5 +97,5 @@ by decree before any other body has the shape.
 deliberately not decided here:** `check:line-endings`, which asks
 `git ls-files --eol` rather than scanning bytes, after the obvious hand check
 (`grep -c $'\r'`) was found to report a file's line count in that repository's
-shell. Orrery already sets `* text=auto eol=lf`, so it is a backstop rather
+shell. Themis already sets `* text=auto eol=lf`, so it is a backstop rather
 than a mechanism — worth its own ruling rather than a footnote to this one.

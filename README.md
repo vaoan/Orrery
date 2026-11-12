@@ -1,18 +1,18 @@
-# orrery
+# Themis
 
 Constellation governance. Shared tooling, configuration, and AI documents for
 every repository in the `vaoan` constellation.
 
-An orrery is a clockwork model of a solar system — brass gears showing how every
-body moves, sitting on a table *outside* the system it describes. This repository
-is that model. It governs how projects are built. It contains no application code.
+Themis is the Titan of divine law and order: she keeps what is right, and why it
+is right, from outside the quarrels she settles. This repository is that law. It
+governs how projects are built. It contains no application code.
 
 ## Status
 
-Design approved, not yet implemented.
+Design approved and partly built: see the commands table in `CLAUDE.md`. Named Themis until ADR 0022.
 
-- **Design:** [`docs/specs/2026-09-06-orrery-design.md`](docs/specs/2026-09-06-orrery-design.md)
-- **Next work:** [`docs/plans/2026-09-07-phase-2a-diff-eslint.md`](docs/plans/2026-09-07-phase-2a-diff-eslint.md) — CLI skeleton and `orrery diff-eslint`, the tool that sizes the reconciliation
+- **Design:** [`docs/specs/2026-09-06-themis-design.md`](docs/specs/2026-09-06-themis-design.md)
+- **Next work:** [`docs/plans/2026-09-07-phase-2a-diff-eslint.md`](docs/plans/2026-09-07-phase-2a-diff-eslint.md) — CLI skeleton and `themis diff-eslint`, the tool that sizes the reconciliation
 - **Decisions:** [`docs/decisions/`](docs/decisions/)
 
 Phase 0 (libra's kebab-case migration) is [vaoan/libra#413](https://github.com/vaoan/Libra/pull/413).
@@ -31,7 +31,7 @@ Phase 0 (libra's kebab-case migration) is [vaoan/libra#413](https://github.com/v
 
 Two delivery channels, three tiers.
 
-**Channels.** Tooling ships as an npm package (`@vaoan/orrery`); AI documents
+**Channels.** Tooling ships as an npm package (`@vaoan/themis`); AI documents
 ship as a Claude Code plugin from this repo's marketplace. Content lives in the
 package — bodies keep only small pointer files that contain a path and no policy.
 
@@ -46,10 +46,10 @@ physics.
 ## Commands
 
 ```
-orrery init --class next-supabase-mono   scaffold a new body, register it
-orrery check                             validate a body has not drifted
-orrery status                            report every body's pinned version
-orrery promote <path> --to physics       lift a local rule into the shared tier
+themis init --class next-supabase-mono   scaffold a new body, register it
+themis check                             validate a body has not drifted
+themis status                            report every body's pinned version
+themis promote <path> --to physics       lift a local rule into the shared tier
 ```
 
 ## Decisions

@@ -1,20 +1,21 @@
-# Orrery
+# Themis
 
-An orrery is a clockwork model of a solar system — brass gears showing how every
-body moves, sitting on a table *outside* the system it describes. This repository
-is that model. It governs how every project in the `vaoan` constellation is built.
+Themis is the Titan of divine law and order: she keeps what is right, and why it
+is right, from outside the quarrels she settles. This repository is that law. It
+governs how every project in the `vaoan` constellation is built.
 
 **It contains no application code, and it never will.** If you are about to add
 some, you are in the wrong repository.
 
 ## Read first
 
-- **The design (the authority):** `docs/specs/2026-09-06-orrery-design.md`
+- **The design (the authority):** `docs/specs/2026-09-06-themis-design.md`
 - **Decisions already made:** `docs/decisions/`
 - **What to build next:** `docs/plans/`
 
-Current work is the AI layer: `docs/specs/2026-11-06-ai-layer-design.md`, starting
-with `docs/plans/2026-11-06-stage-0-instruction-load.md` (ADR 0019).
+Current work is the AI layer: `docs/specs/2026-11-06-ai-layer-design.md` (ADR 0019).
+Stage 0 is done. Next is the Portia trial, a minimal starter and `themis init` first:
+`docs/specs/2026-11-08-portia-design.md` (ADR 0021).
 
 ## The one rule that keeps this honest
 
@@ -36,12 +37,12 @@ in its own repository rather than inside `aeleos`.
 | janus | `vaoan/Janus` | planet | `next-supabase-mono` |
 
 `aeleos` is the centre of the *runtime* constellation — it owns the authoritative
-`actors` table and derives one identity per human. Orrery is the centre of the
+`actors` table and derives one identity per human. Themis is the centre of the
 *build-time* one. They are different constellations and must not share a centre.
 
 ## Two channels, three tiers
 
-**Channels.** Tooling ships as an npm package (`@vaoan/orrery`); AI documents ship
+**Channels.** Tooling ships as an npm package (`@vaoan/themis`); AI documents ship
 as a Claude Code plugin from this repo's own marketplace. Content lives in the
 package — bodies keep only *pointer files* that contain a path and no policy.
 
@@ -49,25 +50,25 @@ package — bodies keep only *pointer files* that contain a path and no policy.
 project-specific stays in the body and is never touched by sync.
 
 The tier is an **export path**, not a directory anyone copies from:
-`@vaoan/orrery/eslint/physics` versus `@vaoan/orrery/eslint/next-supabase-mono`.
+`@vaoan/themis/eslint/physics` versus `@vaoan/themis/eslint/next-supabase-mono`.
 
 ## Commands the CLI will expose
 
 ```
-orrery diff-eslint <repoA> <repoB>       rule-by-rule effective-config diff        (built, 2a)
-orrery repo apply <owner/name>           bring a repository to policy/repository.json (built, 2e)
-orrery ci <verb>                         branch-target, branch-name, pr-title, branch-sync, config-drift (built, 2e)
-orrery hook <commit-msg|pre-push>        the git hooks, pointed at from .husky/    (built, 2e)
-orrery release                           cut release/vYYYY.MM.DD.N from develop    (built, 2e)
-orrery init --class next-supabase-mono   scaffold a new body, register it         (2d)
-orrery check                             validate a body has not drifted          (2d)
-orrery status                            report every body's pinned version       (2d)
-orrery promote <path> --to physics       lift a local rule into the shared tier   (2d)
-orrery reconcile <repoA> <repoB>         rule-by-rule rulings and records from two donors (built, 2b)
-orrery bundle                            render the rulings into physics/ and classes/   (built, 2b)
-orrery observe <body>...                 on-demand drift of a body against the bundle and
+themis diff-eslint <repoA> <repoB>       rule-by-rule effective-config diff        (built, 2a)
+themis repo apply <owner/name>           bring a repository to policy/repository.json (built, 2e)
+themis ci <verb>                         branch-target, branch-name, pr-title, branch-sync, config-drift (built, 2e)
+themis hook <commit-msg|pre-push>        the git hooks, pointed at from .husky/    (built, 2e)
+themis release                           cut release/vYYYY.MM.DD.N from develop    (built, 2e)
+themis init --class next-supabase-mono   scaffold a new body, register it         (2d)
+themis check                             validate a body has not drifted          (2d)
+themis status                            report every body's pinned version       (2d)
+themis promote <path> --to physics       lift a local rule into the shared tier   (2d)
+themis reconcile <repoA> <repoB>         rule-by-rule rulings and records from two donors (built, 2b)
+themis bundle                            render the rulings into physics/ and classes/   (built, 2b)
+themis observe <body>...                 on-demand drift of a body against the bundle and
                                           its prediction (built, 2b; no schedule, ADR 0017)
-orrery instructions <body>...             what a body loads at session start and across a task,
+themis instructions <body>...             what a body loads at session start and across a task,
                                           against 10,000 and 25,000 token budgets (static half built, stage 0)
 ```
 
@@ -83,7 +84,7 @@ orrery instructions <body>...             what a body loads at session start and
 - Prefer measuring the real repos over reasoning about them. Every number in the
   design doc came from running something against `aeleos` and `libra`, and two of
   the early conclusions were wrong until they were checked.
-- Every report Orrery produces is generated by a command with a `.json` twin
+- Every report Themis produces is generated by a command with a `.json` twin
   beside the `.md`; decision records point at generated data and never copy
   numbers by hand.
 
@@ -91,14 +92,14 @@ orrery instructions <body>...             what a body loads at session start and
 
 `develop` is the default branch and takes `type/*` branches by squash. `main`
 is the release line and accepts only two routes: `release/*` (merge commit,
-cut by `orrery release`) and `hotfix/*` (squash, PR title type `fix`). Every
+cut by `themis release`) and `hotfix/*` (squash, PR title type `fix`). Every
 push to main is followed by an automatic merge-commit back-merge into
 develop, and while main is ahead of develop, every other PR into develop is
 frozen by `branch-sync`. PR titles are `type(scope): subject [GH-n]`, with
 `GH-000` for work with no issue. The back-merge travels on a
 `back-merge/<sha>` branch cut from main by the workflow; nobody else creates
 those. Branch descriptions say what changes, never the plan label:
-`feat/reconcile-records-command`, not `feat/2b-task-5`; `orrery ci branch-name`
+`feat/reconcile-records-command`, not `feat/2b-task-5`; `themis ci branch-name`
 and the pre-push hook enforce it.
 
 ### When execution corners you
