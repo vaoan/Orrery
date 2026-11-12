@@ -6,6 +6,8 @@ import ignore from "ignore";
 export const BUDGET = { startup: 10000, task: 25000 };
 export const WIDE_GLOB_SHARE = 0.4;
 export const tokens = (bytes) => Math.ceil(bytes / 3);
+// What the skill and agent descriptions may total before the listing crowds out the session.
+export const SKILL_LISTING_BUDGET = 2500;
 
 const ROOT_LINE_LIMIT = 200;
 const RULE_LINE_LIMIT = 100;
@@ -20,14 +22,14 @@ const posix = (p) => p.split(path.sep).join("/");
 // ---- frontmatter -------------------------------------------------------------------------
 
 // Frontmatter only counts when the file opens with `---` on line 1 and a closing `---` follows.
-function frontmatter(text) {
+export function frontmatter(text) {
   const lines = lf(text).split("\n");
   if (lines[0].trim() !== "---") return null;
   const end = lines.findIndex((l, i) => i > 0 && l.trim() === "---");
   return end === -1 ? null : lines.slice(1, end);
 }
 
-const unquote = (s) => {
+export const unquote = (s) => {
   const t = s.trim();
   return t.length >= 2 && (t[0] === '"' || t[0] === "'") && t.at(-1) === t[0] ? t.slice(1, -1) : t;
 };
@@ -105,7 +107,7 @@ export function parseRule(text) {
   return { paths: globs.length && !globs.every((g) => g === "**") ? globs : null };
 }
 
-function skillText(text) {
+export function skillText(text) {
   const fm = frontmatter(text);
   if (!fm) return "";
   let out = "", active = false;
@@ -151,14 +153,14 @@ function importsOf(text) {
   return found;
 }
 
-function readFile(dir, rel) {
+export function readFile(dir, rel) {
   try {
     const abs = path.join(dir, rel);
     return fs.statSync(abs).isFile() ? fs.readFileSync(abs, "utf8") : null;
   } catch { return null; }
 }
 
-function walkMd(dir, rel) {
+export function walkMd(dir, rel) {
   const abs = path.join(dir, rel);
   if (!fs.existsSync(abs)) return [];
   const out = [];
@@ -168,6 +170,39 @@ function walkMd(dir, rel) {
     else if (e.name.endsWith(".md")) out.push(r);
   }
   return out;
+}
+
+
+// ---- discovery --------------------------------------------------------------------------
+
+const SKIP_DIRS = new Set([".git", "node_modules", ".next", "dist", "build", "coverage", ".turbo"]);
+
+function nestedClaude(dir, rel, out) {
+  const abs = path.join(dir, rel);
+  for (const e of fs.readdirSync(abs, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1))) {
+    const r = rel ? `${rel}/${e.name}` : e.name;
+    if (e.isDirectory()) { if (!SKIP_DIRS.has(e.name)) nestedClaude(dir, r, out); }
+    else if (e.name === "CLAUDE.md" && readFile(dir, r) !== null) out.push(r);
+  }
+}
+
+// The one walker: every file a body hands the model, found on disk. `rules` keeps entries that cannot
+// be read (a broken symlink) so measureBody can note them; the other lists hold readable files only.
+export function discoverInstructionFiles(dir) {
+  const claude = [];
+  if (fs.existsSync(dir)) nestedClaude(dir, "", claude);
+  claude.sort((a, b) => (a === "CLAUDE.md" ? -1 : b === "CLAUDE.md" ? 1 : a < b ? -1 : 1));
+  const readable = (list) => list.filter((rel) => readFile(dir, rel) !== null);
+  const skills = fs.existsSync(path.join(dir, ".claude/skills"))
+    ? readable(fs.readdirSync(path.join(dir, ".claude/skills")).sort().map((d) => `.claude/skills/${d}/SKILL.md`))
+    : [];
+  return {
+    claude,
+    rules: walkMd(dir, ".claude/rules"),
+    skills,
+    agents: readable(walkMd(dir, ".claude/agents")),
+    lessons: readable(walkMd(dir, "docs/lessons")),
+  };
 }
 
 const norm = (s) => s.replace(/\s+/g, " ").trim();
@@ -219,7 +254,8 @@ export function measureBody(dir, { touching, base, allowLost = [] } = {}) {
   }
 
   // A broken symlink or an unreadable entry costs nothing to load, and is noted rather than fatal.
-  const ruleEntries = walkMd(dir, ".claude/rules");
+  const found = discoverInstructionFiles(dir);
+  const ruleEntries = found.rules;
   const skippedRules = ruleEntries.filter((rel) => rawOf(rel) === null);
   const ruleFiles = ruleEntries.filter((rel) => rawOf(rel) !== null);
   const scoped = [];
@@ -258,9 +294,7 @@ export function measureBody(dir, { touching, base, allowLost = [] } = {}) {
   if (lineCount("CLAUDE.md") >= ROOT_LINE_LIMIT) oversize.push({ path: "CLAUDE.md", lines: lineCount("CLAUDE.md"), limit: ROOT_LINE_LIMIT });
   for (const rel of ruleFiles) if (lineCount(rel) >= RULE_LINE_LIMIT) oversize.push({ path: rel, lines: lineCount(rel), limit: RULE_LINE_LIMIT });
 
-  const skillPaths = fs.existsSync(path.join(dir, ".claude/skills"))
-    ? fs.readdirSync(path.join(dir, ".claude/skills")).sort().map((d) => `.claude/skills/${d}/SKILL.md`).filter((p) => rawOf(p) !== null)
-    : [];
+  const skillPaths = found.skills;
   const skills = { count: skillPaths.length, descriptionTokens: tokens(skillPaths.reduce((n, p) => n + Buffer.byteLength(skillText(rawOf(p))), 0)) };
 
   let lost = null;

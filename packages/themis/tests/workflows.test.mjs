@@ -129,7 +129,9 @@ describe(".github/workflows/body-ci.yml", () => {
     const block = yaml.match(/^  test:\n((?:    [^\n]*\n|\n)*)/m)[1];
     const steps = block.split(/^      - /m).slice(1).map((s) => s.replace(/\n        /g, "\n"));
     const runs = steps.filter((s) => !s.includes("inputs.database")).map((s) => s.match(/^run: (.*)$/m)?.[1]);
-    expect(runs).toEqual(expect.arrayContaining(["pnpm lint", "pnpm typecheck", "pnpm test"]));
+    expect(runs).toEqual(expect.arrayContaining(["pnpm lint", "pnpm typecheck", "pnpm test", "pnpm themis references .", "pnpm themis skills ."]));
+    expect(runs.indexOf("pnpm themis references .")).toBeGreaterThan(runs.indexOf("pnpm test"));
+    expect(runs.indexOf("pnpm themis skills .")).toBeGreaterThan(runs.indexOf("pnpm test"));
     const gated = steps.filter((s) => s.includes("if: ${{ inputs.database }}"));
     const find = (needle) => steps.filter((s) => s.includes(needle));
     for (const needle of ["supabase/setup-cli@v1", "run: supabase start", "run: pnpm test:db"]) {

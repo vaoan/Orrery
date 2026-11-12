@@ -10,6 +10,8 @@ Usage:
   themis reconcile <repoA> <repoB> [--sample surface=path]... [--out <dir>]
   themis bundle [--rulings docs/decisions/rulings.json] [--package packages/themis]
   themis observe <bodyDir>... [--predict] [--report <dir>]
+  themis references <bodyDir>... [--report <dir>] [--label <name>]
+  themis skills <bodyDir>... [--report <dir>] [--label <name>]
   themis instructions <bodyDir>... [--touching body=path]... [--base <ref>] [--allow-lost <file.json>] [--report <dir>] [--label <name>]
 
 Commands:
@@ -23,9 +25,11 @@ Commands:
   bundle        generate the physics and class tiers from rulings.json
   observe       version, pointer and code drift of a body against the bundle, read-only
   instructions  what a body's CLAUDE.md, rules and imports load at session start and across a task, read-only
+  references    every link, path, pnpm script, themis command and skill name its instructions mention, and whether it exists
+  skills        whether each skill and agent of a body has valid frontmatter, a description that says when, and references that resolve
 `;
 
-const COMMANDS = {
+export const COMMANDS = {
   "diff-eslint": async (argv) => (await import("./commands/diff-eslint.mjs")).default(argv),
   repo: async (argv) => (await import("./commands/repo.mjs")).default(argv),
   ci: async (argv) => (await import("./commands/ci.mjs")).default(argv),
@@ -36,7 +40,11 @@ const COMMANDS = {
   bundle: async (argv) => (await import("./commands/bundle.mjs")).default(argv),
   observe: async (argv) => (await import("./commands/observe.mjs")).default(argv),
   instructions: async (argv) => (await import("./commands/instructions.mjs")).default(argv),
+  references: async (argv) => (await import("./commands/references.mjs")).default(argv),
+  skills: async (argv) => (await import("./commands/skills.mjs")).default(argv),
 };
+
+export const COMMAND_NAMES = Object.keys(COMMANDS);
 
 export async function run(argv) {
   const [command, ...rest] = argv;
