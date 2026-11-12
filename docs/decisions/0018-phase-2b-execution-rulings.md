@@ -324,6 +324,8 @@ before this workspace was deleted; summarised here.
     if wrong: one verb built later; nothing in 2b depends on it existing yet.
     Lives: `packages/themis/templates/next-supabase-mono/.husky/pre-commit`.
     Carried to Phase 2d.
+    Amended 2026-11-12: the pointer is removed until the verb exists (see
+    Amendments).
 
 ### Task 10's rulings
 
@@ -566,6 +568,19 @@ deletion:
   validating `class`; `report.mjs` does not name which pointer files
   differ; `donors.mjs` parses `.prettierrc` as JSON only and reads fields it
   never uses.
+
+## Amendments
+
+- **2026-11-12 — ruling 22, the pre-commit pointer is removed until its verb
+  exists.** `packages/themis/templates/next-supabase-mono/.husky/pre-commit`
+  (and its copy in the fixture) is removed, because `themis init` writes the
+  templates into real bodies and the file called `pnpm themis hook
+  pre-commit`, a verb `themis hook` does not have: every commit in a new body
+  would have failed. Consequence: the physics pre-commit check of ADR 0015
+  (`pre-commit.lint-staged` and `pre-commit.checks`, defined in
+  `packages/themis/physics/hooks.mjs`) is not enforced in bodies until the
+  verb is built. The pointer returns with `themis hook pre-commit`, in the
+  same change. ADR 0023 records why.
 
 ## Data
 

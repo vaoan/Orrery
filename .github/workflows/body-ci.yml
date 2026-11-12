@@ -12,6 +12,11 @@
 #       uses: vaoan/Themis/.github/workflows/body-ci.yml@main
 #       with:
 #         database: false   # true starts Supabase and runs `pnpm test:db`
+#
+# The toolchain is the body's own (ADR 0023): pnpm/action-setup reads its `packageManager`,
+# and setup-node reads its `engines.node` through `node-version-file: package.json`. Without
+# `packageManager`, pnpm setup fails. Without `engines.node`, setup-node only warns and uses
+# the runner's preinstalled Node, so a body must set it.
 name: body-ci
 
 on:
@@ -27,21 +32,16 @@ permissions:
   pull-requests: read
   issues: read
 
-env:
-  PNPM_VERSION: 11
-
 jobs:
   test:
     name: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
-          version: ${{ env.PNPM_VERSION }}
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 24
+          node-version-file: package.json
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
@@ -50,7 +50,7 @@ jobs:
       - run: pnpm themis references .
       - run: pnpm themis skills .
       - if: ${{ inputs.database }}
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@v3
       - if: ${{ inputs.database }}
         run: supabase start
       - if: ${{ inputs.database }}
@@ -61,13 +61,11 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
-          version: ${{ env.PNPM_VERSION }}
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 24
+          node-version-file: package.json
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm themis ci branch-target
@@ -77,13 +75,11 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
-          version: ${{ env.PNPM_VERSION }}
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 24
+          node-version-file: package.json
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm themis ci branch-name
@@ -93,13 +89,11 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
-          version: ${{ env.PNPM_VERSION }}
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 24
+          node-version-file: package.json
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm themis ci pr-title
@@ -111,15 +105,13 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
-          version: ${{ env.PNPM_VERSION }}
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 24
+          node-version-file: package.json
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm themis ci config-drift
@@ -129,15 +121,13 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'develop'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
-          version: ${{ env.PNPM_VERSION }}
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 24
+          node-version-file: package.json
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm themis ci branch-sync

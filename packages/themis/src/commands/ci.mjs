@@ -6,8 +6,8 @@ import {
   branchType, checkBranchName, checkBranchTarget, checkPrTitle, checkBranchSync, checkConfigDrift, isBackMerge,
 } from "../lib/git-flow.mjs";
 
-const VERBS = ["branch-target", "branch-name", "pr-title", "branch-sync", "config-drift"];
-const USAGE = `usage: themis ci <${VERBS.join("|")}> [--head <branch>] [--base <branch>] [--title <text>] [--repo <owner/name>] [--head-sha <sha>] [--head-repo <owner/name>] [--base-repo <owner/name>] [--author <login>] [--files a,b,c]`;
+export const CI_VERBS = ["branch-target", "branch-name", "pr-title", "branch-sync", "config-drift"];
+const USAGE = `usage: themis ci <${CI_VERBS.join("|")}> [--head <branch>] [--base <branch>] [--title <text>] [--repo <owner/name>] [--head-sha <sha>] [--head-repo <owner/name>] [--base-repo <owner/name>] [--author <login>] [--files a,b,c]`;
 
 export const DEFAULT_DRIFT_FILES = [
   "eslint.config.mjs", "eslint.local.mjs", "tsconfig.json", "tsconfig.base.json",
@@ -74,7 +74,7 @@ export default async function ci(argv, deps = {}) {
   }
 
   const [verb] = positionals;
-  if (!VERBS.includes(verb)) {
+  if (!CI_VERBS.includes(verb)) {
     console.error(USAGE);
     return 2;
   }

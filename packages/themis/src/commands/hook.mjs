@@ -2,7 +2,8 @@ import fs from "node:fs";
 import { execFileSync } from "node:child_process";
 import { checkCommitMessage, checkBranchName } from "../lib/git-flow.mjs";
 
-const USAGE = "usage: themis hook <commit-msg|pre-push> [args]";
+export const HOOK_NAMES = ["commit-msg", "pre-push"];
+const USAGE = `usage: themis hook <${HOOK_NAMES.join("|")}> [args]`;
 
 // git appends a block of blank/`#`-prefixed lines to the end of the message file
 // (the "Please enter the commit message..." help text, for both `commit` and
