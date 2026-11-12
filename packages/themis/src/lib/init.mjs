@@ -33,12 +33,18 @@ function listFiles(dir, rel = "") {
 // vulkan -> name, Vulkan -> Name: case-preserving, whole text.
 const swap = (text, name) => text.replace(/vulkan/g, name).replace(/Vulkan/g, capitalise(name));
 
-/** The rename, and only the rename: four named files, the title line of two of them. */
+// The starter's app-name constant: the one source file the rename reaches. Absent in a repository
+// that has none, and then skipped.
+export const APP_NAME_FILE = "apps/web/src/shared/config/app-name.ts";
+
+/** The rename, and only the rename: five named files, the title line of two of them. */
 export function renameText(file, text, name) {
   switch (file) {
     case "package.json":
       return text.replace(/("name"\s*:\s*")([^"]*)(")/, (_m, a, value, c) => a + swap(value, name) + c);
     case "themis.config.mjs":
+      return swap(text, name);
+    case APP_NAME_FILE:
       return swap(text, name);
     case "CLAUDE.md":
     case "README.md":
@@ -47,7 +53,7 @@ export function renameText(file, text, name) {
       return text;
   }
 }
-export const RENAMED_FILES = ["package.json", "themis.config.mjs", "CLAUDE.md", "README.md"];
+export const RENAMED_FILES = ["package.json", "themis.config.mjs", "CLAUDE.md", "README.md", APP_NAME_FILE];
 
 /** Insert one body into registry.json text, matching the existing column alignment. */
 export function insertRegistryEntry(text, name, entry) {

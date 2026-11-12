@@ -136,6 +136,9 @@ async function loadLocal(root) {
   return (await import(pathToFileURL(file).href)).default ?? [];
 }
 
+// Build output is not source: a global ignore (a block of nothing but \`ignores\`), at any depth.
+const IGNORES = { name: "themis/next-supabase-mono/ignores", ignores: ["**/.next/**", "**/out/**", "**/coverage/**", "**/*.tsbuildinfo"] };
+
 export default async function eslintConfig(explicitBody) {
   const { root, config } = explicitBody ? { root: explicitBody.root ?? process.cwd(), config: explicitBody } : await loadBodyConfig(process.cwd());
   const body = withDefaults(config, schema);
@@ -152,7 +155,7 @@ export default async function eslintConfig(explicitBody) {
     plugins: PLUGINS,
     rules: { ...physics.rules[surface](body), ...classRules[surface](body) },
   }));
-  return [...blocks, prettier, ...(await loadLocal(root))];
+  return [IGNORES, ...blocks, prettier, ...(await loadLocal(root))];
 }
 `;
 }
