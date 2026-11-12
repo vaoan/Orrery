@@ -48,6 +48,8 @@
     "main": ["test", "branch-target", "branch-name", "pr-title", "config-drift"],
     "develop": ["test", "branch-target", "branch-name", "pr-title", "config-drift", "branch-sync"]
   },
+  "selfRepository": "vaoan/Themis",
+  "bodyCheckPrefix": "ci / ",
   "sharedCiMarker": "# themis-ci",
   "labels": [
     { "name": "feat", "color": "0e8a16", "description": "A new capability" },

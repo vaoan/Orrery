@@ -134,7 +134,7 @@ describe(".github/workflows/body-ci.yml", () => {
     expect(runs.indexOf("pnpm themis skills .")).toBeGreaterThan(runs.indexOf("pnpm test"));
     const gated = steps.filter((s) => s.includes("if: ${{ inputs.database }}"));
     const find = (needle) => steps.filter((s) => s.includes(needle));
-    for (const needle of ["supabase/setup-cli@v1", "run: supabase start", "run: pnpm test:db"]) {
+    for (const needle of ["supabase/setup-cli@v3", "run: supabase start", "run: pnpm test:db"]) {
       expect(find(needle)).toHaveLength(1);
       expect(gated).toContain(find(needle)[0]);
     }
@@ -149,5 +149,35 @@ describe(".github/workflows/body-ci.yml", () => {
   it("runs the PR-only jobs on pull_request and branch-sync only into develop", () => {
     expect(yaml).toMatch(/  branch-sync:\n(?:    [^\n]*\n)*?    if: github\.event_name == 'pull_request' && github\.event\.pull_request\.base\.ref == 'develop'/);
     expect((yaml.match(/    if: github\.event_name == 'pull_request'/g) ?? []).length).toBe(5);
+  });
+});
+
+// ADR 0023: pnpm and Node come from the repository's own package.json, never from the
+// workflow. pnpm/action-setup with no `version:` reads `packageManager`; setup-node reads
+// `engines.node` through `node-version-file: package.json`. In body-ci that is the body's file.
+describe("the toolchain comes from the repository's own files", () => {
+  const files = fs.readdirSync(path.join(root, ".github/workflows")).filter((f) => f.endsWith(".yml"));
+  const steps = (yaml, action) => yaml.split(/^      - /m).filter((s) => s.startsWith(`uses: ${action}@`));
+  it.each(files)("%s sets no pnpm version and no literal Node version", (f) => {
+    const yaml = read(`.github/workflows/${f}`);
+    expect(yaml).not.toMatch(/PNPM_VERSION|node-version:/);
+    for (const s of steps(yaml, "pnpm/action-setup")) expect(s).not.toMatch(/^\s*version:/m);
+    for (const s of steps(yaml, "actions/setup-node")) expect(s).toMatch(/^\s*node-version-file: package\.json$/m);
+  });
+  it.each(["ci.yml", "body-ci.yml"])("%s sets up pnpm and Node in every job that installs", (f) => {
+    const yaml = read(`.github/workflows/${f}`);
+    const installs = (yaml.match(/run: pnpm install --frozen-lockfile/g) ?? []).length;
+    expect(installs).toBe(6);
+    expect(steps(yaml, "pnpm/action-setup")).toHaveLength(installs);
+    expect(steps(yaml, "actions/setup-node")).toHaveLength(installs);
+  });
+  it("every workflow uses the latest major of the actions it calls", () => {
+    const latest = { "actions/checkout": "v7", "actions/setup-node": "v7", "pnpm/action-setup": "v6", "supabase/setup-cli": "v3" };
+    for (const f of files) {
+      for (const [, action, ref] of read(`.github/workflows/${f}`).matchAll(/uses: ([\w-]+\/[\w-]+)@(\S+)/g)) {
+        if (action === "vaoan/Themis") continue;
+        expect(`${f}: ${action}@${ref}`).toBe(`${f}: ${action}@${latest[action]}`);
+      }
+    }
   });
 });

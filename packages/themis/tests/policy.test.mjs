@@ -12,6 +12,8 @@ describe("the committed policy", () => {
     expect(policy.settings.allow_rebase_merge).toBe(false);
     expect(policy.requiredChecks.develop).toContain("branch-sync");
     expect(policy.requiredChecks.main).not.toContain("branch-sync");
+    expect(policy.selfRepository).toBe("vaoan/Themis");
+    expect(policy.bodyCheckPrefix).toBe("ci / ");
   });
 
   it("lives at the repository root", () => {
@@ -67,6 +69,22 @@ describe("validatePolicy", () => {
     p.requiredChecks.develop = ["test", 42, ""];
     expect(validatePolicy(p)).toContain("requiredChecks.develop entry 1 must be a non-empty string");
     expect(validatePolicy(p)).toContain("requiredChecks.develop entry 2 must be a non-empty string");
+  });
+});
+
+describe("validatePolicy, body check names", () => {
+  const valid = () => JSON.parse(fs.readFileSync(defaultPolicyPath, "utf8"));
+
+  it("requires the repository that keeps bare check names", () => {
+    const p = valid();
+    delete p.selfRepository;
+    expect(validatePolicy(p)).toContain("selfRepository must be an owner/name string");
+  });
+
+  it("requires a non-empty prefix for a body's check names", () => {
+    const p = valid();
+    p.bodyCheckPrefix = "";
+    expect(validatePolicy(p)).toContain("bodyCheckPrefix must be a non-empty string");
   });
 });
 

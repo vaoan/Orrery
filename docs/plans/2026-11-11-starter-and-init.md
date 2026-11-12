@@ -8,6 +8,8 @@
 
 **Tech Stack:** Node 24, pnpm 11, vitest 4 (Themis). Starter: Next.js 16, React 19, TypeScript 6, Tailwind 4, next-intl, `@clerk/nextjs`, `@supabase/supabase-js`, Supabase CLI, vitest 4, Playwright.
 
+> **Amended 2026-11-12, with the owner's approval (ADR 0023):** the toolchain is the latest stable that passes CI. Measured 2026-11-12: Node 26 LTS, pnpm 12.18.0, vitest 5 (Themis); Next.js 16.4.6, React 19.3.1, TypeScript 6.0.3 (7.0.2 waits for typescript-eslint), ESLint 9 (10 waits for eslint-plugin-react, -import and -jsx-a11y). The versions above are the plan's original ones.
+
 **Spec:** `docs/specs/2026-11-08-portia-design.md` (section "The trial"), under `docs/specs/2026-11-06-ai-layer-design.md` ("`themis init`, `check`, and the starter") and ADR 0021.
 
 ## Global Constraints
@@ -24,6 +26,8 @@
 - **Git flow:** `develop` default; `type/*` branches squash into it; PR titles `type(scope): subject [GH-000]`; branch descriptions say what changes.
 - **Every report has a `.json` twin; decision records point at generated data.**
 - **If a task corners you into an unplanned fix, stop and say so** (root `CLAUDE.md`).
+- **The latest stable toolchain, from the body's own files** (amended 2026-11-12, owner's approval, ADR 0023). pnpm comes from the body's `packageManager` (exact) and Node from its `engines.node` (`^26`); body CI reads both and names no version. Any pin below the latest is an exception with its reason and the version it waits for.
+- **A body-ci check lands with what the fixture and the starter need to pass it** (amended 2026-11-12, owner's approval). `packages/themis/tests/fresh-body.test.mjs` runs body-ci's offline checks against `fixtures/next-supabase-mono`.
 
 ## Review Focus
 
@@ -142,7 +146,7 @@
 ### Task 5: The starter repository and its tooling
 
 **Files (in the new repository `vaoan/Vulkan`):**
-- Create: `package.json`, `pnpm-workspace.yaml`, `themis.config.mjs`, `eslint.config.mjs`, `eslint.local.mjs`, `prettier.config.mjs`, `tsconfig.json`, `.husky/commit-msg`, `.husky/pre-push`, `.github/workflows/ci.yml`, `.gitattributes`, `.gitignore`, `README.md`, `LICENSE`
+- Create: `package.json`, `pnpm-workspace.yaml`, `themis.config.mjs`, `eslint.config.mjs`, `eslint.local.mjs`, `prettier.config.mjs`, `tsconfig.json`, `.husky/commit-msg`, `.husky/pre-push`, `.github/workflows/ci.yml`, `.gitattributes`, `.gitignore`, `README.md`, `LICENSE`, `CLAUDE.md` (minimal; amended 2026-11-12, owner's approval)
 - Create: `apps/web/` (Next.js 16 app router: `src/app/[locale]/layout.tsx`, `page.tsx`, `globals.css`; `next.config.ts`; `package.json`)
 
 **Interfaces:**
@@ -153,6 +157,7 @@
 - [ ] **Step 2:** Write the files. Pointer files are copied from `packages/themis/templates/next-supabase-mono/` unchanged. `themis.config.mjs` follows `fixtures/next-supabase-mono/themis.config.mjs` with `spelling: ["vulkan"]` and the web app's `globals.css` as the Tailwind entry point.
 - [ ] **Step 3:** One smoke test, `apps/web/tests/home.test.tsx`: the home page renders its title in `es` and in `en`.
 - [ ] **Step 4:** Run `pnpm install && pnpm lint && pnpm typecheck && pnpm test`. Expected: all pass with zero lint findings.
+- [ ] **Step 4b (amended 2026-11-12, owner's approval):** Write a minimal root `CLAUDE.md`, under 40 lines: what the body is, its commands, and where its rules will live. Set `packageManager` to Themis's pnpm (`pnpm@12.18.0`) and `engines.node` to `^26` (ADR 0023). Run `pnpm themis references .` and `pnpm themis skills .`. Expected: both pass, so the first PR is green. Task 10 expands this `CLAUDE.md`; it does not create it.
 - [ ] **Step 5:** PR into `develop` (`feat(app): the empty shell [GH-000]`). CI green. Record the check names it reports for Task 2, Step 5.
 
 ### Task 6: i18n and the app shell
@@ -229,7 +234,8 @@
 ### Task 10: The AI-layer files
 
 **Files (starter):**
-- Create: `CLAUDE.md`, `.claude/rules/*.md` (path-scoped: `apps/web/src/features/**`, `supabase/**` (including how to declare a resource type),  `apps/web/messages/**`, tests), `.claude/settings.json`, `docs/lessons/` (empty, with a README line saying what goes there)
+- Modify: `CLAUDE.md` (Task 5 created it, minimal; amended 2026-11-12, owner's approval)
+- Create: `.claude/rules/*.md` (path-scoped: `apps/web/src/features/**`, `supabase/**` (including how to declare a resource type),  `apps/web/messages/**`, tests), `.claude/settings.json`, `docs/lessons/` (empty, with a README line saying what goes there)
 
 **Interfaces:**
 - Consumes: `themis instructions` (Themis stage 0).
