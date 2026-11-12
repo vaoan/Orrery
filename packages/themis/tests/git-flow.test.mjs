@@ -65,6 +65,24 @@ describe("branch names", () => {
     expect(checkBranchName(name).ok, checkBranchName(name).reason).toBe(allowed);
   });
 
+  // Numeronyms are words, not labels: the allowlisted ones pass as a first token, and the
+  // letter-and-digit shape still rejects every other task label.
+  it.each(["i18n", "l10n", "a11y", "k8s", "e2e", "p2p", "b2b", "b2c", "g11n", "m17n"])(
+    "numeronym first token: feat/%s-something -> allowed",
+    (word) => {
+      expect(checkBranchName(`feat/${word}-something`).ok, checkBranchName(`feat/${word}-something`).reason).toBe(true);
+    }
+  );
+
+  it.each([
+    ["feat/t5-something", false],
+    ["feat/b2-x", false],
+    ["feat/2b-x", false],
+    ["feat/phase-2b-x", false],
+  ])("numeronym allowlist does not widen labels: %s -> %s", (name, allowed) => {
+    expect(checkBranchName(name).ok).toBe(allowed);
+  });
+
   it("says which label shape it saw", () => {
     expect(checkBranchName("feat/3d-viewer").reason).toContain("digit token");
     expect(checkBranchName("feat/t5-records").reason).toContain("letter-and-number label");
