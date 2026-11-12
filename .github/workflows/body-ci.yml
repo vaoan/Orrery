@@ -47,6 +47,8 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      - run: pnpm themis references .
+      - run: pnpm themis skills .
       - if: ${{ inputs.database }}
         uses: supabase/setup-cli@v1
       - if: ${{ inputs.database }}
