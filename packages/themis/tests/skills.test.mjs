@@ -48,6 +48,18 @@ describe("themis skills", () => {
     expect((await run({ ".claude/skills/a/SKILL.md": skill("a", "A deployment helper.") })).code).toBe(1);
   });
 
+  it("does not take used or if for saying when", async () => {
+    expect((await run({ ".claude/skills/a/SKILL.md": skill("a", "Used by the team, if at all.") })).code).toBe(1);
+    expect((await run({ ".claude/skills/a/SKILL.md": skill("a", "Deploy helper. Use this for releases.") })).code).toBe(0);
+    expect((await run({ ".claude/skills/a/SKILL.md": skill("a", "Release helper. Run before tagging.") })).code).toBe(0);
+  });
+
+  it("counts skills only against the listing budget, agents excluded", async () => {
+    const files = {};
+    for (let i = 0; i < 10; i++) files[`.claude/agents/g${i}.md`] = skill(`g${i}`, "Use when " + "x".repeat(1000));
+    expect((await run(files)).code).toBe(0);
+  });
+
   it("fails missing or unparsable frontmatter", async () => {
     expect((await run({ ".claude/skills/a/SKILL.md": "no frontmatter" })).code).toBe(1);
   });
@@ -69,7 +81,7 @@ describe("themis skills", () => {
 
   it("fails when the descriptions together pass the listing budget", async () => {
     const files = {};
-    for (let i = 0; i < 10; i++) files[`.claude/skills/s${i}/SKILL.md`] = skill(`s${i}`, "Use when " + "x".repeat(1000));
+    for (let i = 0; i < 7; i++) files[`.claude/skills/s${i}/SKILL.md`] = skill(`s${i}`, "Use when " + "x".repeat(1000));
     const r = await run(files);
     expect(r.code).toBe(1);
     expect(r.q.err()).toContain("budget");

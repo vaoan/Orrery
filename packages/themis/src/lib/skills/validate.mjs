@@ -1,10 +1,15 @@
 import path from "node:path";
-import { frontmatter, unquote, readFile, discoverInstructionFiles, tokens, SKILL_LISTING_BUDGET } from "../instructions/measure.mjs";
+import { frontmatter, unquote, readFile, skillText, tokens } from "../instructions/measure.mjs";
+import { discoverInstructionFiles, listBodyFiles } from "../instructions/discover.mjs";
 import { bodyContext, checkText } from "../references/resolve.mjs";
 
 export const MAX_DESCRIPTION = 1024;
+// The skill listing is budgeted at 1% of the context window (docs/specs/2026-11-06-ai-layer-design.md:80);
+// 1% of a 200,000-token window is 2,000 tokens.
+export const SKILL_LISTING_BUDGET = 2000;
 const KEBAB = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-const WHEN = /\b(use|used|when|whenever|if|before|after|triggers?|invoke|invoked|proactively|asked|requests?)\b/i;
+// "Use when", "when ", "use this", "before ", "after ", or "for ... when": a bare "used" or "if" says nothing.
+const WHEN = /\bwhen\b|\buse this\b|\bbefore\b|\bafter\b/i;
 export const KNOWN_TOOLS = new Set(["Bash", "BashOutput", "KillShell", "KillBash", "Read", "Write", "Edit", "MultiEdit", "NotebookEdit", "NotebookRead", "Glob", "Grep", "LS", "WebFetch", "WebSearch", "Task", "Agent", "TodoWrite", "ExitPlanMode", "EnterPlanMode", "Skill", "SlashCommand", "AskUserQuestion", "Monitor", "TaskStop", "TaskOutput", "LSP", "EnterWorktree", "ExitWorktree", "ToolSearch", "ListMcpResourcesTool", "ReadMcpResourceTool"]);
 
 // A small reader for the subset of YAML that skill and agent frontmatter uses: scalars, folded and
@@ -43,14 +48,16 @@ function splitTools(v) {
 
 export function validateSkills(dir) {
   const body = path.basename(path.resolve(dir)).toLowerCase();
-  const found = discoverInstructionFiles(dir);
+  const listed = listBodyFiles(dir);
+  const found = discoverInstructionFiles(dir, listed);
   const failures = [];
-  const ctx = bodyContext(dir);
+  const ctx = bodyContext(dir, listed);
   let descBytes = 0;
   const fail = (file, what) => failures.push({ file, what });
 
   const check = (rel, expectedName, isAgent) => {
     const text = readFile(dir, rel);
+    if (!isAgent) descBytes += Buffer.byteLength(skillText(text));
     const { fields, error } = parseFields(text);
     if (error) return fail(rel, error);
     const name = unquote(fields.name ?? "");
@@ -60,7 +67,6 @@ export function validateSkills(dir) {
     const description = unquote(Array.isArray(fields.description) ? fields.description.join(" ") : fields.description ?? "");
     if (!description) fail(rel, "description is missing or empty");
     else {
-      descBytes += Buffer.byteLength(description);
       if (description.length > MAX_DESCRIPTION) fail(rel, `description is ${description.length} characters, the limit is ${MAX_DESCRIPTION}`);
       if (!WHEN.test(description)) fail(rel, "description says what it is but not when to use it");
     }

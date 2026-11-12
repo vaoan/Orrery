@@ -44,7 +44,6 @@ export const COMMANDS = {
   skills: async (argv) => (await import("./commands/skills.mjs")).default(argv),
 };
 
-export const COMMAND_NAMES = Object.keys(COMMANDS);
 
 export async function run(argv) {
   const [command, ...rest] = argv;

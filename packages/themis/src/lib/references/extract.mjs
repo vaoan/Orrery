@@ -9,7 +9,7 @@ const lf = (text) => text.replace(/\r\n?/g, "\n");
 
 function classify(token) {
   let t = token.trim();
-  if (!t || /\s/.test(t) || /^[a-z][a-z0-9+.-]*:\/\//i.test(t) || t.startsWith("@") || t.startsWith("--")) return null;
+  if (!t || /\s/.test(t) || /^[a-z][a-z0-9+.-]*:\/\//i.test(t) || t.startsWith("--")) return null;
   if (!PATH_CHARS.test(t)) return null;
   t = t.replace(/:\d+(-\d+)?$/, "");
   if (/^\.[a-z]+$/.test(t)) return null; // a bare extension names a kind of file, not a file
@@ -50,7 +50,7 @@ export function extractRefs(text) {
       const lead = /\b(skill|agent)s?\s*$/i.exec(l.slice(0, offset));
       if (/^(pnpm|themis)\s+\S/.test(t)) { addCommand(t, add); continue; }
       const slash = /^\/([a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)?)$/.exec(t);
-      if (slash) { add("skill", slash[1]); continue; }
+      if (slash) { add("skill", slash[1], { slash: true }); continue; }
       if (lead && /^[a-z][a-z0-9-]*(?::[a-z][a-z0-9-]*)?$/.test(t)) { add(lead[1].toLowerCase() === "agent" ? "agent" : "skill", t); continue; }
       const p = classify(t);
       if (p !== null) addPath(p, "path", add);

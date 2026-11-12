@@ -19,7 +19,7 @@ Stage 0 is done. Next is the Portia trial, a minimal starter and `themis init` f
 
 ## The one rule that keeps this honest
 
-> Anything in `packages/themis/physics/` must be true for a repository that does not exist yet.
+> Anything in the physics tier must be true for a repository that does not exist yet.
 
 If justifying a rule requires naming a specific project, it is not physics — it
 belongs to a class, or it stays in that project. This is the check that stops one
@@ -30,11 +30,11 @@ in its own repository rather than inside `aeleos`.
 
 | Body | Repo | Role | Class |
 |---|---|---|---|
-| aeleos | `vaoan/AeleOS` | star — identity provider | `next-supabase-mono` | <!-- themis: example -->
-| libra | `vaoan/libra` | planet — store and payments | `next-supabase-mono` | <!-- themis: example -->
-| puck | `vaoan/Puck` | planet | `next-supabase-mono` | <!-- themis: example -->
-| eclipse-con | `vaoan/eclipse-con` | planet | `next-supabase-mono` | <!-- themis: example -->
-| janus | `vaoan/Janus` | planet | `next-supabase-mono` | <!-- themis: example -->
+| aeleos | `vaoan/AeleOS` | star — identity provider | `next-supabase-mono` |
+| libra | `vaoan/libra` | planet — store and payments | `next-supabase-mono` |
+| puck | `vaoan/Puck` | planet | `next-supabase-mono` |
+| eclipse-con | `vaoan/eclipse-con` | planet | `next-supabase-mono` |
+| janus | `vaoan/Janus` | planet | `next-supabase-mono` |
 
 `aeleos` is the centre of the *runtime* constellation — it owns the authoritative
 `actors` table and derives one identity per human. Themis is the centre of the
@@ -46,11 +46,11 @@ in its own repository rather than inside `aeleos`.
 as a Claude Code plugin from this repo's own marketplace. Content lives in the
 package — bodies keep only *pointer files* that contain a path and no policy.
 
-**Tiers.** `packages/themis/physics/` binds every body. `packages/themis/classes/` binds an archetype. Anything
+**Tiers.** The physics tier (`packages/themis/physics`, and the physics skills of the plugin) binds every body. The classes tier binds an archetype. Anything
 project-specific stays in the body and is never touched by sync.
 
 The tier is an **export path**, not a directory anyone copies from:
-`@vaoan/themis/eslint/physics` versus `@vaoan/themis/eslint/next-supabase-mono`.
+`@vaoan/themis/eslint/physics` versus `@vaoan/themis/eslint`.
 
 ## Commands the CLI exposes
 
@@ -94,16 +94,16 @@ lift a local rule into the shared tier (all 2d).
 
 ## Git flow, for every body and for this repository
 
-`develop` is the default branch and takes `type/*` branches by squash. `main` <!-- themis: example -->
-is the release line and accepts only two routes: `release/*` (merge commit, <!-- themis: example -->
-cut by `themis release`) and `hotfix/*` (squash, PR title type `fix`). Every <!-- themis: example -->
+`develop` is the default branch and takes `type/*` branches by squash. `main`
+is the release line and accepts only two routes: `release/*` (merge commit,
+cut by `themis release`) and `hotfix/*` (squash, PR title type `fix`). Every
 push to main is followed by an automatic merge-commit back-merge into
 develop, and while main is ahead of develop, every other PR into develop is
 frozen by `branch-sync`. PR titles are `type(scope): subject [GH-n]`, with
 `GH-000` for work with no issue. The back-merge travels on a
 `back-merge/<sha>` branch cut from main by the workflow; nobody else creates
 those. Branch descriptions say what changes, never the plan label:
-`feat/reconcile-records-command`, not `feat/2b-task-5`; `themis ci branch-name` <!-- themis: example -->
+`feat/reconcile-records-command`, not `feat/2b-task-5`; `themis ci branch-name`
 and the pre-push hook enforce it.
 
 ### When execution corners you

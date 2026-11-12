@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
-import { discoverInstructionFiles, readFile } from "../lib/instructions/measure.mjs";
+import { readFile } from "../lib/instructions/measure.mjs";
+import { discoverInstructionFiles, listBodyFiles } from "../lib/instructions/discover.mjs";
 import { bodyContext, checkFiles } from "../lib/references/resolve.mjs";
 import { renderReferences } from "../lib/references/report.mjs";
 
@@ -19,9 +20,10 @@ export function writeReport(dir, kind, label, date, { md, json }) {
 export function checkBody(dir) {
   const body = path.basename(path.resolve(dir)).toLowerCase();
   if (readFile(dir, "CLAUDE.md") === null) return { body, error: "no CLAUDE.md at the root" };
-  const found = discoverInstructionFiles(dir);
-  const files = [...found.claude, ...found.rules.filter((r) => readFile(dir, r) !== null), ...found.skills, ...found.agents, ...found.lessons];
-  const r = checkFiles(bodyContext(dir), files);
+  const listed = listBodyFiles(dir);
+  const found = discoverInstructionFiles(dir, listed);
+  const files = [...found.claude, ...found.rules, ...found.skills, ...found.agents, ...found.lessons];
+  const r = checkFiles(bodyContext(dir, listed), files);
   return { body, files: files.length, ...r };
 }
 

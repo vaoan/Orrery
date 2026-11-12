@@ -3,7 +3,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import references from "../src/commands/references.mjs";
-import { discoverInstructionFiles } from "../src/lib/instructions/measure.mjs";
+import { execFileSync } from "node:child_process";
+import { discoverInstructionFiles } from "../src/lib/instructions/discover.mjs";
+import { COMMANDS } from "../src/cli.mjs";
+import { COMMAND_NAMES } from "../src/lib/command-names.mjs";
 
 const dirs = [];
 afterEach(() => { for (const d of dirs.splice(0)) fs.rmSync(d, { recursive: true, force: true }); vi.restoreAllMocks(); });
@@ -27,6 +30,108 @@ describe("discoverInstructionFiles", () => {
     expect(f.skills).toEqual([".claude/skills/s/SKILL.md"]);
     expect(f.agents).toEqual([".claude/agents/a.md"]);
     expect(f.lessons).toEqual(["docs/lessons/l.md"]);
+  });
+});
+
+describe("command names", () => {
+  it("are the ones cli.mjs dispatches on", () => {
+    expect([...COMMAND_NAMES].sort()).toEqual(Object.keys(COMMANDS).sort());
+  });
+});
+
+describe("discovery through git", () => {
+  it("skips gitignored directories and lists untracked files", () => {
+    const dir = body({ "CLAUDE.md": "x", ".gitignore": ".ai-context/\n", ".ai-context/CLAUDE.md": "x", "pkg/CLAUDE.md": "x" });
+    execFileSync("git", ["-C", dir, "init", "-q"]);
+    expect(discoverInstructionFiles(dir).claude).toEqual(["CLAUDE.md", "pkg/CLAUDE.md"]);
+  });
+});
+
+const ws = (extra = {}) => ({ "CLAUDE.md": "x", "package.json": JSON.stringify({ name: "root" }), "pnpm-workspace.yaml": "packages:\n  - \"apps/*\"\n  - \"packages/*\"\n", ...extra });
+const ok = async (files) => expect((await run(files)).code).toBe(0);
+const bad = async (files) => expect((await run(files)).code).toBe(1);
+
+describe("precision rules", () => {
+  it("1. resolves an app-relative path from a workspace package root, and still flags a missing one", async () => {
+    const pkg = { "apps/store/package.json": JSON.stringify({ name: "store" }), "apps/store/src/globals.css": "x" };
+    await ok(ws({ ...pkg, "docs/lessons/a.md": "see `src/globals.css`" }));
+    await bad(ws({ ...pkg, "docs/lessons/a.md": "see `src/missing.css`" }));
+    await ok(ws({ ...pkg, "docs/lessons/a.md": "see `shared/x.ts`", "apps/store/src/shared/x.ts": "x" }));
+    await bad(ws({ ...pkg, "docs/lessons/a.md": "see `shared/y.ts`", "apps/store/src/shared/x.ts": "x" }));
+  });
+
+  it("2. a bare file name passes when any file has that basename, fails when none does", async () => {
+    await ok(ws({ "docs/lessons/a.md": "see `globals.css`", "apps/store/src/globals.css": "x" }));
+    await bad(ws({ "docs/lessons/a.md": "see `globals.css`" }));
+  });
+
+  it("3. an import specifier is not checked; a workspace package specifier is checked against the package", async () => {
+    await ok({ "CLAUDE.md": "import from `./Component` or `../domain`" });
+    const pkgs = { "packages/shared/package.json": JSON.stringify({ name: "@acme/shared", exports: { "./utils": "./u.js" } }), "packages/shared/src/x.ts": "x" };
+    await ok(ws({ ...pkgs, "docs/lessons/a.md": "`@acme/shared/src/x.ts` and `@acme/shared/utils`" }));
+    await bad(ws({ ...pkgs, "docs/lessons/a.md": "`@acme/shared/src/y.ts`" }));
+    await bad({ "CLAUDE.md": "see `./gone.ts`" });
+  });
+
+  it("4. placeholders check only the directory before the first one", async () => {
+    await ok({ "CLAUDE.md": "`src/mocks/data/[entity].ts` and `src/{feature}/x.ts`", "src/mocks/data/users.ts": "x", "src/a/x.ts": "x" });
+    await bad({ "CLAUDE.md": "`src/mocks/data/[entity].ts`", "src/other/x.ts": "x" });
+    await ok({ "CLAUDE.md": "`{sub-agent-type}_{timestamp}.json`" });
+    await ok({ "CLAUDE.md": "a route `app/[id]/page.tsx`", "app/[id]/page.tsx": "x" });
+  });
+
+  it("5. branch names are not paths unless a top-level directory has that name", async () => {
+    await ok({ "CLAUDE.md": "branch `feat/GH-42_User-Auth` from `release/*` and `fix/x`" });
+    await bad({ "CLAUDE.md": "`docs/gone.md`", "docs/a.md": "x" });
+    await ok({ "CLAUDE.md": "`docs/a.md`", "docs/a.md": "x" });
+  });
+
+  it("5b. a branch prefix with a trailing slash is a branch, not a directory", async () => {
+    await ok({ "CLAUDE.md": "branches `feature/` and `fix/`" });
+  });
+
+  it("2b. a bare directory name passes when any directory has it, fails when none does", async () => {
+    await ok({ "CLAUDE.md": "layers `domain/`", "src/features/a/domain/x.ts": "x" });
+    await bad({ "CLAUDE.md": "layers `domain/`", "src/a/x.ts": "x" });
+  });
+
+  it("6. eslint rule ids of a dependency are not paths", async () => {
+    const deps = { "package.json": JSON.stringify({ devDependencies: { "eslint-plugin-unicorn": "1", "@acme/eslint-plugin": "1" } }) };
+    await ok({ "CLAUDE.md": "`unicorn/no-document-cookie` `@acme/some-rule`", ...deps });
+    await bad({ "CLAUDE.md": "`unicorn/no-document-cookie`", "package.json": "{}" });
+    await bad({ "CLAUDE.md": "`other/no-thing`", ...deps });
+  });
+
+  it("7. a repository slug with a registry owner is not a path", async () => {
+    await ok({ "CLAUDE.md": "`vaoan/AeleOS`" });
+    await bad({ "CLAUDE.md": "`acme/AeleOS`" });
+  });
+
+  it("8. a /name that names a directory or workspace app is a route, not a skill", async () => {
+    await ok(ws({ "CLAUDE.md": "`/auth` and `/shared`", "apps/auth/package.json": JSON.stringify({ name: "auth" }), "src/shared/a.ts": "x" }));
+    await bad({ "CLAUDE.md": "`/auth`" });
+  });
+
+  it("9. an unknown /name is external-unverified when plugins are enabled, broken otherwise", async () => {
+    await ok({ "CLAUDE.md": "`/brainstorming`", ".claude/settings.json": JSON.stringify({ enabledPlugins: { "superpowers@m": true } }) });
+    await bad({ "CLAUDE.md": "`/brainstorming`", ".claude/settings.json": "{}" });
+  });
+});
+
+describe("gitignored and directory globs", () => {
+  const git = (dir) => execFileSync("git", ["-C", dir, "init", "-q"]);
+  it("does not expect a path the body's .gitignore ignores to exist", async () => {
+    const q = quiet();
+    const dir = body({ "CLAUDE.md": "reports go to `.ai-context/reports/` and `.ai-context/out-{id}.md`, config `local.json`", ".gitignore": ".ai-context/\n" });
+    git(dir);
+    expect(await references([dir], deps)).toBe(1);
+    expect(q.err()).toContain("local.json");
+    expect(q.err()).not.toContain("ai-context");
+  });
+  it("matches a glob that ends at a directory", async () => {
+    const a = { "apps/a/package.json": JSON.stringify({ name: "a" }) };
+    await ok(ws({ ...a, "CLAUDE.md": "`src/features/*/ui/`", "apps/a/src/features/x/ui/b.ts": "x" }));
+    await bad(ws({ ...a, "CLAUDE.md": "`src/features/*/ui/`", "apps/a/src/features/x/lib/b.ts": "x" }));
   });
 });
 
