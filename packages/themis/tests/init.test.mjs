@@ -155,6 +155,7 @@ describe("renameText", () => {
     expect(renameText("themis.config.mjs", STARTER["themis.config.mjs"], "portia")).toBe('export default { body: "portia" };\n');
     expect(renameText("CLAUDE.md", STARTER["CLAUDE.md"], "portia")).toBe("# Portia\n\nVulkan stays Vulkan below the title.\n");
     expect(renameText("README.md", STARTER["README.md"], "portia")).toBe("# Portia\n\nvulkan docs\n");
+    expect(renameText("apps/web/src/shared/config/app-name.ts", 'export const APP_NAME = "Vulkan";\nexport const APP_SLUG = "vulkan";\n', "portia")).toBe('export const APP_NAME = "Portia";\nexport const APP_SLUG = "portia";\n');
     expect(renameText("docs/notes.md", STARTER["docs/notes.md"], "portia")).toBe(STARTER["docs/notes.md"]);
   });
 });
@@ -195,6 +196,21 @@ describe("runInit", () => {
     expect(commits[0].args).toContain("chore(init): rename and pointers [GH-000]");
     const push = git.log.find((l) => l.args.includes("push"));
     expect(push.args.join(" ")).toMatch(/HEAD:develop/);
+  });
+
+  it("renames the app-name constant file when the starter has it, and does not mind when it is absent", async () => {
+    const appName = "apps/web/src/shared/config/app-name.ts";
+    const withFile = makeGit({ starter: { ...STARTER, [appName]: 'export const APP_NAME = "Vulkan";\n' } });
+    const world = makeWorld();
+    const plan = await planInit({ ...base, github: world.github, policy, applyRepoPolicy: noOps });
+    await runInit(plan, deps(world, withFile));
+    expect(withFile.snapshots[0][appName].toString()).toBe('export const APP_NAME = "Portia";\n');
+
+    const without = makeGit();
+    const world2 = makeWorld();
+    const plan2 = await planInit({ ...base, github: world2.github, policy, applyRepoPolicy: noOps });
+    await runInit(plan2, deps(world2, without));
+    expect(without.snapshots[0]).not.toHaveProperty(appName);
   });
 
   it("never puts the token in an argument; it travels in the environment of the clone and push", async () => {
