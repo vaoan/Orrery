@@ -45,12 +45,11 @@ function makeWorld({ registryBranchExists = false, noRegistryOnBranch = false, e
       if (method === "GET" && pathname === "/repos/vaoan/Vulkan") return ok({ default_branch: "develop" });
       if (method === "POST" && pathname === "/repos/vaoan/Vulkan/generate") { state.exists = true; return ok({}, 201); }
       if (method === "GET" && pathname === "/repos/vaoan/Portia") return state.exists ? ok({ default_branch: "develop" }) : none;
-      if (method === "GET" && pathname === "/repos/vaoan/Portia/branches") {
-        state.polls += 1;
-        return ok(state.polls > pollsBeforeBranch ? [{ name: "develop" }] : []);
-      }
       if (method === "GET" && pathname === "/repos/vaoan/Portia/branches/main") return hasMain ? ok({ commit: { sha: "m1" } }) : none;
-      if (method === "GET" && pathname === "/repos/vaoan/Portia/branches/develop") return ok({ commit: { sha: "d1" } });
+      if (method === "GET" && pathname === "/repos/vaoan/Portia/branches/develop") {
+        state.polls += 1;
+        return state.polls > pollsBeforeBranch ? ok({ commit: { sha: "d1" } }) : none;
+      }
       if (method === "POST" && pathname === "/repos/vaoan/Portia/git/refs") return ok({}, 201);
       const contents = /^\/repos\/vaoan\/Portia\/contents\/(.+)$/.exec(pathname);
       if (method === "GET" && contents) {

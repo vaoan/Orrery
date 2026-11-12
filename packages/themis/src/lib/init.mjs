@@ -96,8 +96,8 @@ export async function planInit({
   // Generation is asynchronous: the repository can exist before its default branch does.
   let branchReady = false;
   if (exists) {
-    const { data: branches } = await github.request("GET", `/repos/${repo}/branches`);
-    branchReady = Array.isArray(branches) && branches.some((b) => b.name === defaultBranch);
+    const { data: branch } = await github.request("GET", `/repos/${repo}/branches/${defaultBranch}`);
+    branchReady = Boolean(branch);
   }
 
   let renameDone = false;
@@ -168,8 +168,8 @@ async function generateRepo(plan, { github, sleep }) {
     await github.request("POST", `/repos/${template}/generate`, { owner, name, private: false, include_all_branches: false });
   }
   for (let attempt = 0; attempt < BRANCH_POLL_TRIES; attempt++) {
-    const { data } = await github.request("GET", `/repos/${repo}/branches`);
-    if (Array.isArray(data) && data.some((b) => b.name === defaultBranch)) return;
+    const { data } = await github.request("GET", `/repos/${repo}/branches/${defaultBranch}`);
+    if (data) return;
     await sleep(BRANCH_POLL_MS);
   }
   throw new Error(`${repo} was generated but branch ${defaultBranch} did not appear after ${BRANCH_POLL_TRIES} tries; rerun init to continue`);
