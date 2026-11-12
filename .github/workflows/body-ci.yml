@@ -1,12 +1,14 @@
-# themis-ci
 # The reusable CI every body calls. It installs nothing of Themis itself: the body's own
 # `@vaoan/themis` dependency (installed from git) provides `pnpm themis ci <verb>`.
 # Job names are the required-check names; do not rename them without changing the policy.
+# In a body they appear as `<caller-job-id> / <job>`, for example `ci / test`.
 #
-# A body calls it with:
+# The caller job must grant the permissions below, because a called workflow cannot exceed
+# the permissions of the job that calls it. A body calls it with:
 #
 #   jobs:
 #     ci:
+#       permissions: { contents: read, pull-requests: read, issues: read }
 #       uses: vaoan/Themis/.github/workflows/body-ci.yml@main
 #       with:
 #         database: false   # true starts Supabase and runs `pnpm test:db`

@@ -125,11 +125,18 @@ describe(".github/workflows/body-ci.yml", () => {
   it("defines exactly the six jobs, named as the required checks", () => {
     expect(jobNames(yaml)).toEqual(["test", "branch-target", "branch-name", "pr-title", "config-drift", "branch-sync"]);
   });
-  it("runs the body's own scripts in test and the database steps only when asked", () => {
-    for (const s of ["pnpm lint", "pnpm typecheck", "pnpm test\n", "supabase/setup-cli@v1", "supabase start", "pnpm test:db"]) {
-      expect(yaml).toContain(s);
+  it("runs the body's own scripts as steps of the test job, the database steps only when asked", () => {
+    const block = yaml.match(/^  test:\n((?:    [^\n]*\n|\n)*)/m)[1];
+    const steps = block.split(/^      - /m).slice(1).map((s) => s.replace(/\n        /g, "\n"));
+    const runs = steps.filter((s) => !s.includes("inputs.database")).map((s) => s.match(/^run: (.*)$/m)?.[1]);
+    expect(runs).toEqual(expect.arrayContaining(["pnpm lint", "pnpm typecheck", "pnpm test"]));
+    const gated = steps.filter((s) => s.includes("if: ${{ inputs.database }}"));
+    const find = (needle) => steps.filter((s) => s.includes(needle));
+    for (const needle of ["supabase/setup-cli@v1", "run: supabase start", "run: pnpm test:db"]) {
+      expect(find(needle)).toHaveLength(1);
+      expect(gated).toContain(find(needle)[0]);
     }
-    expect(yaml).toContain("if: ${{ inputs.database }}");
+    expect(gated).toHaveLength(3);
   });
   it("calls each verb through the installed package and holds no secret but GITHUB_TOKEN", () => {
     for (const verb of ["branch-target", "branch-name", "pr-title", "branch-sync", "config-drift"]) {
