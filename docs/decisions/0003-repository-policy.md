@@ -49,7 +49,8 @@ The policy file is the record of the values; this ADR is the record of why.
 - Bodies calling the reusable `ci.yml` get check-run names prefixed by the
   caller job (`<job> / test`), so the marker-based `requiredChecks` would name
   checks that never report; the check-name contract must be designed in
-  Phase 2d before any body enables the shared CI.
+  Phase 2d before any body enables the shared CI. Resolved: see the 2026-11-12
+  entry under Amendments.
 - Tool-authored commits (`themis release`'s bump) carry no agent trailers, by
   design.
 - Until the GitHub App exists, the bot login is the account that owns the bot

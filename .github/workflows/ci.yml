@@ -1,5 +1,6 @@
 # themis-ci
-# The constellation's shared CI. Bodies reference this file at @main; Themis runs it on itself.
+# Themis's own CI, run on its PRs and pushes. Bodies call body-ci.yml, not this file; its
+# workflow_call trigger predates body-ci and no body uses it.
 # Job names are the required-check names in policy/repository.json and must not be renamed
 # without changing the policy in the same PR.
 name: ci

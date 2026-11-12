@@ -24,18 +24,54 @@ const quiet = () => {
   return () => [...log.mock.calls, ...err.mock.calls].flat().join("\n");
 };
 
-// The test job's steps in body-ci.yml, as `run:` lines, database-gated ones left out.
+// body-ci.yml, job by job and step by step.
 const bodyCi = read(".github/workflows/body-ci.yml");
-const testRuns = () => {
-  const block = bodyCi.match(/^  test:\n((?:    [^\n]*\n|\n)*)/m)[1];
-  return block.split(/^      - /m).slice(1).filter((s) => !s.includes("inputs.database")).map((s) => s.match(/^run: (.*)$/m)?.[1]).filter(Boolean);
+const jobsBlock = bodyCi.slice(bodyCi.indexOf("\njobs:\n") + 7);
+const jobIds = () => [...jobsBlock.matchAll(/^  ([a-z][a-z0-9-]*):$/gm)].map((m) => m[1]);
+const jobSteps = (id) => {
+  const block = jobsBlock.match(new RegExp(`^  ${id}:\\n((?:    [^\\n]*\\n|\\n)*)`, "m"))[1];
+  return block.split(/^      - /m).slice(1).map((s) => s.replace(/\n        /g, "\n"));
 };
+const runOf = (step) => step.match(/^run: (.*)$/m)?.[1];
+const usesOf = (step) => step.match(/^uses: ([\w-]+\/[\w-]+)@/m)?.[1];
+const gated = (step) => step.includes("if: ${{ inputs.database }}");
+// The test job's `run:` lines, database-gated ones left out.
+const testRuns = () => jobSteps("test").filter((s) => !gated(s)).map(runOf).filter(Boolean);
+// Every job installs its tools with these three, and nothing else.
+const SETUP_ACTIONS = ["actions/checkout", "pnpm/action-setup", "actions/setup-node"];
 
 // Steps that need the body's own install (its eslint, tsc, vitest and lockfile) cannot run
 // against the fixture here; Themis covers their configuration elsewhere (bundle-honesty lints
 // the fixture with the class config). Any other step must be a `pnpm themis` command that
 // runs below, so a new body-ci step has to be classified before it can land.
 const NEEDS_BODY_INSTALL = { "pnpm install --frozen-lockfile": "the body's lockfile", "pnpm lint": "bundle-honesty", "pnpm typecheck": "bundle-honesty", "pnpm test": "the body's own tests" };
+
+// Every job of body-ci is classified here. `test` runs against the fixture below; the other
+// five need a pull request's context (base, head, title, author) and run only their
+// `themis ci` verb, which Themis's own ci.yml runs on every Themis PR. A new job, or a new
+// step of any other kind, fails this until it is classified.
+describe("body-ci is fully classified", () => {
+  const PR_JOBS = ["branch-target", "branch-name", "pr-title", "config-drift", "branch-sync"];
+  it("has exactly the test job and the five pull-request jobs", () => {
+    expect(jobIds()).toEqual(["test", ...PR_JOBS]);
+  });
+  it("the test job uses only the setup actions, and supabase only behind the database input", () => {
+    for (const s of jobSteps("test")) {
+      const action = usesOf(s);
+      if (!action) { expect(runOf(s), s).toBeTypeOf("string"); continue; }
+      if (action === "supabase/setup-cli") expect(gated(s), s).toBe(true);
+      else expect(SETUP_ACTIONS, s).toContain(action);
+    }
+  });
+  it("the test job's database-gated steps are supabase's, and nothing else", () => {
+    expect(jobSteps("test").filter(gated).map((s) => usesOf(s) ?? runOf(s))).toEqual(["supabase/setup-cli", "supabase start", "pnpm test:db"]);
+  });
+  it.each(PR_JOBS)("%s sets up, installs and runs one themis ci verb, nothing else", (id) => {
+    const steps = jobSteps(id);
+    expect(steps.map((s) => usesOf(s) ?? runOf(s))).toEqual([...SETUP_ACTIONS, "pnpm install --frozen-lockfile", `pnpm themis ci ${id}`]);
+    expect(CI_VERBS).toContain(id);
+  });
+});
 
 describe("body-ci's test job against the fixture (a fresh body)", () => {
   const runs = testRuns();

@@ -20,8 +20,14 @@ The toolchain is read from the repository's own files, never from a workflow:
   both, so a body states its toolchain in the one place it already keeps.
 
 Themis's own workflows and `body-ci.yml` follow it; in `body-ci.yml` the files are the
-body's. A body with no `packageManager` or no `engines.node` fails at setup. The fixture
+body's. A body with no `packageManager` fails at setup (`pnpm/action-setup` throws "No
+pnpm version is specified"). A body with no `engines.node` does not fail: setup-node warns
+"Could not determine node version" and falls back to the runner's preinstalled Node, so
+`engines.node` is required by this record and by the fixture's test, not by CI. The fixture
 `fixtures/next-supabase-mono` carries both, at Themis's values.
+
+Local development needs Node 26 too: on Node 24, pnpm only warns about `engines.node`, and
+the suite is measured on 26.
 
 "Latest" means the newest release pnpm accepts: pnpm 12 refuses a version younger than
 its minimum release age (a supply-chain check, `ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`),
@@ -45,8 +51,25 @@ something was demanded of a body before anything a body is made from could meet 
 
 So the order changes: a check added to `body-ci.yml` lands together with what the
 fixture and the starter need to pass it. `packages/themis/tests/fresh-body.test.mjs`
-runs every `pnpm themis` step of body-ci's `test` job against the fixture, and fails
-on any new step it cannot classify, so Themis's own CI goes red first.
+classifies all of body-ci, and Themis's own CI goes red first when something is new:
+
+- the job ids must be exactly `test` and the five pull-request jobs; a new job fails
+  until it is classified;
+- in `test`, every `run:` step is either one that needs the body's own install (`pnpm
+  install`, `lint`, `typecheck`, `test`) or a `pnpm themis` command, and each `pnpm
+  themis` step runs against the fixture and must pass; any `uses:` step other than
+  checkout, pnpm setup and Node setup fails, and supabase is allowed only behind the
+  `database` input;
+- each pull-request job must be exactly setup, install and its own `themis ci` verb.
+  Those need a pull request's context, so they are not run against the fixture; Themis's
+  own `ci.yml` runs the same verbs on every Themis PR.
+
+What it does not guarantee: that the body's own `lint`, `typecheck` and `test` pass. Those
+depend on the body's install; the fixture is required to have the scripts, and
+bundle-honesty lints the fixture with the class config.
+
+The template's `.husky/pre-commit` is removed until `themis hook pre-commit` exists, so
+lint-staged on pre-commit is not enforced in bodies until then (ADR 0018, Amendments).
 
 ## Measured 2026-11-12
 

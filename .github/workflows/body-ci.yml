@@ -14,8 +14,9 @@
 #         database: false   # true starts Supabase and runs `pnpm test:db`
 #
 # The toolchain is the body's own (ADR 0023): pnpm/action-setup reads its `packageManager`,
-# and setup-node reads its `engines.node` through `node-version-file: package.json`. A body
-# without both fails at setup.
+# and setup-node reads its `engines.node` through `node-version-file: package.json`. Without
+# `packageManager`, pnpm setup fails. Without `engines.node`, setup-node only warns and uses
+# the runner's preinstalled Node, so a body must set it.
 name: body-ci
 
 on:
