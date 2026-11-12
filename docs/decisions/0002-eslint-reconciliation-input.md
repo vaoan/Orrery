@@ -6,7 +6,7 @@
 ## What this is
 
 This record is a measurement, not a ruling. It captures the output of
-`orrery diff-eslint` run once against the two donor repositories, so the
+`themis diff-eslint` run once against the two donor repositories, so the
 reconciliation work in Phase 2b has a fixed, reproducible starting point. It
 contains no judgement on which side of any conflict is correct — that is the
 next plan's work.
@@ -16,7 +16,7 @@ next plan's work.
 Command:
 
 ```
-pnpm orrery diff-eslint Z:/Github/aeleos Z:/Github/libra --json
+pnpm themis diff-eslint Z:/Github/aeleos Z:/Github/libra --json
 ```
 
 | | aeleos | libra |

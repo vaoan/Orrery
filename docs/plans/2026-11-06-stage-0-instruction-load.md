@@ -4,9 +4,9 @@
 
 **Goal:** Measure the instruction load of Libra and eclipse-con, cut it to budget without losing knowledge, and hand the owner a before-and-after to judge.
 
-**Architecture:** A static `orrery instructions` command reports what a body loads at session start and across a task. It runs before and after hand-reorganising each body's `.claude/rules/` and root `CLAUDE.md`. Stages 1 to 6 are deliberately not planned here: the design pauses after this stage for the owner's judgment.
+**Architecture:** A static `themis instructions` command reports what a body loads at session start and across a task. It runs before and after hand-reorganising each body's `.claude/rules/` and root `CLAUDE.md`. Stages 1 to 6 are deliberately not planned here: the design pauses after this stage for the owner's judgment.
 
-**Tech Stack:** Node 24 ESM, vitest, `picomatch` (new explicit dependency of `packages/orrery`), git.
+**Tech Stack:** Node 24 ESM, vitest, `picomatch` (new explicit dependency of `packages/themis`), git.
 
 **Spec:** `docs/specs/2026-11-06-ai-layer-design.md`
 
@@ -16,8 +16,8 @@
 - Root `CLAUDE.md` under 200 lines; rule files under 100 lines.
 - A rule whose `paths:` globs match over 40% of a body's tracked source files counts as unscoped. (Plan's reading of the spec's "most of the source"; `**/*.tsx` is 49% of Libra's `.ts/.tsx/.mjs/.css` files and must not pass as scoped.)
 - Knowledge is kept. Duplicates may be deleted only if listed in the PR.
-- Reports are generated, with a `.json` twin beside the `.md`. Orrery is public, so committed reports contain file names and numbers, never a body's paragraph text.
-- Commits and PRs follow each repository's own flow. In Orrery: squash into `develop`, titles `type(scope): subject [GH-000]`, branch descriptions say what changes.
+- Reports are generated, with a `.json` twin beside the `.md`. Themis is public, so committed reports contain file names and numbers, never a body's paragraph text.
+- Commits and PRs follow each repository's own flow. In Themis: squash into `develop`, titles `type(scope): subject [GH-000]`, branch descriptions say what changes.
 - Commit messages end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`; PR bodies end with `🤖 Generated with [Claude Code](https://claude.com/claude-code)`.
 - **The owner merges Libra and eclipse-con PRs.** eclipse-con deploys on push to `main` unless only ignored paths changed.
 - If execution corners you into an unplanned fix, stop and ask (root `CLAUDE.md`).
@@ -36,7 +36,7 @@
 
 **Files:**
 - Create: `docs/decisions/0019-ai-layer.md`
-- Modify: `docs/specs/2026-09-06-orrery-design.md:3` (status), `CLAUDE.md` (the "Nothing in this repository is implemented yet" paragraph and the commands table)
+- Modify: `docs/specs/2026-09-06-themis-design.md:3` (status), `CLAUDE.md` (the "Nothing in this repository is implemented yet" paragraph and the commands table)
 - Commit as well: `docs/specs/2026-11-06-ai-layer-design.md`, this plan
 
 **Interfaces:** Produces the record later work cites. No code.
@@ -47,11 +47,11 @@ Run: `git fetch origin && git switch -c docs/ai-layer-design origin/develop`
 
 - [ ] **Step 2: Write ADR 0019**
 
-Follow ADR 0017's shape. Decision: Orrery builds the AI layer per the spec. Quote the owner's three decisions from the spec's "The owner's decisions". Consequences: the spec's "What this changes" table, by pointer and not by copy.
+Follow ADR 0017's shape. Decision: Themis builds the AI layer per the spec. Quote the owner's three decisions from the spec's "The owner's decisions". Consequences: the spec's "What this changes" table, by pointer and not by copy.
 
 - [ ] **Step 3: Correct the stale statements**
 
-`docs/specs/2026-09-06-orrery-design.md:3` becomes `**Status:** approved; amended by ADR 0019, partly implemented`. In root `CLAUDE.md`, replace the "Nothing in this repository is implemented yet" paragraph with one line pointing to the spec and this plan as current work. Trimming the root is stage 1, not here.
+`docs/specs/2026-09-06-themis-design.md:3` becomes `**Status:** approved; amended by ADR 0019, partly implemented`. In root `CLAUDE.md`, replace the "Nothing in this repository is implemented yet" paragraph with one line pointing to the spec and this plan as current work. Trimming the root is stage 1, not here.
 
 - [ ] **Step 4: Verify, commit, and open the PR**
 
@@ -65,16 +65,16 @@ git push -u origin docs/ai-layer-design
 gh pr create --base develop --fill
 ```
 
-Expected: `orrery ci` checks green. The owner or the executor merges by squash.
+Expected: `themis ci` checks green. The owner or the executor merges by squash.
 
 ---
 
-### Task 2: `orrery instructions`
+### Task 2: `themis instructions`
 
 **Files:**
-- Create: `packages/orrery/src/lib/instructions/measure.mjs`, `packages/orrery/src/lib/instructions/report.mjs`, `packages/orrery/src/commands/instructions.mjs`
-- Modify: `packages/orrery/src/cli.mjs` (USAGE, COMMANDS), `packages/orrery/package.json` (`picomatch`), `pnpm-lock.yaml`, `CLAUDE.md` (commands table)
-- Test: `packages/orrery/tests/instructions.test.mjs`, `packages/orrery/tests/instructions-command.test.mjs`
+- Create: `packages/themis/src/lib/instructions/measure.mjs`, `packages/themis/src/lib/instructions/report.mjs`, `packages/themis/src/commands/instructions.mjs`
+- Modify: `packages/themis/src/cli.mjs` (USAGE, COMMANDS), `packages/themis/package.json` (`picomatch`), `pnpm-lock.yaml`, `CLAUDE.md` (commands table)
+- Test: `packages/themis/tests/instructions.test.mjs`, `packages/themis/tests/instructions-command.test.mjs`
 
 **Interfaces:**
 - Produces, in `measure.mjs`:
@@ -84,7 +84,7 @@ Expected: `orrery ci` checks green. The owner or the executor merges by squash.
   - `BodyMeasure = { body, sha, startup: { tokens, files: [{ path, bytes, reason }] }, task: { tokens, added: [{ path, bytes, reason }] } | null, wideRules: [{ path, share }], over: { startup: boolean, task: boolean }, oversize: [{ path, lines, limit }], skills: { count, descriptionTokens }, lost: string[] | null, error?: string }`
   - `reason` is one of `root`, `unscoped-rule`, `wide-rule`, `import`, `nested`, `path-rule`
 - Produces, in `report.mjs`: `renderInstructions(measures: BodyMeasure[], { date, label, command }) -> { md: string, json: object }`. `command` is the invocation, shown in the md's header and kept in the json. `json` carries `lostCount` and never `lost`.
-- Command: `orrery instructions <bodyDir>... [--touching body=path]... [--base <ref>] [--allow-lost <file.json>] [--report <dir>] [--label <name>]`. Exit 1 if any body has `error`, is over budget, has `oversize` entries, or has `lost` not allowed. Prints `lost` paragraphs to stdout only. Body name is the directory's basename in lower case.
+- Command: `themis instructions <bodyDir>... [--touching body=path]... [--base <ref>] [--allow-lost <file.json>] [--report <dir>] [--label <name>]`. Exit 1 if any body has `error`, is over budget, has `oversize` entries, or has `lost` not allowed. Prints `lost` paragraphs to stdout only. Body name is the directory's basename in lower case.
 
 **Loading model,** as documented and as AeleOS measured it:
 - At start: root `CLAUDE.md`, `CLAUDE.local.md` if tracked, and every `.claude/rules/**/*.md` that is unscoped or wide. Add `@imports` of each.
@@ -138,32 +138,32 @@ it("exits 0 when within budget", () => {});
 
 - [ ] **Step 2: Run them and watch them fail**
 
-Run: `pnpm vitest run packages/orrery/tests/instructions`
+Run: `pnpm vitest run packages/themis/tests/instructions`
 Expected: FAIL, module not found.
 
 - [ ] **Step 3: Implement the three modules and wire `cli.mjs`**
 
-Run `pnpm --filter @vaoan/orrery add picomatch`. Follow `commands/observe.mjs`' shape: `parseArgs`, injectable defaults, `USAGE`. Use `execFileSync("git", ["-C", dir, ...])`. Parse frontmatter by hand; do not add a YAML dependency.
+Run `pnpm --filter @vaoan/themis add picomatch`. Follow `commands/observe.mjs`' shape: `parseArgs`, injectable defaults, `USAGE`. Use `execFileSync("git", ["-C", dir, ...])`. Parse frontmatter by hand; do not add a YAML dependency.
 
 - [ ] **Step 4: Run them and watch them pass**
 
-Run: `pnpm vitest run packages/orrery/tests/instructions`
+Run: `pnpm vitest run packages/themis/tests/instructions`
 Expected: PASS.
 
 - [ ] **Step 5: Run on AeleOS as a sanity check against a known shape**
 
-Run: `pnpm orrery instructions ~/Documents/GitHub/AeleOS --touching aeleos=apps/hub/src/features/actors/domain/x.ts`
+Run: `pnpm themis instructions ~/Documents/GitHub/AeleOS --touching aeleos=apps/hub/src/features/actors/domain/x.ts`
 Expected: root plus few files at start, near AeleOS's ~8,000-token projection; the 767-line `actors/CLAUDE.md` and `apps/hub/AGENTS.md` under `nested` or `import`. If far off, the loading model is wrong: stop and find out why. Do not commit this output.
 
 - [ ] **Step 6: Verify and commit**
 
-Add `orrery instructions <body>...` to root `CLAUDE.md`'s commands table, marked `(built, stage 0)`.
+Add `themis instructions <body>...` to root `CLAUDE.md`'s commands table, marked `(built, stage 0)`.
 
 Run: `pnpm test`
 Expected: all pass.
 
 ```bash
-git add packages/orrery pnpm-lock.yaml CLAUDE.md
+git add packages/themis pnpm-lock.yaml CLAUDE.md
 git commit -m "feat(instructions): report what a body loads at session start and across a task [GH-000]"
 ```
 
@@ -174,7 +174,7 @@ git commit -m "feat(instructions): report what a body loads at session start and
 **Files:**
 - Create: `docs/observations/2026-11-06-instructions-baseline.{md,json}` (date is the day it runs)
 
-**Interfaces:** Consumes `orrery instructions`. Produces the "before" that Task 6 compares against. **Must complete before any Libra or eclipse-con change.**
+**Interfaces:** Consumes `themis instructions`. Produces the "before" that Task 6 compares against. **Must complete before any Libra or eclipse-con change.**
 
 - [ ] **Step 1: Bring both bodies current**
 
@@ -185,7 +185,7 @@ Expected: clean. Libra's default is `develop`, eclipse-con's is `main`. If not c
 
 ```bash
 SUN=$(git -C ~/Documents/GitHub/eclipse-con ls-files 'apps/sunfest2027/src/**/*.tsx' | head -1)
-pnpm orrery instructions ~/Documents/GitHub/Libra ~/Documents/GitHub/eclipse-con \
+pnpm themis instructions ~/Documents/GitHub/Libra ~/Documents/GitHub/eclipse-con \
   --touching libra=apps/store/src/features/cart/presentation/components/CartDrawer.tsx \
   --touching libra=apps/store/src/features/cart/application/groupBySeller.ts \
   --touching libra=apps/store/src/features/cart/domain/constants.ts \
@@ -219,7 +219,7 @@ Expected: checks green; squash-merged before Task 4 starts.
 - Create: `docs/lessons/<rule-name>.md`, `.claude/skills/{supabase-wipe,code-review-standards,git-workflow}/SKILL.md`
 - Modify: live references to any rule file that leaves `.claude/rules/`
 
-**Interfaces:** Consumes `orrery instructions --base origin/develop`. Check `.claude/skills/` for an existing skill of the same name first; if one exists, merge into it rather than overwrite.
+**Interfaces:** Consumes `themis instructions --base origin/develop`. Check `.claude/skills/` for an existing skill of the same name first; if one exists, merge into it rather than overwrite.
 
 **The dispositions.** The method is AeleOS's. For every rule: `git mv` the full text to `docs/lessons/<name>.md`, so nothing is lost and history follows. Then write what stays, under 100 lines: imperative one-liners, each with a one-clause reason and a link to the lesson. Keeping the same path in `.claude/rules/` means existing references still resolve.
 
@@ -252,7 +252,7 @@ Read each file before moving it. The table is decided from names and layout, and
 
 `git mv` each rule to `docs/lessons/`. No content edits, so the diff stays reviewable as pure renames.
 
-Run: `pnpm --dir ~/Documents/GitHub/Orrery orrery instructions ~/Documents/GitHub/Libra --base origin/develop`
+Run: `pnpm --dir ~/Documents/GitHub/Themis themis instructions ~/Documents/GitHub/Libra --base origin/develop`
 Expected: `lost` empty.
 
 - [ ] **Step 2: Write the scoped rules and skills, in a second commit**
@@ -261,7 +261,7 @@ Add `paths:` starting on line 1. Skills need a non-empty `description` and a lin
 
 - [ ] **Step 3: Rewrite root `CLAUDE.md` under 200 lines**
 
-Keep: what Libra is, the invariants, commands, an index to rules, skills, and lessons. Move the structure tree, stack lists, and pattern tutorials to `docs/lessons/project-overview.md` verbatim first. The line "This document ... can be used as a template" goes, because Orrery now holds that job.
+Keep: what Libra is, the invariants, commands, an index to rules, skills, and lessons. Move the structure tree, stack lists, and pattern tutorials to `docs/lessons/project-overview.md` verbatim first. The line "This document ... can be used as a template" goes, because Themis now holds that job.
 
 - [ ] **Step 4: Fix references that no longer resolve**
 
@@ -271,7 +271,7 @@ Point each hit at `docs/lessons/<name>.md`. Historical records in the excluded p
 
 - [ ] **Step 5: Measure until within budget**
 
-Run: `pnpm --dir ~/Documents/GitHub/Orrery orrery instructions ~/Documents/GitHub/Libra --base origin/develop` plus Task 3's `--touching libra=` flags.
+Run: `pnpm --dir ~/Documents/GitHub/Themis themis instructions ~/Documents/GitHub/Libra --base origin/develop` plus Task 3's `--touching libra=` flags.
 Expected: exit 0. For each deliberately deleted duplicate, add it to an allow-list JSON kept outside the repo and list it in the PR body. Narrow any `wideRules` globs rather than raising the threshold.
 
 - [ ] **Step 6: Run Libra's own checks and open the PR**
@@ -322,7 +322,7 @@ Move the per-site Quick Reference sections to `docs/lessons/project-overview.md`
 
 - [ ] **Step 3: Measure until within budget**
 
-Run: `pnpm --dir ~/Documents/GitHub/Orrery orrery instructions ~/Documents/GitHub/eclipse-con --base origin/main` plus Task 3's `--touching eclipse-con=` flags.
+Run: `pnpm --dir ~/Documents/GitHub/Themis themis instructions ~/Documents/GitHub/eclipse-con --base origin/main` plus Task 3's `--touching eclipse-con=` flags.
 Expected: exit 0.
 
 - [ ] **Step 4: Open the PR**
@@ -358,7 +358,7 @@ Expected: `load_reason: session_start` files equal the report's `startup.files`;
 Task 3's command with `--label after`.
 Expected: exit 0.
 
-- [ ] **Step 3: Commit via PR into Orrery `develop`**
+- [ ] **Step 3: Commit via PR into Themis `develop`**
 
 Branch `docs/stage-0-instruction-results`, title `docs(observations): instruction load after stage 0 [GH-000]`.
 

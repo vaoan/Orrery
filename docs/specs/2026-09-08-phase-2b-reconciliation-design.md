@@ -2,14 +2,14 @@
 
 **Date:** 2026-09-08
 **Status:** approved design, awaiting plan
-**Extends:** `docs/specs/2026-09-06-orrery-design.md` (Reconciliation, CI, Testing)
+**Extends:** `docs/specs/2026-09-06-themis-design.md` (Reconciliation, CI, Testing)
 **Input:** `docs/decisions/0002-eslint-reconciliation-input.md` (the Phase 2a measurement)
 
 ## What this phase produces
 
 A single installable bundle of every tooling opinion the constellation holds,
 generated once from aeleos and libra under a fixed ruling order, plus a command
-that observes every body from Orrery and reports how far each has drifted from
+that observes every body from Themis and reports how far each has drifted from
 the bundle. No body is modified. No code is fixed. Nothing is synchronised.
 
 The proof that the bundle is right is a body's own tools running against the
@@ -29,9 +29,9 @@ These were stated during the brainstorm and bind every decision below.
    true for every repository, true for a kind of repository, or an exception
    for a named file. There is no fourth category. A body keeps only its data:
    paths, package names, element types, spelling words, ignore lists.
-3. **Orrery is never blocked by a body.** Orrery is the centre of planning. It
+3. **Themis is never blocked by a body.** Themis is the centre of planning. It
    observes and rules; bodies obey or go red. A body is blocked until it runs
-   the latest Orrery and its CI passes.
+   the latest Themis and its CI passes.
 4. **Deterministic tooling, tested on its own.** Every enforcement is a script
    with a test that would fail if it lied. AI is not in the enforcement loop;
    an AI review layer for what scripts cannot express is a later, separate
@@ -60,7 +60,7 @@ rule, and each body's extra element types (`identity` in aeleos, `mocks` and
 
 A body owns exactly one file with content, and pointer files with none.
 
-### `orrery.config.mjs`
+### `themis.config.mjs`
 
 ```js
 export default {
@@ -79,62 +79,62 @@ export default {
 
 The schema is declared by the class. There is no field for a severity, a
 threshold, or a rule name: a body can add data and add rules, never loosen a
-shared rule. `orrery observe` fails a body whose config carries a field the
+shared rule. `themis observe` fails a body whose config carries a field the
 class does not declare.
 
 ### Pointer files
 
-Each is written once by `orrery init` (Phase 2d) and verified byte-for-byte by
-`orrery observe`. In this phase they exist only in the fixture body.
+Each is written once by `themis init` (Phase 2d) and verified byte-for-byte by
+`themis observe`. In this phase they exist only in the fixture body.
 
 | File | Content |
 |---|---|
-| `eslint.config.mjs` | one line re-exporting `@vaoan/orrery/eslint` |
+| `eslint.config.mjs` | one line re-exporting `@vaoan/themis/eslint` |
 | `eslint.local.mjs` | additions and named-file exceptions only; merged last |
 | `tsconfig.json` | one `extends` of the class tsconfig |
 | `package.json` → `prettier` | the package's prettier export |
-| `stylelint.config.mjs`, `knip.json`, `.jscpd.json`, `cspell.json`, `.syncpackrc.json`, `.secretlintrc.json`, `.ls-lint.yml`, lint-staged | one-line pointers, or wrapped by `orrery check` where the tool has no `extends` |
-| `.husky/pre-commit` | `pnpm orrery hook pre-commit` |
-| `.github/workflows/ci.yml` | five lines: `uses: vaoan/Orrery/.github/workflows/ci.yml@main` |
+| `stylelint.config.mjs`, `knip.json`, `.jscpd.json`, `cspell.json`, `.syncpackrc.json`, `.secretlintrc.json`, `.ls-lint.yml`, lint-staged | one-line pointers, or wrapped by `themis check` where the tool has no `extends` |
+| `.husky/pre-commit` | `pnpm themis hook pre-commit` |
+| `.github/workflows/ci.yml` | five lines: `uses: vaoan/Themis/.github/workflows/ci.yml@main` |
 
 Every export in the bundle is a function. The pointer calls it with the body's
 config, which the loader finds by walking up from the working directory to the
-nearest `orrery.config.mjs`.
+nearest `themis.config.mjs`.
 
 ## CI: structure in YAML, logic in the package
 
 Recorded here because it shaped the body surface; built in Phase 2d.
 
 - **Facts that decide it.** `vaoan` is a personal GitHub account, not an
-  organisation, so org-level required workflows are unavailable. Orrery was
+  organisation, so org-level required workflows are unavailable. Themis was
   made public on 2026-09-08 so the five public bodies can call its reusable
   workflow and install the package straight from the repository.
-- **No npm, no tags: the latest is Orrery's `main`.** Bodies depend on the
-  package as `"@vaoan/orrery": "github:vaoan/Orrery#main"` with the
-  `packages/orrery` subpath. pnpm records the exact commit it installed in the
+- **No npm, no tags: the latest is Themis's `main`.** Bodies depend on the
+  package as `"@vaoan/themis": "github:vaoan/Themis#main"` with the
+  `packages/themis` subpath. pnpm records the exact commit it installed in the
   lockfile, so installs stay reproducible, and "latest" means the head of
   `main`. A release is a merge to `main`; nothing leaves GitHub and no npm
   account or scope is needed. The version in `package.json` is kept for humans
   and changelogs, not for resolution. The exact pnpm subpath syntax is
   verified in the Phase 2d plan.
-- **Orrery holds `.github/workflows/ci.yml`** defining jobs, caching and the
+- **Themis holds `.github/workflows/ci.yml`** defining jobs, caching and the
   matrix. Bodies reference it at `@main`, so a change to job layout reaches
   every body on its next run with no bump.
-- **Every job step is one verb**: `orrery ci lint`, `orrery ci typecheck`,
-  `orrery ci test`. Verbs carry the logic and the tests.
-- **The currency gate.** `orrery ci` first compares the installed
-  `@vaoan/orrery` commit with the head of Orrery's `main` and fails with
+- **Every job step is one verb**: `themis ci lint`, `themis ci typecheck`,
+  `themis ci test`. Verbs carry the logic and the tests.
+- **The currency gate.** `themis ci` first compares the installed
+  `@vaoan/themis` commit with the head of Themis's `main` and fails with
   "bump to X" if the body is behind. Every pull request in that body is blocked
-  until the bump lands. Orrery's own merge to `main` runs `observe` against all
+  until the bump lands. Themis's own merge to `main` runs `observe` against all
   bodies for information and is never held back by the result.
-- **The bump.** On every merge to Orrery's `main`, a job opens a bump PR in
+- **The bump.** On every merge to Themis's `main`, a job opens a bump PR in
   each body with automerge. Green, it merges unattended. Red, the code fix goes into that
   same PR while the currency gate holds everything else; main stays green.
 - **Deployment stays in each body's own YAML**, because environments and cloud
   credentials belong to the body.
 - No rule ever ships at `warn`. The design doc's grace period is not used.
 
-## `orrery reconcile`
+## `themis reconcile`
 
 Reads the two donors, applies the ruling order, and writes the ruling records
 and the bundle. It runs once; afterwards the bundle is the truth and the donors
@@ -198,7 +198,7 @@ which 36 flip on severity alone and 7 are ordinal thresholds.
 ### Bundle layout
 
 ```
-packages/orrery/
+packages/themis/
 ├── physics/
 │   ├── eslint.mjs           core, @typescript-eslint, sonarjs, unicorn, security,
 │   │                        unused-imports, import, jsdoc, tsdoc, boundaries (param)
@@ -210,9 +210,9 @@ packages/orrery/
 │   │                        @tanstack/query, i18next, testing-library, playwright, vitest
 │   ├── tsconfig.json        extends ../../physics/tsconfig.json; DOM lib, JSX
 │   ├── stylelint.mjs  jscpd.json  cspell.json  knip.mjs  vitest.mjs
-│   └── schema.mjs           the fields orrery.config.mjs may carry
+│   └── schema.mjs           the fields themis.config.mjs may carry
 └── src/
-    ├── load-body-config.mjs walks up to orrery.config.mjs; merges eslint.local.mjs last
+    ├── load-body-config.mjs walks up to themis.config.mjs; merges eslint.local.mjs last
     └── commands/reconcile.mjs, observe.mjs
 ```
 
@@ -225,22 +225,22 @@ Plugin placement follows the boundary rule: a plugin that needs Next.js, React,
 Tailwind, TanStack Query, i18n, Playwright or Vitest to make sense is class;
 everything else is physics.
 
-## `orrery observe`
+## `themis observe`
 
-Run from Orrery against checkouts of the bodies: locally the directories under
-`Z:\Github`, in Orrery's CI five fresh clones, nightly and on every Orrery PR.
+Run from Themis against checkouts of the bodies: locally the directories under
+`Z:\Github`, in Themis's CI five fresh clones, nightly and on every Themis PR.
 It never blocks a release. It writes `docs/observations/<date>.md` and a JSON
 alongside. Three drifts, each its own script:
 
-*Amended by ADR 0017 (2026-09-10): no nightly run of `orrery observe`; it stays
-an on-demand command from Orrery, and a body's own CI enforces the same three
+*Amended by ADR 0017 (2026-09-10): no nightly run of `themis observe`; it stays
+an on-demand command from Themis, and a body's own CI enforces the same three
 drifts against itself.*
 
-- **Version drift.** The commit of `@vaoan/orrery` recorded in the body's
-  lockfile against the head of Orrery's `main`, read with `git ls-remote`.
+- **Version drift.** The commit of `@vaoan/themis` recorded in the body's
+  lockfile against the head of Themis's `main`, read with `git ls-remote`.
 - **Pointer drift.** Pointer files byte-identical to what `init` writes;
   `eslint.local.mjs` contains only additions and named-file exceptions;
-  `orrery.config.mjs` carries only declared fields.
+  `themis.config.mjs` carries only declared fields.
 - **Code drift.** The body's own tools run with a config that only imports the
   bundle. Two comparisons: the effective config against the ruling table, which
   must match rule for rule; and the reported violations against the committed
@@ -249,7 +249,7 @@ drifts against itself.*
 A prediction is a file per body under `docs/predictions/<body>.json`: the
 donor commit it was made from, and for each tool the set of rules the ruling
 table tightened for that body, with the violation count observed at that
-commit. A violation from a rule outside the set is a defect in Orrery. A count
+commit. A violation from a rule outside the set is a defect in Themis. A count
 that moves is drift, reported, never a failure. Before adoption, code drift is
 the whole proof. After adoption the body's CI enforces; `observe` is the
 cross-constellation view.
@@ -259,13 +259,13 @@ because Phase 0's codemod was merged but never executed; aeleos will show
 stylelint violations in `globals.css` from the three standard rules it had
 disabled; both will show sonarjs threshold violations.
 
-## Testing Orrery
+## Testing Themis
 
 - **Unit, with fixtures.** Each tool's ordering on two small configs with a
   known ruling; the config loader; the local-override checker; each drift
   script. Every bug gets a regression test, sabotage-verified.
 - **Fixture body**, `fixtures/next-supabase-mono/`: a minimal skeleton with
-  pointer files, `orrery.config.mjs`, a source file, a component, a test, an
+  pointer files, `themis.config.mjs`, a source file, a component, a test, an
   e2e file, a script. Three tests: the bundle's effective config per kind of
   file equals the ruling table (keeps the generated bundle honest after hand
   edits); `observe` on the clean fixture reports zero drift; one broken variant
@@ -287,7 +287,7 @@ In this phase, in build order:
 3. The bundle, the loader, the class schema.
 4. The fixture body and its three tests.
 5. `observe` with the three drifts, and the predictions for aeleos and libra.
-6. All of it wired into Orrery's own CI.
+6. All of it wired into Themis's own CI.
 
 **Done when** `observe` against aeleos and libra reports exactly the predicted
 violations and nothing else, every ruling has a row in a record, and the suite
@@ -298,12 +298,12 @@ Deferred:
 - **2c** — the Claude plugin channel: skills, the 31 rule files, MCP servers,
   version-parity test.
 - **2d** — the git install path from `main`, the reusable `ci.yml`, the
-  `orrery ci` verbs and currency gate, `init`/`status`/`promote`, the
+  `themis ci` verbs and currency gate, `init`/`status`/`promote`, the
   registry, bump-PR automation.
 - **2e** — repository policy: branch flow, naming, titles, protection, merge
-  methods, hooks, releases, and `orrery repo apply`. Designed the same day in
+  methods, hooks, releases, and `themis repo apply`. Designed the same day in
   `docs/specs/2026-09-08-phase-2e-repository-policy-design.md`. **2e runs
-  before 2b** and is applied to Orrery first, so the 2b work lands through
+  before 2b** and is applied to Themis first, so the 2b work lands through
   the flow every body will use.
 - **3** — touching any body.
 - **Later brainstorm** — architecture and shared types across bodies, which
@@ -311,7 +311,7 @@ Deferred:
 
 ## Decisions taken during the brainstorm
 
-- Orrery made public (2026-09-08), after a scan of all tracked files and the
+- Themis made public (2026-09-08), after a scan of all tracked files and the
   full history found no secrets, addresses or internal hosts.
 - No grace period; no rule at `warn`.
 - No npm, no tags. Bodies install from the public repository's `main`; a
@@ -327,7 +327,7 @@ Deferred:
 
 ## Carried over from Phase 2a, not blocking
 
-`orrery diff-eslint --help` exits 2; "no sample file" exits 1 rather than 2;
+`themis diff-eslint --help` exits 2; "no sample file" exits 1 rather than 2;
 `pickSampleFile(dir, "")` falls through silently; `packageManager` and
 `license` before the first body installs from `main`; a real-ESLint fixture for
 `defaultExec` belongs with the fixture body above.

@@ -1,4 +1,4 @@
-# Portia: design, and the trial of Orrery's starter
+# Portia: design, and the trial of Themis's starter
 
 **Date:** 2026-11-08
 **Status:** approved 2026-11-08 (ADR 0021)
@@ -6,18 +6,18 @@
 
 This document has two jobs. It describes Portia, a new body, well enough to rebuild it
 from nothing. It also says how Portia is born: as the first body created by a minimal
-Orrery starter and `orrery init`, which makes Portia the test of whether the AI layer
+Themis starter and `themis init`, which makes Portia the test of whether the AI layer
 works.
 
-**If the test fails, Portia is deleted and Orrery is fixed. This document stays and is
+**If the test fails, Portia is deleted and Themis is fixed. This document stays and is
 the source for recreating Portia.** Everything below the line "The product" is meant to
 be copied into the new repository as its own design.
 
 ## Why
 
 The owner feels their projects come out "rookie" and that Claude is unreliable in them.
-Orrery exists to fix that, and stage 0 trimmed what Libra and eclipse-con load. Nothing
-yet proves that a body *born* under Orrery is better. The owner wants to start a new
+Themis exists to fix that, and stage 0 trimmed what Libra and eclipse-con load. Nothing
+yet proves that a body *born* under Themis is better. The owner wants to start a new
 project soon and be more confident in it, so the new project is the proof.
 
 ## Approaches considered
@@ -25,26 +25,26 @@ project soon and be more confident in it, so the new project is the proof.
 | | Approach | Trade-off |
 |---|---|---|
 | A | Finish AI-layer stages 1–6, then create Portia | Portia is born with everything, but weeks pass before any Portia code, and stage 1 waits on the Libra trial |
-| B | Create Portia by hand now, copying Libra, and adopt Orrery later | Fastest, and repeats the problem Orrery exists for: a body born different and straightened afterwards |
-| **C** | **A minimal starter and `orrery init` first, cut to what Portia needs; Portia is the first body created from them** | Some days before Portia work starts. Portia is governed from day one, and the starter is proven on a real case |
+| B | Create Portia by hand now, copying Libra, and adopt Themis later | Fastest, and repeats the problem Themis exists for: a body born different and straightened afterwards |
+| **C** | **A minimal starter and `themis init` first, cut to what Portia needs; Portia is the first body created from them** | Some days before Portia work starts. Portia is governed from day one, and the starter is proven on a real case |
 
-**The owner chose C** (2026-11-08): "vamos con C y probamos si lo que hicimos en orrery
-funcionó. Si no, borramos portia y arreglamos lo que necesitemos en orrery."
+**The owner chose C** (2026-11-08): "vamos con C y probamos si lo que hicimos en themis
+funcionó. Si no, borramos portia y arreglamos lo que necesitemos en themis."
 
 ## The trial
 
-### What gets built in Orrery first
+### What gets built in Themis first
 
 Only what Portia needs, pulled forward from stages 5 and 6 of the AI-layer spec:
 
-- **`orrery init <name> --class next-supabase-mono`**: creates the repository from
-  the starter's GitHub template, writes pointers from `packages/orrery/templates/`,
-  applies repository policy with the existing `orrery repo apply`, and registers the
+- **`themis init <name> --class next-supabase-mono`**: creates the repository from
+  the starter's GitHub template, writes pointers from `packages/themis/templates/`,
+  applies repository policy with the existing `themis repo apply`, and registers the
   body. `--adopt`, `check`, `status` and `promote` are not needed by Portia and stay
   in stage 5.
 - **The git install path and the reusable `ci.yml`**, because a new body's tooling
   needs both (stage 5 already names them).
-- **The starter**, its own repository and a registered body (Orrery still holds no
+- **The starter**, its own repository and a registered body (Themis still holds no
   application code). Its contents are cut to what Portia needs:
   - Next.js + Supabase, `next-supabase-mono` class, pnpm workspace;
   - login through AeleOS as a **person** first (Clerk session, Supabase Third-Party
@@ -52,12 +52,12 @@ Only what Portia needs, pulled forward from stages 5 and 6 of the AI-layer spec:
     tested but switched off until the hub is ready (see "Prerequisites");
   - **owned resources with delegated capabilities**, generic (see below);
   - the **audit log**, from Libra's `audit` schema;
-  - lint, typecheck, tests and CI from the Orrery bundle;
+  - lint, typecheck, tests and CI from the Themis bundle;
   - a root `CLAUDE.md` under 200 lines and path-scoped `.claude/rules/`, measured by
-    `orrery instructions` within the 10,000 / 25,000 token budgets;
+    `themis instructions` within the 10,000 / 25,000 token budgets;
   - bilingual from the start (`es`, `en`), as Libra is.
 
-Not pulled forward: the plugin, `/lesson`, `orrery corrections`, `orrery-verify`.
+Not pulled forward: the plugin, `/lesson`, `themis corrections`, `themis-verify`.
 
 **The starter carries what every body repeats, and nothing about calls.** The owner,
 2026-11-11: "hay varias cosas que se repiten. En Portia es eso, en la de calendario
@@ -86,7 +86,7 @@ are the same model with a different resource name. Written once, generically:
 Libra's `has_permission()` ignores `resource_id`, which is why this is new rather than
 copied. Libra keeps its own until it chooses to adopt the starter's.
 
-**What `orrery init` provisions (builder's call).** It creates the GitHub repository from
+**What `themis init` provisions (builder's call).** It creates the GitHub repository from
 the template, applies repository policy, writes the pointers and registers the body. It
 does not create cloud projects or set secrets. CI must pass with no secrets: it runs the
 database locally (`supabase start`) for migrations and RLS tests, and a build that
@@ -99,16 +99,16 @@ starter; product code is copied on purpose and belongs to Portia from that day.
 
 Portia passes if, after building its first version, the owner judges that:
 
-1. `orrery init` produced a body that passed lint, typecheck, tests and CI on its first
+1. `themis init` produced a body that passed lint, typecheck, tests and CI on its first
    commit, with no hand repair.
-2. Sessions in Portia stayed within the instruction budgets (`orrery instructions`).
+2. Sessions in Portia stayed within the instruction budgets (`themis instructions`).
 3. Claude worked in Portia without the owner acting as QA for things the rules or
    checks already cover.
 
 The third is the owner's judgement, not a number. If any fails, the owner decides
-whether to fix forward or delete Portia and fix Orrery first.
+whether to fix forward or delete Portia and fix Themis first.
 
-### Prerequisites outside Orrery and Portia
+### Prerequisites outside Themis and Portia
 
 AeleOS is not ready for a new app (found 2026-11-08, `AeleOS/docs/integrating.md`):
 

@@ -1,5 +1,5 @@
 {
-  "$comment": "The constellation's repository policy. Applied by `orrery repo apply`. Spec: docs/specs/2026-09-08-phase-2e-repository-policy-design.md",
+  "$comment": "The constellation's repository policy. Applied by `themis repo apply`. Spec: docs/specs/2026-09-08-phase-2e-repository-policy-design.md",
   "defaultBranch": "develop",
   "protectedBranches": ["main", "develop"],
   "settings": {
@@ -48,7 +48,7 @@
     "main": ["test", "branch-target", "branch-name", "pr-title", "config-drift"],
     "develop": ["test", "branch-target", "branch-name", "pr-title", "config-drift", "branch-sync"]
   },
-  "sharedCiMarker": "# orrery-ci",
+  "sharedCiMarker": "# themis-ci",
   "labels": [
     { "name": "feat", "color": "0e8a16", "description": "A new capability" },
     { "name": "fix", "color": "d73a4a", "description": "A bug fix" },
@@ -61,6 +61,6 @@
     { "name": "release", "color": "5319e7", "description": "A release branch into main" },
     { "name": "hotfix", "color": "b60205", "description": "A hotfix into main; title type fix" },
     { "name": "back-merge", "color": "c5def5", "description": "Automatic merge of main into develop" },
-    { "name": "orrery", "color": "1d76db", "description": "Opened by Orrery automation" }
+    { "name": "themis", "color": "1d76db", "description": "Opened by Themis automation" }
   ]
 }

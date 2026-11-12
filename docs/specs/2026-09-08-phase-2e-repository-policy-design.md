@@ -2,28 +2,28 @@
 
 **Date:** 2026-09-08
 **Status:** approved design, awaiting plan
-**Extends:** `docs/specs/2026-09-06-orrery-design.md` (CI, in three directions)
+**Extends:** `docs/specs/2026-09-06-themis-design.md` (CI, in three directions)
 **Sibling:** `docs/specs/2026-09-08-phase-2b-reconciliation-design.md` (the tooling bundle)
-**Order:** runs before 2b. Its first application is Orrery itself.
+**Order:** runs before 2b. Its first application is Themis itself.
 
 ## What this phase produces
 
-One git flow for every repository in the constellation, Orrery included,
+One git flow for every repository in the constellation, Themis included,
 written as a policy file and applied by a command. Branch structure,
 protection, merge methods, naming, titles, and the checks that enforce them
 are the same everywhere, from a project's first commit onward. Drift in any of
-them is observed nightly from Orrery and corrected.
+them is observed nightly from Themis and corrected.
 
 *Amended by ADR 0017 (2026-09-10): no nightly run; `repo apply` stays an
-on-demand command from Orrery.*
+on-demand command from Themis.*
 
-Orrery is a template for new projects. A project born through `orrery init`
+Themis is a template for new projects. A project born through `themis init`
 is on the flow and protected before its second commit exists.
 
 ## Principles
 
 Inherited from the 2b spec and applied here: strictest wins; everything is
-shared unless it is one repository's data; Orrery is never blocked by a body;
+shared unless it is one repository's data; Themis is never blocked by a body;
 deterministic enforcement, tested on its own; as little manual as possible.
 
 The flow was chosen for being predictable. Where predictability and
@@ -33,7 +33,7 @@ convenience conflict, predictability wins, and the spec says so at each point.
 
 Measured 2026-09-08: libra, Puck and Janus run a two-branch flow with
 `develop` default and `main` as the release line; aeleos runs trunk-only with
-squash auto-merge on open; Orrery and eclipse-con have no protection at all.
+squash auto-merge on open; Themis and eclipse-con have no protection at all.
 libra's flow is adopted everywhere, tightened.
 
 ### Branches
@@ -43,7 +43,7 @@ libra's flow is adopted everywhere, tightened.
 | `main` | the release line; what production and every body's "latest" point at | yes |
 | `develop` | the default branch; where all work lands | yes |
 | `type/short-kebab-description` | one branch per change; deleted on merge | no |
-| `release/vYYYY.MM.DD.N` | cut from develop by `orrery release`; the only planned route into main | no |
+| `release/vYYYY.MM.DD.N` | cut from develop by `themis release`; the only planned route into main | no |
 | `hotfix/short-kebab-description` | a hotfix; the only unplanned route into main; its title type is fix | no |
 | `back-merge/<main-sha7>` | cut from main by the back-merge workflow; the only branch that carries main into develop; created by automation only | no |
 
@@ -111,7 +111,7 @@ develop's history a changelog.
 A `commit-msg` hook checks every local commit against the same conventional
 format, so the history inside a PR is readable before it is squashed. The
 `pre-push` hook checks the branch name and runs the union of both donors'
-pre-push checks. Both hooks ship in the bundle as `orrery hook <name>` and the
+pre-push checks. Both hooks ship in the bundle as `themis hook <name>` and the
 body's `.husky/` files are one-line pointers, verified by `observe`.
 
 ### Reviews and protection
@@ -137,22 +137,22 @@ policy so the route table in it cannot drift from the checks.
 
 ### Releases
 
-`orrery release` on a body computes the next `vYYYY.MM.DD.N`, cuts
+`themis release` on a body computes the next `vYYYY.MM.DD.N`, cuts
 `release/` from develop, adds the version bump commit, and opens the PR into
 main. When that PR merges, a workflow creates the GitHub Release from the
 title, as libra does today. Nothing cuts a release on a schedule: a release
-is the one deliberate moment in the flow. For Orrery, a release is what moves
+is the one deliberate moment in the flow. For Themis, a release is what moves
 "the latest" that every body must run.
 
 ## The repository policy file
 
-`policy/repository.json` in Orrery is the single source for everything above
+`policy/repository.json` in Themis is the single source for everything above
 that is a setting rather than a file: default branch, the two protection rule
 sets, merge methods, delete-on-merge, auto-merge, the label set, the PR
 template, and the list of required check names. It is versioned like the
-bundle. A change to it is a normal PR in Orrery.
+bundle. A change to it is a normal PR in Themis.
 
-## `orrery repo apply <owner/name>`
+## `themis repo apply <owner/name>`
 
 Applies the policy file to one repository through the GitHub API:
 
@@ -167,20 +167,20 @@ throwaway repository it creates and deletes under a fixed name.
 
 It runs at three moments:
 
-- **Birth.** `orrery init` scaffolds, pushes, then runs `repo apply`.
-- **Nightly, from Orrery,** against every body in the registry. This is the
+- **Birth.** `themis init` scaffolds, pushes, then runs `repo apply`.
+- **Nightly, from Themis,** against every body in the registry. This is the
   fourth drift alongside version, pointer and code. It re-applies rather than
   only reporting, and the observation report lists what it corrected.
-  *Amended by ADR 0017 (2026-09-10): no scheduled run exists; `orrery repo
+  *Amended by ADR 0017 (2026-09-10): no scheduled run exists; `themis repo
   apply` runs on demand only.*
 - **On demand,** when the policy file changes.
 
-Changing protection needs a token with admin rights. Orrery's CI holds that
+Changing protection needs a token with admin rights. Themis's CI holds that
 one personal access token as its only secret. Bodies never see it.
 
 ## CI checks this phase adds
 
-All are verbs on `orrery ci`, tested with fixture repositories, and required
+All are verbs on `themis ci`, tested with fixture repositories, and required
 on `develop` and `main` through the policy file:
 
 | Verb | What it checks |
@@ -191,9 +191,9 @@ on `develop` and `main` through the policy file:
 | `branch-sync` | main has no commit develop lacks (PRs into develop only) |
 | `config-drift` | libra's existing step: tooling files differ from the base only if this PR changed them |
 
-The reusable `ci.yml` in Orrery, which bodies reference at `@main`, gains the
+The reusable `ci.yml` in Themis, which bodies reference at `@main`, gains the
 jobs that run these. The back-merge and release-creation workflows also live
-in Orrery and are referenced the same way.
+in Themis and are referenced the same way.
 
 ## Testing
 
@@ -209,18 +209,18 @@ in Orrery and are referenced the same way.
 ## Scope and order
 
 1. The policy file and `repo apply`, tested against a throwaway repository.
-2. Apply to Orrery itself: create develop, protect both branches, set merge
-   methods. From this point every Orrery PR follows the flow.
+2. Apply to Themis itself: create develop, protect both branches, set merge
+   methods. From this point every Themis PR follows the flow.
 3. The CI verbs and the reusable `ci.yml` jobs, the back-merge workflow, the
    release-creation workflow.
 4. The `commit-msg` and `pre-push` hooks in the bundle.
-5. `orrery release`.
+5. `themis release`.
 6. `repo apply` wired into the nightly observation.
 7. **Apply to the five bodies.** Deferred 2026-09-09 by the owner to the
    production cut-over that closes the whole programme; until then the
-   nightly observation runs in report mode and Orrery is kept ready.
+   nightly observation runs in report mode and Themis is kept ready.
 
-**Done when** Orrery runs on the flow with every check required, `repo apply`
+**Done when** Themis runs on the flow with every check required, `repo apply`
 is idempotent against every registered repository, and the fixture repository
 integration test brings a bare repository to policy and finds nothing to
 change on the second run (the `init`-born fixture is Phase 2d's criterion).
@@ -230,7 +230,7 @@ phase gives them the policy file and the commands they call.
 
 ## Decisions taken during the brainstorm
 
-- Two branches everywhere, Orrery included. "Orrery is for everyone."
+- Two branches everywhere, Themis included. "Themis is for everyone."
 - Squash into develop; merge commits for releases; squash for fixes with an
   automatic merge-commit back-merge.
 - The develop freeze while a back-merge is open, accepted as cumbersome and
@@ -239,13 +239,13 @@ phase gives them the policy file and the commands they call.
 - `[GH-n]` kept, must be real; `GH-000` marks on-the-fly work.
 - Signatures not required.
 - Releases cut by a command, never by a schedule.
-- 2e runs before 2b and is applied to Orrery first.
+- 2e runs before 2b and is applied to Themis first.
 - Amended 2026-09-09: main only receives `release/*` and `hotfix/*`; `fix/*`
   lands on develop. A hotfix is big words. And: when execution corners the
   agent into an unplanned fix, it stops and asks; a needed fix means a
   misunderstanding or a plan conflict.
 - Amended 2026-09-09: the bodies are not touched until the production
-  cut-over; every phase leaves Orrery ready and proven read-only.
+  cut-over; every phase leaves Themis ready and proven read-only.
 - Amended 2026-09-09 (option B): the back-merge goes through an intermediate
   `back-merge/<sha>` branch so "Update branch" never merges develop into main
   and strict stays on both branches; `back-merge/*` is automation-only,

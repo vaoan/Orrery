@@ -1,19 +1,19 @@
-# Phase 2a — CLI skeleton and `orrery diff-eslint`
+# Phase 2a — CLI skeleton and `themis diff-eslint`
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Stand up the `@vaoan/orrery` package with a working CLI, and implement `orrery diff-eslint`, which produces an exact rule-by-rule comparison of two repositories' effective ESLint configurations.
+**Goal:** Stand up the `@vaoan/themis` package with a working CLI, and implement `themis diff-eslint`, which produces an exact rule-by-rule comparison of two repositories' effective ESLint configurations.
 
-**Architecture:** A pnpm workspace with one package, `packages/orrery`. The CLI is a thin `bin` dispatching to per-command modules. `diff-eslint` shells out to each target repo's own `eslint --print-config` — the only way to get a *resolved* config, since both repos build theirs programmatically — parses the two JSON blobs, and buckets every rule into agree / one-sided / conflict.
+**Architecture:** A pnpm workspace with one package, `packages/themis`. The CLI is a thin `bin` dispatching to per-command modules. `diff-eslint` shells out to each target repo's own `eslint --print-config` — the only way to get a *resolved* config, since both repos build theirs programmatically — parses the two JSON blobs, and buckets every rule into agree / one-sided / conflict.
 
 **Tech Stack:** Node ≥24, pnpm, ESM `.mjs`, vitest. No dependency on ts-morph or ESLint itself — `diff-eslint` invokes the ESLint already installed in each target repo.
 
-**Spec:** `docs/specs/2026-09-06-orrery-design.md` — see "eslint reconciliation needs a tool"
+**Spec:** `docs/specs/2026-09-06-themis-design.md` — see "eslint reconciliation needs a tool"
 
 ## Global Constraints
 
 - Node `>=24`; pnpm as the package manager, matching the rest of the constellation.
-- ESM only. Source files are `.mjs` under `packages/orrery/`.
+- ESM only. Source files are `.mjs` under `packages/themis/`.
 - **This repository contains no application code.** Only the governance tool and its assets.
 - The boundary rule, from the spec: anything destined for `physics/` must be true for a repository that does not exist yet.
 - `diff-eslint` must not require the target repositories to be modified, and must not write anything into them.
@@ -29,16 +29,16 @@ Thirteen shared plugins does not imply thirteen shared rule configurations. Both
 
 ### Task 1: Workspace skeleton and CLI entry point
 
-A walking skeleton: `orrery --help` runs and is tested. Everything later hangs off this.
+A walking skeleton: `themis --help` runs and is tested. Everything later hangs off this.
 
 **Files:**
 - Create: `package.json` (workspace root)
 - Create: `pnpm-workspace.yaml`
-- Create: `packages/orrery/package.json`
-- Create: `packages/orrery/bin/orrery.mjs`
-- Create: `packages/orrery/src/cli.mjs`
+- Create: `packages/themis/package.json`
+- Create: `packages/themis/bin/themis.mjs`
+- Create: `packages/themis/src/cli.mjs`
 - Create: `vitest.config.mjs`
-- Test: `packages/orrery/tests/cli.test.mjs`
+- Test: `packages/themis/tests/cli.test.mjs`
 
 **Interfaces:**
 - Consumes: nothing.
@@ -47,7 +47,7 @@ A walking skeleton: `orrery --help` runs and is tested. Everything later hangs o
 - [ ] **Step 1: Write the failing test**
 
 ```javascript
-// packages/orrery/tests/cli.test.mjs
+// packages/themis/tests/cli.test.mjs
 import { describe, it, expect, vi } from "vitest";
 import { run } from "../src/cli.mjs";
 
@@ -56,7 +56,7 @@ describe("run", () => {
     const log = vi.spyOn(console, "log").mockImplementation(() => {});
     const code = await run(["--help"]);
     expect(code).toBe(0);
-    expect(log.mock.calls.flat().join("\n")).toContain("orrery diff-eslint");
+    expect(log.mock.calls.flat().join("\n")).toContain("themis diff-eslint");
     log.mockRestore();
   });
 
@@ -78,7 +78,7 @@ describe("run", () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `pnpm vitest run packages/orrery/tests/cli.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/cli.test.mjs`
 Expected: FAIL — cannot resolve `../src/cli.mjs`
 
 - [ ] **Step 3: Write the workspace files**
@@ -94,27 +94,27 @@ Root `package.json`:
 
 ```json
 {
-  "name": "orrery-workspace",
+  "name": "themis-workspace",
   "private": true,
   "type": "module",
   "engines": { "node": ">=24" },
   "scripts": {
     "test": "vitest run",
-    "orrery": "node packages/orrery/bin/orrery.mjs"
+    "themis": "node packages/themis/bin/themis.mjs"
   },
   "devDependencies": { "vitest": "^4.1.5" }
 }
 ```
 
-`packages/orrery/package.json`:
+`packages/themis/package.json`:
 
 ```json
 {
-  "name": "@vaoan/orrery",
+  "name": "@vaoan/themis",
   "version": "0.0.0",
   "type": "module",
   "engines": { "node": ">=24" },
-  "bin": { "orrery": "./bin/orrery.mjs" },
+  "bin": { "themis": "./bin/themis.mjs" },
   "exports": { ".": "./src/cli.mjs" },
   "files": ["bin", "src"]
 }
@@ -132,13 +132,13 @@ export default defineConfig({
 
 - [ ] **Step 4: Write the CLI**
 
-`packages/orrery/src/cli.mjs`:
+`packages/themis/src/cli.mjs`:
 
 ```javascript
-const USAGE = `orrery — constellation governance
+const USAGE = `themis — constellation governance
 
 Usage:
-  orrery diff-eslint <repoA> <repoB> [--file <relative-path>] [--json]
+  themis diff-eslint <repoA> <repoB> [--file <relative-path>] [--json]
 
 Commands:
   diff-eslint   compare two repositories' effective ESLint configurations
@@ -166,7 +166,7 @@ export async function run(argv) {
 }
 ```
 
-`packages/orrery/bin/orrery.mjs`:
+`packages/themis/bin/themis.mjs`:
 
 ```javascript
 #!/usr/bin/env node
@@ -177,14 +177,14 @@ process.exitCode = await run(process.argv.slice(2));
 
 - [ ] **Step 5: Run the test to verify it passes**
 
-Run: `pnpm vitest run packages/orrery/tests/cli.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/cli.test.mjs`
 Expected: PASS — 3 tests
 
 - [ ] **Step 6: Commit**
 
 ```bash
 git add package.json pnpm-workspace.yaml vitest.config.mjs packages/
-git commit -m "feat(cli): workspace skeleton and orrery command dispatcher"
+git commit -m "feat(cli): workspace skeleton and themis command dispatcher"
 ```
 
 ---
@@ -194,8 +194,8 @@ git commit -m "feat(cli): workspace skeleton and orrery command dispatcher"
 Wraps `eslint --print-config` in each target repository. Isolated from the diff logic so the diff can be tested against fixtures without running ESLint.
 
 **Files:**
-- Create: `packages/orrery/src/lib/effective-config.mjs`
-- Test: `packages/orrery/tests/effective-config.test.mjs`
+- Create: `packages/themis/src/lib/effective-config.mjs`
+- Test: `packages/themis/tests/effective-config.test.mjs`
 
 **Interfaces:**
 - Consumes: nothing from Task 1.
@@ -209,7 +209,7 @@ Why not `pnpm exec eslint`: on Windows `pnpm` is a `.cmd` shim, so `execFileSync
 - [ ] **Step 1: Write the failing test**
 
 ```javascript
-// packages/orrery/tests/effective-config.test.mjs
+// packages/themis/tests/effective-config.test.mjs
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
@@ -222,7 +222,7 @@ import {
 
 let repo;
 beforeEach(() => {
-  repo = fs.mkdtempSync(path.join(os.tmpdir(), "orrery-"));
+  repo = fs.mkdtempSync(path.join(os.tmpdir(), "themis-"));
   fs.mkdirSync(path.join(repo, "apps/store/src/app"), { recursive: true });
 });
 afterEach(() => fs.rmSync(repo, { recursive: true, force: true }));
@@ -276,13 +276,13 @@ describe("readEffectiveConfig", () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `pnpm vitest run packages/orrery/tests/effective-config.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/effective-config.test.mjs`
 Expected: FAIL — cannot resolve `../src/lib/effective-config.mjs`
 
 - [ ] **Step 3: Write the implementation**
 
 ```javascript
-// packages/orrery/src/lib/effective-config.mjs
+// packages/themis/src/lib/effective-config.mjs
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
@@ -356,13 +356,13 @@ export function readEffectiveConfig(repoDirectory, relativeFile, exec = defaultE
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `pnpm vitest run packages/orrery/tests/effective-config.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/effective-config.test.mjs`
 Expected: PASS — 7 tests
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/orrery/src/lib/effective-config.mjs packages/orrery/tests/effective-config.test.mjs
+git add packages/themis/src/lib/effective-config.mjs packages/themis/tests/effective-config.test.mjs
 git commit -m "feat(diff-eslint): extract a repository's effective eslint config"
 ```
 
@@ -373,8 +373,8 @@ git commit -m "feat(diff-eslint): extract a repository's effective eslint config
 Pure logic over two config objects. This is the piece that turns 2,704 lines into a finite decision list, so it gets the most careful tests.
 
 **Files:**
-- Create: `packages/orrery/src/lib/rule-diff.mjs`
-- Test: `packages/orrery/tests/rule-diff.test.mjs`
+- Create: `packages/themis/src/lib/rule-diff.mjs`
+- Test: `packages/themis/tests/rule-diff.test.mjs`
 
 **Interfaces:**
 - Consumes: config objects shaped like `readEffectiveConfig`'s return (Task 2).
@@ -390,7 +390,7 @@ Severity is compared normalised (`0`/`1`/`2` are equivalent to `"off"`/`"warn"`/
 - [ ] **Step 1: Write the failing test**
 
 ```javascript
-// packages/orrery/tests/rule-diff.test.mjs
+// packages/themis/tests/rule-diff.test.mjs
 import { describe, it, expect } from "vitest";
 import { diffRules } from "../src/lib/rule-diff.mjs";
 
@@ -450,13 +450,13 @@ describe("diffRules", () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `pnpm vitest run packages/orrery/tests/rule-diff.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/rule-diff.test.mjs`
 Expected: FAIL — cannot resolve `../src/lib/rule-diff.mjs`
 
 - [ ] **Step 3: Write the implementation**
 
 ```javascript
-// packages/orrery/src/lib/rule-diff.mjs
+// packages/themis/src/lib/rule-diff.mjs
 
 const SEVERITY = { 0: "off", 1: "warn", 2: "error", off: "off", warn: "warn", error: "error" };
 
@@ -515,13 +515,13 @@ export function diffRules(a, b) {
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `pnpm vitest run packages/orrery/tests/rule-diff.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/rule-diff.test.mjs`
 Expected: PASS — 9 tests
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/orrery/src/lib/rule-diff.mjs packages/orrery/tests/rule-diff.test.mjs
+git add packages/themis/src/lib/rule-diff.mjs packages/themis/tests/rule-diff.test.mjs
 git commit -m "feat(diff-eslint): bucket rules into agree, one-sided and conflict"
 ```
 
@@ -529,11 +529,11 @@ git commit -m "feat(diff-eslint): bucket rules into agree, one-sided and conflic
 
 ### Task 4: Wire the command and run it against the real repositories
 
-Joins Tasks 2 and 3 into `orrery diff-eslint`, then runs it against `libra` and `AeleOS` and commits the result as the reconciliation's input.
+Joins Tasks 2 and 3 into `themis diff-eslint`, then runs it against `libra` and `AeleOS` and commits the result as the reconciliation's input.
 
 **Files:**
-- Create: `packages/orrery/src/commands/diff-eslint.mjs`
-- Test: `packages/orrery/tests/diff-eslint.test.mjs`
+- Create: `packages/themis/src/commands/diff-eslint.mjs`
+- Test: `packages/themis/tests/diff-eslint.test.mjs`
 - Create: `docs/decisions/0002-eslint-reconciliation-input.md`
 
 **Interfaces:**
@@ -543,7 +543,7 @@ Joins Tasks 2 and 3 into `orrery diff-eslint`, then runs it against `libra` and 
 - [ ] **Step 1: Write the failing test**
 
 ```javascript
-// packages/orrery/tests/diff-eslint.test.mjs
+// packages/themis/tests/diff-eslint.test.mjs
 import { describe, it, expect, vi } from "vitest";
 import diffEslint from "../src/commands/diff-eslint.mjs";
 
@@ -596,13 +596,13 @@ describe("diff-eslint command", () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `pnpm vitest run packages/orrery/tests/diff-eslint.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/diff-eslint.test.mjs`
 Expected: FAIL — cannot resolve `../src/commands/diff-eslint.mjs`
 
 - [ ] **Step 3: Write the implementation**
 
 ```javascript
-// packages/orrery/src/commands/diff-eslint.mjs
+// packages/themis/src/commands/diff-eslint.mjs
 import { parseArgs } from "node:util";
 import * as effective from "../lib/effective-config.mjs";
 import { diffRules } from "../lib/rule-diff.mjs";
@@ -616,7 +616,7 @@ export default async function diffEslint(argv, deps = effective) {
 
   const [repoA, repoB] = positionals;
   if (!repoA || !repoB) {
-    console.error("usage: orrery diff-eslint <repoA> <repoB> [--file <path>] [--json]");
+    console.error("usage: themis diff-eslint <repoA> <repoB> [--file <path>] [--json]");
     return 2;
   }
 
@@ -654,7 +654,7 @@ export default async function diffEslint(argv, deps = effective) {
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `pnpm vitest run packages/orrery/tests/diff-eslint.test.mjs`
+Run: `pnpm vitest run packages/themis/tests/diff-eslint.test.mjs`
 Expected: PASS — 4 tests
 
 - [ ] **Step 5: Run the whole suite**
@@ -665,8 +665,8 @@ Expected: PASS — 23 tests across 4 files
 - [ ] **Step 6: Run it against the real repositories**
 
 ```bash
-pnpm orrery diff-eslint Z:/Github/aeleos Z:/Github/libra --json > .superpowers/sdd/2026-09-07-phase-2a-diff-eslint/eslint-diff.json
-pnpm orrery diff-eslint Z:/Github/aeleos Z:/Github/libra
+pnpm themis diff-eslint Z:/Github/aeleos Z:/Github/libra --json > .superpowers/sdd/2026-09-07-phase-2a-diff-eslint/eslint-diff.json
+pnpm themis diff-eslint Z:/Github/aeleos Z:/Github/libra
 ```
 
 Both repos must have `node_modules` installed for `eslint --print-config` to work; run `pnpm install` in each first if needed (both were installed on 2026-09-07). `pickSampleFile` resolves to `apps/hub/src/app/[locale]/layout.tsx` for aeleos and `apps/store/src/app/layout.tsx` for libra; pass `--file` only if that changes. Expect roughly one minute per repo — aeleos's `--print-config` took 60 s on 2026-09-07 and reported 976 rules. The JSON file lands in the plan's git-ignored workspace, not in the tree; the decision record is the committed artifact.
@@ -678,7 +678,7 @@ Write `docs/decisions/0002-eslint-reconciliation-input.md` containing the four b
 - [ ] **Step 8: Commit**
 
 ```bash
-git add packages/orrery/src/commands/diff-eslint.mjs packages/orrery/tests/diff-eslint.test.mjs docs/decisions/0002-eslint-reconciliation-input.md
+git add packages/themis/src/commands/diff-eslint.mjs packages/themis/tests/diff-eslint.test.mjs docs/decisions/0002-eslint-reconciliation-input.md
 git commit -m "feat(diff-eslint): wire the command and record the reconciliation input"
 ```
 
@@ -687,7 +687,7 @@ git commit -m "feat(diff-eslint): wire the command and record the reconciliation
 ## Done when
 
 - `pnpm test` passes.
-- `pnpm orrery diff-eslint Z:/Github/aeleos Z:/Github/libra` prints four bucket counts and an itemised conflict list.
+- `pnpm themis diff-eslint Z:/Github/aeleos Z:/Github/libra` prints four bucket counts and an itemised conflict list.
 - `docs/decisions/0002-eslint-reconciliation-input.md` records the measurement, with no rulings in it.
 
 ## Next

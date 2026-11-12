@@ -1,35 +1,35 @@
-# The starter and `orrery init` — Implementation Plan
+# The starter and `themis init` — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** One command, `orrery init portia --class next-supabase-mono`, creates a body that passes lint, typecheck, tests and CI on its first commit with no hand repair.
+**Goal:** One command, `themis init portia --class next-supabase-mono`, creates a body that passes lint, typecheck, tests and CI on its first commit with no hand repair.
 
-**Architecture:** Orrery gains a git install path, a reusable body CI and `orrery init`. A new repository, the starter (`vaoan/nebula`, a GitHub template and a registered body), carries a Next.js + Supabase app with AeleOS login (person first), generic owned resources with delegated capabilities, an audit log, and the AI-layer files. `orrery init` generates a repository from the starter, rewrites names and pointers, applies repository policy and opens the registry PR.
+**Architecture:** Themis gains a git install path, a reusable body CI and `themis init`. A new repository, the starter (`vaoan/Vulkan`, a GitHub template and a registered body), carries a Next.js + Supabase app with AeleOS login (person first), generic owned resources with delegated capabilities, an audit log, and the AI-layer files. `themis init` generates a repository from the starter, rewrites names and pointers, applies repository policy and opens the registry PR.
 
-**Tech Stack:** Node 24, pnpm 11, vitest 4 (Orrery). Starter: Next.js 16, React 19, TypeScript 6, Tailwind 4, next-intl, `@clerk/nextjs`, `@supabase/supabase-js`, Supabase CLI, vitest 4, Playwright.
+**Tech Stack:** Node 24, pnpm 11, vitest 4 (Themis). Starter: Next.js 16, React 19, TypeScript 6, Tailwind 4, next-intl, `@clerk/nextjs`, `@supabase/supabase-js`, Supabase CLI, vitest 4, Playwright.
 
-**Spec:** `docs/specs/2026-11-08-portia-design.md` (section "The trial"), under `docs/specs/2026-11-06-ai-layer-design.md` ("`orrery init`, `check`, and the starter") and ADR 0021.
+**Spec:** `docs/specs/2026-11-08-portia-design.md` (section "The trial"), under `docs/specs/2026-11-06-ai-layer-design.md` ("`themis init`, `check`, and the starter") and ADR 0021.
 
 ## Global Constraints
 
-- **No npm, no tags.** Bodies install `github:vaoan/Orrery#main`; a release is a merge.
+- **No npm, no tags.** Bodies install `github:vaoan/Themis#main`; a release is a merge.
 - **No `warn` tier; nothing scheduled** (ADR 0017).
-- **Orrery is public.** Nothing shipped through it, or through the starter, holds a body's secrets, addresses or internal hosts. `me.furrycolombia.com` is already public in AeleOS's docs and may appear.
-- **Orrery holds no application code.** The starter is its own repository.
-- **Governance is never copied into the starter.** Lint, tsconfig, prettier, hooks and CI come from `@vaoan/orrery` through pointer files; product code is copied and belongs to the body.
+- **Themis is public.** Nothing shipped through it, or through the starter, holds a body's secrets, addresses or internal hosts. `me.furrycolombia.com` is already public in AeleOS's docs and may appear.
+- **Themis holds no application code.** The starter is its own repository.
+- **Governance is never copied into the starter.** Lint, tsconfig, prettier, hooks and CI come from `@vaoan/themis` through pointer files; product code is copied and belongs to the body.
 - **The starter carries what every body repeats:** AeleOS login (person first; fursona sync and picker off until the hub is ready), `current_user_id()`, owned resources with delegated capabilities, the audit log, app shell, i18n (`es`, `en`), lint, tests, CI, AI-layer files. Nothing about calls, committees or scoring.
-- **`orrery init` creates no cloud projects and sets no secrets.** CI passes with no secrets.
-- **Instruction budget:** at most 10,000 tokens at session start and 25,000 across a task, root `CLAUDE.md` under 200 lines, measured by `orrery instructions`.
-- **GitHub token:** read from `ORRERY_GH_TOKEN`, `GITHUB_TOKEN` or `GH_TOKEN`; never `gh auth login`, never `gh auth token`, never printed or stored (owner's standing rule).
+- **`themis init` creates no cloud projects and sets no secrets.** CI passes with no secrets.
+- **Instruction budget:** at most 10,000 tokens at session start and 25,000 across a task, root `CLAUDE.md` under 200 lines, measured by `themis instructions`.
+- **GitHub token:** read from `THEMIS_GH_TOKEN`, `GITHUB_TOKEN` or `GH_TOKEN`; never `gh auth login`, never `gh auth token`, never printed or stored (owner's standing rule).
 - **Git flow:** `develop` default; `type/*` branches squash into it; PR titles `type(scope): subject [GH-000]`; branch descriptions say what changes.
 - **Every report has a `.json` twin; decision records point at generated data.**
 - **If a task corners you into an unplanned fix, stop and say so** (root `CLAUDE.md`).
 
 ## Review Focus
 
-1. **Check names through a reusable workflow.** A caller job `ci` that `uses:` Orrery's workflow reports checks as `ci / test`, not `test`. If `policy/repository.json`'s required contexts stay bare, every body PR waits forever. Task 2 pins the real names with a live run and makes the policy match.
-2. **A git dependency on a subdirectory.** `@vaoan/orrery` lives in `packages/orrery`. pnpm must install it from `github:vaoan/Orrery#main` with the subdirectory, under `--frozen-lockfile`, on CI, without auth. Task 1 measures this before anything depends on it.
-3. **`orrery init` half done.** The repository is created and policy then fails. A rerun must continue rather than fail on "already exists", and `--dry-run` must change nothing. Task 3 tests both.
+1. **Check names through a reusable workflow.** A caller job `ci` that `uses:` Themis's workflow reports checks as `ci / test`, not `test`. If `policy/repository.json`'s required contexts stay bare, every body PR waits forever. Task 2 pins the real names with a live run and makes the policy match.
+2. **A git dependency on a subdirectory.** `@vaoan/themis` lives in `packages/themis`. pnpm must install it from `github:vaoan/Themis#main` with the subdirectory, under `--frozen-lockfile`, on CI, without auth. Task 1 measures this before anything depends on it.
+3. **`themis init` half done.** The repository is created and policy then fails. A rerun must continue rather than fail on "already exists", and `--dry-run` must change nothing. Task 3 tests both.
 4. **No Clerk keys in CI.** `next build` and the middleware must not crash with placeholder keys. Task 8 builds with only `.env.example` values.
 5. **A delegate escalating.** Someone holding `manage-delegates` on a resource must not grant a capability they do not hold, nor make themselves owner. Task 7 tests both.
 6. **A forged `actor_ref` on the picker's return.** The callback must accept only an actor in the mirror owned by the signed-in person, as `AeleOS/docs/integrating.md` ("The return leg") requires. Task 8 tests another person's actor and an unknown one.
@@ -40,13 +40,13 @@
 
 **Files:**
 - Create: `docs/observations/2026-11-11-git-install.md` and `.json`
-- Modify: `packages/orrery/package.json` (only if the measurement needs it, e.g. `files`)
+- Modify: `packages/themis/package.json` (only if the measurement needs it, e.g. `files`)
 
 **Interfaces:**
-- Produces: the exact dependency specifier bodies use, e.g. `"@vaoan/orrery": "github:vaoan/Orrery#main&path:/packages/orrery"`, recorded in the observation and used verbatim by Tasks 4 and 5.
+- Produces: the exact dependency specifier bodies use, e.g. `"@vaoan/themis": "github:vaoan/Themis#main&path:/packages/themis"`, recorded in the observation and used verbatim by Tasks 4 and 5.
 
-- [ ] **Step 1:** In a scratch directory outside the repo, `pnpm init`, then `pnpm add -D "github:vaoan/Orrery#main&path:/packages/orrery"`.
-- [ ] **Step 2:** Verify `node -e "import('@vaoan/orrery/eslint').then(m=>console.log(typeof m.default))"` prints `function`, and `pnpm exec orrery --help` runs.
+- [ ] **Step 1:** In a scratch directory outside the repo, `pnpm init`, then `pnpm add -D "github:vaoan/Themis#main&path:/packages/themis"`.
+- [ ] **Step 2:** Verify `node -e "import('@vaoan/themis/eslint').then(m=>console.log(typeof m.default))"` prints `function`, and `pnpm exec themis --help` runs.
 - [ ] **Step 3:** Delete `node_modules`, run `pnpm install --frozen-lockfile`, repeat Step 2.
 - [ ] **Step 4:** Record pnpm version, specifier, both results and install time in the observation (`.md` and `.json`). If the specifier fails, **stop**: this is a cornering, and the owner decides.
 - [ ] **Step 5:** Commit on `docs/git-install-observation`, PR into `develop`.
@@ -56,41 +56,41 @@
 **Files:**
 - Create: `.github/workflows/body-ci.yml`
 - Modify: `policy/repository.json` (`requiredChecks` for bodies, if Task 2's live run shows prefixed names)
-- Modify: `packages/orrery/src/lib/repo-policy.mjs` and its tests, if bodies and Orrery need different required checks
-- Test: `packages/orrery/tests/workflows.test.mjs`
+- Modify: `packages/themis/src/lib/repo-policy.mjs` and its tests, if bodies and Themis need different required checks
+- Test: `packages/themis/tests/workflows.test.mjs`
 
 **Interfaces:**
 - Consumes: Task 1's specifier.
-- Produces: `uses: vaoan/Orrery/.github/workflows/body-ci.yml@main` with input `database: boolean` (default `false`). Jobs `test`, `branch-target`, `branch-name`, `pr-title`, `config-drift`, `branch-sync`, each running the body's own scripts: `test` runs `pnpm lint && pnpm typecheck && pnpm test`, plus `supabase start` and `pnpm test:db` when `database` is true. The orrery verbs run as `pnpm orrery ci <verb>` from the body's installed package.
+- Produces: `uses: vaoan/Themis/.github/workflows/body-ci.yml@main` with input `database: boolean` (default `false`). Jobs `test`, `branch-target`, `branch-name`, `pr-title`, `config-drift`, `branch-sync`, each running the body's own scripts: `test` runs `pnpm lint && pnpm typecheck && pnpm test`, plus `supabase start` and `pnpm test:db` when `database` is true. The themis verbs run as `pnpm themis ci <verb>` from the body's installed package.
 - Produces: the required-check names a body's protection must list, as measured.
 
 - [ ] **Step 1: Write the failing test** in `workflows.test.mjs`: `body-ci.yml` declares `on.workflow_call.inputs.database` as boolean with default false, and defines exactly the six job names above.
-- [ ] **Step 2:** Run `pnpm vitest run packages/orrery/tests/workflows.test.mjs`. Expected: FAIL (file missing).
+- [ ] **Step 2:** Run `pnpm vitest run packages/themis/tests/workflows.test.mjs`. Expected: FAIL (file missing).
 - [ ] **Step 3:** Write `body-ci.yml` from `ci.yml`'s jobs, with the `test` job above.
 - [ ] **Step 4:** Run the test. Expected: PASS.
-- [ ] **Step 5:** After the starter exists (Task 4), read the check names its first PR reports and pin them in a test of the body policy. If they are prefixed (`ci / test`), make `repo apply` give bodies the prefixed names and keep Orrery's own bare, with a test for each.
+- [ ] **Step 5:** After the starter exists (Task 4), read the check names its first PR reports and pin them in a test of the body policy. If they are prefixed (`ci / test`), make `repo apply` give bodies the prefixed names and keep Themis's own bare, with a test for each.
 - [ ] **Step 6:** Commit on `feat/body-ci-workflow`, PR into `develop`.
 
-### Task 3: `orrery init`
+### Task 3: `themis init`
 
 **Files:**
-- Create: `packages/orrery/src/commands/init.mjs`, `packages/orrery/src/lib/init.mjs`
-- Modify: `packages/orrery/src/cli.mjs` (register `init`), `packages/orrery/src/lib/github.mjs` (`resolveToken`)
+- Create: `packages/themis/src/commands/init.mjs`, `packages/themis/src/lib/init.mjs`
+- Modify: `packages/themis/src/cli.mjs` (register `init`), `packages/themis/src/lib/github.mjs` (`resolveToken`)
 - Modify: root `CLAUDE.md` commands table (`init` built)
-- Test: `packages/orrery/tests/init.test.mjs`, `packages/orrery/tests/github.test.mjs`
+- Test: `packages/themis/tests/init.test.mjs`, `packages/themis/tests/github.test.mjs`
 
 **Interfaces:**
 - Consumes: `applyRepoPolicy` (`lib/repo-policy.mjs`), `loadPolicy`, `loadRegistry`, `createGithub`.
-- Produces: `orrery init <name> --class next-supabase-mono [--owner vaoan] [--template vaoan/nebula] [--role planet] [--dry-run]`. Exit 0 done, 1 failure, 2 usage.
+- Produces: `themis init <name> --class next-supabase-mono` (the body key is the lowercase name, e.g. `portia`; the repository is the capitalised name, e.g. `vaoan/Portia`, or `--repo-name`). Full form: `themis init <name> --class next-supabase-mono [--owner vaoan] [--template vaoan/Vulkan] [--role planet] [--dry-run]`. Exit 0 done, 1 failure, 2 usage.
 - Produces: `planInit({ name, owner, template, klass, role, github })` returns ordered steps `{ kind: "generate-repo" | "rename" | "write-pointers" | "apply-policy" | "registry-pr", done: boolean, detail }`; `runInit(plan, deps)` executes the steps whose `done` is false.
 
 - [ ] **Step 1: Write failing tests** with a fake github and a fake git runner:
   - `init portia` on a missing repo plans all five steps, `done: false`, in that order.
-  - When `vaoan/portia` already exists from the template, `generate-repo` is `done: true` and the rest still run.
+  - When `vaoan/Portia` already exists from the template, `generate-repo` is `done: true` and the rest still run.
   - `--dry-run` prints the plan and makes no write calls (the fake records none).
-  - `rename` replaces `nebula` with `portia` in `package.json` `name`, `orrery.config.mjs`, the root `CLAUDE.md` title and `README.md` title, and nowhere else.
-  - `write-pointers` writes each file of `packages/orrery/templates/<class>/` byte for byte.
-  - `registry-pr` adds `"portia": { "repo": "vaoan/portia", "role": "planet", "class": "next-supabase-mono" }` to `registry.json` on a branch `feat/register-portia` and opens a PR titled `feat(registry): register portia [GH-000]`.
+  - `rename` replaces `vulkan` with `portia` in `package.json` `name`, `themis.config.mjs`, the root `CLAUDE.md` title and `README.md` title, and nowhere else.
+  - `write-pointers` writes each file of `packages/themis/templates/<class>/` byte for byte.
+  - `registry-pr` adds `"portia": { "repo": "vaoan/Portia", "role": "planet", "class": "next-supabase-mono" }` to `registry.json` on a branch `feat/register-portia` and opens a PR titled `feat(registry): register portia [GH-000]`.
   - An unknown `--class`, a name that is not lowercase kebab-case, or a name already in the registry exits 2 with a message.
   - `resolveToken({ GH_TOKEN: "x" })` returns `"x"`; with no variables it throws, and never calls `gh`.
 - [ ] **Step 2:** Run the tests. Expected: FAIL.
@@ -100,16 +100,16 @@
 
 ### Task 4: The starter repository and its tooling
 
-**Files (in the new repository `vaoan/nebula`):**
-- Create: `package.json`, `pnpm-workspace.yaml`, `orrery.config.mjs`, `eslint.config.mjs`, `eslint.local.mjs`, `prettier.config.mjs`, `tsconfig.json`, `.husky/commit-msg`, `.husky/pre-push`, `.github/workflows/ci.yml`, `.gitattributes`, `.gitignore`, `README.md`, `LICENSE`
+**Files (in the new repository `vaoan/Vulkan`):**
+- Create: `package.json`, `pnpm-workspace.yaml`, `themis.config.mjs`, `eslint.config.mjs`, `eslint.local.mjs`, `prettier.config.mjs`, `tsconfig.json`, `.husky/commit-msg`, `.husky/pre-push`, `.github/workflows/ci.yml`, `.gitattributes`, `.gitignore`, `README.md`, `LICENSE`
 - Create: `apps/web/` (Next.js 16 app router: `src/app/[locale]/layout.tsx`, `page.tsx`, `globals.css`; `next.config.ts`; `package.json`)
 
 **Interfaces:**
-- Consumes: Task 1's specifier; Task 2's `body-ci.yml`; the pointer files from `packages/orrery/templates/next-supabase-mono/`.
-- Produces: root scripts `lint`, `typecheck`, `test`, `test:db`, `orrery` (`orrery`), `dev`, `build`. `ci.yml` is the caller: one job `ci` with `uses: vaoan/Orrery/.github/workflows/body-ci.yml@main`, `with: { database: true }`.
+- Consumes: Task 1's specifier; Task 2's `body-ci.yml`; the pointer files from `packages/themis/templates/next-supabase-mono/`.
+- Produces: root scripts `lint`, `typecheck`, `test`, `test:db`, `themis` (`themis`), `dev`, `build`. `ci.yml` is the caller: one job `ci` with `uses: vaoan/Themis/.github/workflows/body-ci.yml@main`, `with: { database: true }`.
 
-- [ ] **Step 1:** Create the repository with `gh api` (token per command) under `vaoan`, public, then `orrery repo apply vaoan/nebula`.
-- [ ] **Step 2:** Write the files. Pointer files are copied from `packages/orrery/templates/next-supabase-mono/` unchanged. `orrery.config.mjs` follows `fixtures/next-supabase-mono/orrery.config.mjs` with `spelling: ["nebula"]` and the web app's `globals.css` as the Tailwind entry point.
+- [ ] **Step 1:** Create the repository with `gh api` (token per command) under `vaoan`, public, then `themis repo apply vaoan/Vulkan`.
+- [ ] **Step 2:** Write the files. Pointer files are copied from `packages/themis/templates/next-supabase-mono/` unchanged. `themis.config.mjs` follows `fixtures/next-supabase-mono/themis.config.mjs` with `spelling: ["vulkan"]` and the web app's `globals.css` as the Tailwind entry point.
 - [ ] **Step 3:** One smoke test, `apps/web/tests/home.test.tsx`: the home page renders its title in `es` and in `en`.
 - [ ] **Step 4:** Run `pnpm install && pnpm lint && pnpm typecheck && pnpm test`. Expected: all pass with zero lint findings.
 - [ ] **Step 5:** PR into `develop` (`feat(app): the empty shell [GH-000]`). CI green. Record the check names it reports for Task 2, Step 5.
@@ -191,33 +191,33 @@
 - Create: `CLAUDE.md`, `.claude/rules/*.md` (path-scoped: `apps/web/src/features/**`, `supabase/**` (including how to declare a resource type),  `apps/web/messages/**`, tests), `.claude/settings.json`, `docs/lessons/` (empty, with a README line saying what goes there)
 
 **Interfaces:**
-- Consumes: `orrery instructions` (Orrery stage 0).
+- Consumes: `themis instructions` (Themis stage 0).
 - Produces: a root `CLAUDE.md` under 200 lines with no history in it: what the body is, commands, layout, where rules live. Rules with `paths:` only; none matches over 40% of source.
 
-- [ ] **Step 1:** From an Orrery checkout, run `pnpm orrery instructions <starter> --touching nebula=apps/web/src/features/identity/application/sync-actors.ts --report docs/observations --label starter`. Expected now: the root alone, well under budget.
+- [ ] **Step 1:** From a Themis checkout, run `pnpm themis instructions <starter> --touching vulkan=apps/web/src/features/identity/application/sync-actors.ts --report docs/observations --label starter`. Expected now: the root alone, well under budget.
 - [ ] **Step 2:** Write the files.
-- [ ] **Step 3:** Rerun Step 1. Expected: start ≤ 10,000 and task ≤ 25,000 tokens, no oversize, no wide rule. Keep the report (`.md` + `.json`) in Orrery's `docs/observations/`.
-- [ ] **Step 4:** PR `docs(ai): instructions within budget [GH-000]` in the starter; a separate Orrery PR for the observation.
+- [ ] **Step 3:** Rerun Step 1. Expected: start ≤ 10,000 and task ≤ 25,000 tokens, no oversize, no wide rule. Keep the report (`.md` + `.json`) in Themis's `docs/observations/`.
+- [ ] **Step 4:** PR `docs(ai): instructions within budget [GH-000]` in the starter; a separate Themis PR for the observation.
 
 ### Task 10: Make the starter a template and register it
 
 **Files:**
-- Modify (Orrery): `registry.json` (`"nebula": { "repo": "vaoan/nebula", "role": "starter", "class": "next-supabase-mono" }`), `packages/orrery/src/lib/registry.mjs` and tests if `role` is validated against a list
+- Modify (Themis): `registry.json` (`"vulkan": { "repo": "vaoan/Vulkan", "role": "starter", "class": "next-supabase-mono" }`), `packages/themis/src/lib/registry.mjs` and tests if `role` is validated against a list
 - Modify (starter): repository setting `is_template: true`
 
-- [ ] **Step 1: Failing test** (Orrery): `loadRegistry` accepts role `starter`; `orrery init`'s default `--template` is the registry's single `starter` body.
+- [ ] **Step 1: Failing test** (Themis): `loadRegistry` accepts role `starter`; `themis init`'s default `--template` is the registry's single `starter` body.
 - [ ] **Step 2–4:** Run (FAIL), implement, run (PASS).
-- [ ] **Step 5:** `PATCH /repos/vaoan/nebula` with `is_template: true` (token per command).
+- [ ] **Step 5:** `PATCH /repos/vaoan/Vulkan` with `is_template: true` (token per command).
 - [ ] **Step 6:** PR `feat(registry): the starter is a body [GH-000]`.
 
 ### Task 11: The trial run — create Portia
 
 **Files:**
-- Create (Orrery): `docs/observations/2026-11-XX-portia-init.md` and `.json`
+- Create (Themis): `docs/observations/2026-11-XX-portia-init.md` and `.json`
 
-- [ ] **Step 1:** `pnpm orrery init portia --class next-supabase-mono --dry-run`. Expected: five steps listed, nothing written.
-- [ ] **Step 2:** `pnpm orrery init portia --class next-supabase-mono`. Expected: exit 0; `vaoan/portia` exists; the registry PR is open.
-- [ ] **Step 3:** Clone `vaoan/portia`; `pnpm install --frozen-lockfile && pnpm lint && pnpm typecheck && pnpm test && pnpm build` with no edits. Expected: all pass.
+- [ ] **Step 1:** `pnpm themis init portia --class next-supabase-mono --dry-run`. Expected: five steps listed, nothing written.
+- [ ] **Step 2:** `pnpm themis init portia --class next-supabase-mono`. Expected: exit 0; `vaoan/Portia` exists; the registry PR is open.
+- [ ] **Step 3:** Clone `vaoan/Portia`; `pnpm install --frozen-lockfile && pnpm lint && pnpm typecheck && pnpm test && pnpm build` with no edits. Expected: all pass.
 - [ ] **Step 4:** Open a trivial PR in Portia (a README line); CI green with the protection's required checks satisfied.
-- [ ] **Step 5:** `orrery instructions` on Portia within budget.
-- [ ] **Step 6:** Record each result in the observation. Any hand repair needed is a failure of trial criterion 1: list it, and stop for the owner's decision (fix forward, or delete Portia and fix Orrery).
+- [ ] **Step 5:** `themis instructions` on Portia within budget.
+- [ ] **Step 6:** Record each result in the observation. Any hand repair needed is a failure of trial criterion 1: list it, and stop for the owner's decision (fix forward, or delete Portia and fix Themis).

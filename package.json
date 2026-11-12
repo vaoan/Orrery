@@ -1,5 +1,5 @@
 {
-  "name": "orrery-workspace",
+  "name": "themis-workspace",
   "private": true,
   "type": "module",
   "engines": {
@@ -7,7 +7,7 @@
   },
   "scripts": {
     "test": "vitest run",
-    "orrery": "node packages/orrery/bin/orrery.mjs",
+    "themis": "node packages/themis/bin/themis.mjs",
     "prepare": "husky"
   },
   "devDependencies": {

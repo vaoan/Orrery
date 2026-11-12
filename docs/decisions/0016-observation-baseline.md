@@ -9,7 +9,7 @@ baseline.
 
 ## What this is
 
-The first real recording of `orrery observe --predict` against both donors,
+The first real recording of `themis observe --predict` against both donors,
 once the tool-report-stream, e2e-surface-overlap, and baseline-aware-
 comparison fixes of PR #32 (`f9b6c9d`) landed. **These are predictions of what
 adoption will surface, recorded so drift is visible. They are not rulings;
@@ -21,15 +21,15 @@ Both donors at a clean, installed checkout; nothing under either was modified
 by any command below. Donor SHAs: aeleos `5e70a21`, libra `1c79de7`.
 
 ```
-pnpm orrery observe Z:/Github/aeleos Z:/Github/libra --predict --report docs/observations
-pnpm orrery observe Z:/Github/aeleos Z:/Github/libra --report docs/observations
+pnpm themis observe Z:/Github/aeleos Z:/Github/libra --predict --report docs/observations
+pnpm themis observe Z:/Github/aeleos Z:/Github/libra --report docs/observations
 ```
 
 ## `baseline` classification
 
 A rule with real violations the bundle did **not** tighten for a donor (its
 pre-adoption config already matched the ruling's `chosen` value there) is
-`baseline`, not `unexplained` — debt that predates Orrery. Two shapes recur:
+`baseline`, not `unexplained` — debt that predates Themis. Two shapes recur:
 `strictest`-tier rows where the donor was already the stricter side (aeleos's
 `better-tailwindcss/*`, `unicorn/numeric-separators-style`; libra's
 `sonarjs/deprecation`, `sonarjs/max-lines`, `sonarjs/prefer-read-only-props`),
