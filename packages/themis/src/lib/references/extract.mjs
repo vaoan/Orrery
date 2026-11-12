@@ -2,6 +2,8 @@
 // target or a backticked token, and a command is a pnpm or themis line. Nothing is fetched or resolved here.
 
 export const EXAMPLE_MARK = /<!--\s*themis:\s*example\s*-->/;
+export const BLOCK_START = /<!--\s*themis:\s*examples\s*-->/;
+export const BLOCK_END = /<!--\s*themis:\s*end\s*-->/;
 const EXT = /\.(md|mjs|js|ts|tsx|json|yml|yaml|sql|css|toml|sh)$/;
 const PATH_CHARS = /^[\w.\-/*{}[\]~$<>,:+@()]+$/;
 
@@ -17,16 +19,24 @@ function classify(token) {
   return t;
 }
 
+// A line that is a table row or says "for example" holds illustrations more often than claims.
+const ILLUSTRATIVE_LINE = /^\s*\|.*\|\s*$|\be\.g\.|\bexamples?\b|\bsuch as\b|\bcreates?:|\bnamed? like\b/i;
+
 // kind: link | path | command | skill | agent. `why` is set when the token cannot be verified.
+// Returns { refs, unclosed }: `unclosed` is the line of a `themis: examples` block that never ends.
 export function extractRefs(text) {
   const refs = [];
-  let fence = false, comment = false;
+  let fence = false, comment = false, block = null, blockFirst = 0;
+  const closeBlock = (endLine) => { for (let k = blockFirst; k < refs.length; k++) refs[k].why = `example (lines ${block}-${endLine})`; };
   const lines = lf(text).split("\n");
   for (const [i, raw] of lines.entries()) {
     const line = i + 1;
+    if (BLOCK_START.test(raw) && block === null) { block = line; blockFirst = refs.length; continue; }
+    if (BLOCK_END.test(raw) && block !== null) { closeBlock(line); block = null; continue; }
     if (/^\s*(```|~~~)/.test(raw)) { fence = !fence; continue; }
     const example = EXAMPLE_MARK.test(raw);
-    const add = (kind, token, extra = {}) => refs.push({ kind, token, line, ...(example ? { why: "example" } : {}), ...extra });
+    const illustrative = ILLUSTRATIVE_LINE.test(raw);
+    const add = (kind, token, extra = {}) => refs.push({ kind, token, line, ...(example ? { why: "example" } : {}), ...(illustrative ? { illustrative: true } : {}), ...extra });
 
     if (fence) {
       const m = /^\s*(?:\$\s*)?((?:pnpm|themis)\s+\S.*)$/.exec(raw);
@@ -56,7 +66,8 @@ export function extractRefs(text) {
       if (p !== null) addPath(p, "path", add);
     }
   }
-  return refs;
+  if (block !== null) { for (let k = blockFirst; k < refs.length; k++) refs[k].why = `example (lines ${block}-end)`; }
+  return { refs, unclosed: block };
 }
 
 function addCommand(text, add) {

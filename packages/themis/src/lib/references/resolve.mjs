@@ -165,19 +165,21 @@ function checkPath(ctx, fileRel, token, kind) {
 // Returns { checked, broken, exceptions, external } for one file's text.
 export function checkText(ctx, fileRel, text) {
   const res = { checked: 0, broken: [], exceptions: [], external: [] };
-  for (const r of extractRefs(text)) {
+  const { refs, unclosed } = extractRefs(text);
+  if (unclosed !== null) res.broken.push({ file: fileRel, line: unclosed, kind: "marker", token: "themis: examples", reason: "block opened and never closed with themis: end", likely: "stale" });
+  for (const r of refs) {
     const at = { file: fileRel, line: r.line, kind: r.kind, token: r.token };
     if (r.why) { res.exceptions.push({ ...at, why: r.why }); continue; }
     if (r.kind === "link" || r.kind === "path") {
       const c = checkPath(ctx, fileRel, r.token, r.kind);
       if (c.skip) { res.exceptions.push({ ...at, why: c.skip }); continue; }
       res.checked++;
-      if (!c.ok) res.broken.push({ ...at, reason: c.broken ?? (isGlob(r.token) ? "glob matches no file" : "no such file"), probe: c.probe });
+      if (!c.ok) res.broken.push({ ...at, reason: c.broken ?? (isGlob(r.token) ? "glob matches no file" : "no such file"), likely: r.kind === "path" && (r.illustrative || (!r.token.includes("/") && !isGlob(r.token)) || /\bpath\/to\b|YYYY|\{|<|\[/.test(r.token)) ? "illustrative" : "stale", probe: c.probe });
       continue;
     }
     if (r.kind === "command") {
       res.checked++;
-      const bad = (reason) => res.broken.push({ ...at, reason });
+      const bad = (reason) => res.broken.push({ ...at, reason, likely: "stale" });
       if (r.tool === "themis") { if (!COMMAND_NAMES.includes(r.name) && !r.name.startsWith("-")) bad("not a registered themis command"); }
       else if (r.name === "run") { if (r.arg && !r.arg.startsWith("-") && !ctx.scripts.has(r.arg)) bad("no such pnpm script"); }
       else if (!PNPM_BUILTIN.has(r.name) && !ctx.scripts.has(r.name)) bad("no such pnpm script");
@@ -192,7 +194,7 @@ export function checkText(ctx, fileRel, text) {
     const known = r.kind === "agent" ? ctx.agents.has(name) : ctx.skills.has(name) || ctx.agents.has(name) || ctx.commands.has(name) || BUILTIN_SLASH.has(name);
     if (known) continue;
     if (ctx.plugins.length) res.external.push({ ...at, plugin: "unverified" });
-    else res.broken.push({ ...at, reason: `no such ${r.kind} in the body` });
+    else res.broken.push({ ...at, reason: `no such ${r.kind} in the body`, likely: "stale" });
   }
   return res;
 }

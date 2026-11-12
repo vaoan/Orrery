@@ -107,728 +107,832 @@
           "line": 124,
           "kind": "path",
           "token": "LoginForm.tsx",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": "CLAUDE.md",
           "line": 125,
           "kind": "path",
           "token": "useAuth.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": "CLAUDE.md",
           "line": 126,
           "kind": "path",
           "token": "formatDate.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": "CLAUDE.md",
           "line": 127,
           "kind": "path",
           "token": "UserTypes.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/architecture.md",
           "line": 234,
           "kind": "path",
           "token": "api/types/generated",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "stale"
         },
         {
           "file": ".claude/rules/code-review-standards.md",
           "line": 186,
           "kind": "path",
           "token": "domain/constants.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "stale"
         },
         {
           "file": ".claude/rules/code-review-standards.md",
           "line": 250,
           "kind": "path",
           "token": "bg-success/10",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/code-review-standards.md",
           "line": 250,
           "kind": "path",
           "token": "bg-green-500/10",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/code-review-standards.md",
           "line": 276,
           "kind": "path",
           "token": ".test.tsx",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/git-workflow.md",
           "line": 144,
           "kind": "path",
           "token": "docs/GH-92_API-Documentation",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/multi-agent-persistence.md",
           "line": 43,
           "kind": "path",
           "token": "mcp-audit_2026-01-16T10-30-00.json",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/multi-agent-persistence.md",
           "line": 44,
           "kind": "path",
           "token": "ai-documents-audit_2026-01-16T10-30-00.md",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/multi-agent-persistence.md",
           "line": 110,
           "kind": "path",
           "token": "*-audit_*.json",
-          "reason": "glob matches no file"
+          "reason": "glob matches no file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/multi-agent-persistence.md",
           "line": 111,
           "kind": "path",
           "token": "*-analysis_*.json",
-          "reason": "glob matches no file"
+          "reason": "glob matches no file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/multi-agent-persistence.md",
           "line": 112,
           "kind": "path",
           "token": "*-review_*.json",
-          "reason": "glob matches no file"
+          "reason": "glob matches no file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/naming-conventions.md",
           "line": 17,
           "kind": "path",
           "token": "LoginForm.tsx",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/naming-conventions.md",
           "line": 18,
           "kind": "path",
           "token": "useAuth.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/naming-conventions.md",
           "line": 19,
           "kind": "path",
           "token": "formatDate.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/naming-conventions.md",
           "line": 20,
           "kind": "path",
           "token": "UserTypes.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/naming-conventions.md",
           "line": 21,
           "kind": "path",
           "token": "apiEndpoints.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/naming-conventions.md",
           "line": 22,
           "kind": "path",
           "token": "AuthService.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/naming-conventions.md",
           "line": 23,
           "kind": "path",
           "token": "UserRepository.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/naming-conventions.md",
           "line": 24,
           "kind": "path",
           "token": "LoginForm.test.tsx",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/naming-conventions.md",
           "line": 35,
           "kind": "path",
           "token": "schema.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/no-hardcoding.md",
           "line": 232,
           "kind": "path",
           "token": "features/users/domain/types/index.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/no-hardcoding.md",
           "line": 233,
           "kind": "path",
           "token": "shared/domain/types/index.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/no-hardcoding.md",
           "line": 233,
           "kind": "path",
           "token": "shared/domain/types/index.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/no-hardcoding.md",
           "line": 234,
           "kind": "path",
           "token": "src/mocks/data/users.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/no-hardcoding.md",
           "line": 235,
           "kind": "path",
           "token": "src/mocks/handlers/users.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/no-hardcoding.md",
           "line": 236,
           "kind": "path",
           "token": "shared/infrastructure/config/env.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/no-hardcoding.md",
           "line": 236,
           "kind": "path",
           "token": "shared/infrastructure/config/env.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/no-hardcoding.md",
           "line": 237,
           "kind": "path",
           "token": "shared/infrastructure/config/features.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/no-hardcoding.md",
           "line": 237,
           "kind": "path",
           "token": "shared/infrastructure/config/features.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/no-hardcoding.md",
           "line": 238,
           "kind": "path",
           "token": "features/users/infrastructure/api/endpoints.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/one-component-per-file.md",
           "line": 132,
           "kind": "path",
           "token": "*.spec.tsx",
-          "reason": "glob matches no file"
+          "reason": "glob matches no file",
+          "likely": "stale"
         },
         {
           "file": ".claude/rules/one-component-per-file.md",
           "line": 180,
           "kind": "path",
           "token": "UserCard.tsx",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/one-component-per-file.md",
           "line": 181,
           "kind": "path",
           "token": "UserList.tsx",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/one-component-per-file.md",
           "line": 182,
           "kind": "path",
           "token": "UserForm.tsx",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/one-component-per-file.md",
           "line": 298,
           "kind": "path",
           "token": "react/no-multi-comp",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "stale"
         },
         {
           "file": ".claude/rules/single-source-of-truth.md",
           "line": 17,
           "kind": "path",
           "token": "domain/constants.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/single-source-of-truth.md",
           "line": 219,
           "kind": "path",
           "token": "shared/presentation/theme/constants.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/storybook.md",
           "line": 438,
           "kind": "command",
           "token": "pnpm storybook",
-          "reason": "no such pnpm script"
+          "reason": "no such pnpm script",
+          "likely": "stale"
         },
         {
           "file": ".claude/rules/storybook.md",
           "line": 441,
           "kind": "command",
           "token": "pnpm build-storybook",
-          "reason": "no such pnpm script"
+          "reason": "no such pnpm script",
+          "likely": "stale"
         },
         {
           "file": ".claude/rules/storybook.md",
           "line": 444,
           "kind": "command",
           "token": "pnpm test-storybook",
-          "reason": "no such pnpm script"
+          "reason": "no such pnpm script",
+          "likely": "stale"
         },
         {
           "file": ".claude/rules/storybook.md",
           "line": 447,
           "kind": "command",
           "token": "pnpm test-storybook",
-          "reason": "no such pnpm script"
+          "reason": "no such pnpm script",
+          "likely": "stale"
         },
         {
           "file": ".claude/rules/tailwind.md",
           "line": 17,
           "kind": "path",
           "token": "tailwind.config.js",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/tailwind.md",
           "line": 70,
           "kind": "path",
           "token": "text-foreground/50",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "stale"
         },
         {
           "file": ".claude/rules/telegram-notifications.md",
           "line": 35,
           "kind": "path",
           "token": "notify-deploy.yml",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/url-state.md",
           "line": 123,
           "kind": "path",
           "token": "src/test/utils.tsx",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "stale"
         },
         {
           "file": ".claude/skills/ai-documents-audit/SKILL.md",
           "line": 314,
           "kind": "path",
           "token": ".ai-context/README.md",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "stale"
         },
         {
           "file": ".claude/skills/ai-documents-audit/SKILL.md",
           "line": 646,
           "kind": "path",
           "token": "ai-documents-audit_YYYY-MM-DDTHH-MM-SS.md",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/ai-documents-audit/SKILL.md",
           "line": 650,
           "kind": "path",
           "token": "ai-documents-audit_2026-01-09T17-00-28.md",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/checkpoint/SKILL.md",
           "line": 65,
           "kind": "path",
           "token": ".ai-context/checkpoints/ai-structure/RESUME.md",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "stale"
         },
         {
           "file": ".claude/skills/checkpoint/SKILL.md",
           "line": 66,
           "kind": "path",
           "token": ".ai-context/checkpoints/feat-GH-42_User-Auth/RESUME.md",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "stale"
         },
         {
           "file": ".claude/skills/checkpoint/SKILL.md",
           "line": 434,
           "kind": "link",
           "token": "../../../.ai-context/README.md",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "stale"
         },
         {
           "file": ".claude/skills/code-review/SKILL.md",
           "line": 134,
           "kind": "path",
           "token": "features/X",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "stale"
         },
         {
           "file": ".claude/skills/code-review/SKILL.md",
           "line": 134,
           "kind": "path",
           "token": "features/Y",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "stale"
         },
         {
           "file": ".claude/skills/code-review/SKILL.md",
           "line": 164,
           "kind": "path",
           "token": "bg-green-500/10",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "stale"
         },
         {
           "file": ".claude/skills/code-review/SKILL.md",
           "line": 164,
           "kind": "path",
           "token": "bg-success/10",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "stale"
         },
         {
           "file": ".claude/skills/create-api-integration/SKILL.md",
           "line": 275,
           "kind": "path",
           "token": "features/orders/domain/types/order.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "stale"
         },
         {
           "file": ".claude/skills/create-api-integration/SKILL.md",
           "line": 276,
           "kind": "path",
           "token": "features/orders/infrastructure/api/orderApi.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "stale"
         },
         {
           "file": ".claude/skills/create-api-integration/SKILL.md",
           "line": 277,
           "kind": "path",
           "token": "features/orders/application/hooks/useOrders.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "stale"
         },
         {
           "file": ".claude/skills/create-hook/SKILL.md",
           "line": 293,
           "kind": "path",
           "token": "src/features/orders/application/hooks/useOrders.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/create-hook/SKILL.md",
           "line": 301,
           "kind": "path",
           "token": "src/shared/application/hooks/useDebounce.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/create-hook/SKILL.md",
           "line": 309,
           "kind": "path",
           "token": "src/features/orders/presentation/hooks/useOrderModal.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/e2e-eval/SKILL.md",
           "line": 45,
           "kind": "path",
           "token": ".ai-context/reports/e2e-eval-*.md",
-          "reason": "glob matches no file"
+          "reason": "glob matches no file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/e2e-eval/SKILL.md",
           "line": 708,
           "kind": "path",
           "token": ".ai-context/reports/e2e-eval-*.md",
-          "reason": "glob matches no file"
+          "reason": "glob matches no file",
+          "likely": "stale"
         },
         {
           "file": ".claude/skills/fix-ai-documents-audit/SKILL.md",
           "line": 46,
           "kind": "path",
           "token": "ai-documents-audit_*.md",
-          "reason": "glob matches no file"
+          "reason": "glob matches no file",
+          "likely": "stale"
         },
         {
           "file": ".claude/skills/fix-ai-documents-audit/SKILL.md",
           "line": 55,
           "kind": "path",
           "token": "ai-documents-audit_YYYY-MM-DDTHH-MM-SS.md",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/fix-ai-documents-audit/SKILL.md",
           "line": 193,
           "kind": "path",
           "token": "mycompany/myproject",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/generate-setup-guide/SKILL.md",
           "line": 49,
           "kind": "path",
           "token": ".ai-context/setup-guide.md",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/i18n/SKILL.md",
           "line": 419,
           "kind": "path",
           "token": "routing.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/i18n/SKILL.md",
           "line": 421,
           "kind": "path",
           "token": "navigation.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/i18n/SKILL.md",
           "line": 422,
           "kind": "path",
           "token": "middleware.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/resume-checkpoint/SKILL.md",
           "line": 352,
           "kind": "link",
           "token": "../../../.ai-context/README.md",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "stale"
         },
         {
           "file": ".claude/skills/review-pr-comments/SKILL.md",
           "line": 73,
           "kind": "path",
           "token": ".ai-context/task-outputs/GH-XXXX/08-pr-review-tracking.md",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "stale"
         },
         {
           "file": ".claude/skills/review-pr-comments/SKILL.md",
           "line": 378,
           "kind": "path",
           "token": ".ai-context/task-outputs/GH-XXXX/08-pr-review-tracking.md",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "stale"
         },
         {
           "file": ".claude/skills/run-tests/SKILL.md",
           "line": 309,
           "kind": "path",
           "token": "vitest.config.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/start-task/SKILL.md",
           "line": 83,
           "kind": "path",
           "token": "task-overview.md",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/start-task/SKILL.md",
           "line": 84,
           "kind": "path",
           "token": "setup.md",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/start-task/SKILL.md",
           "line": 85,
           "kind": "path",
           "token": "analysis.md",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/start-task/SKILL.md",
           "line": 86,
           "kind": "path",
           "token": "implementation-plan.md",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/start-task/SKILL.md",
           "line": 87,
           "kind": "path",
           "token": "implementation-log.md",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/start-task/SKILL.md",
           "line": 88,
           "kind": "path",
           "token": "testing-results.md",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/start-task/SKILL.md",
           "line": 89,
           "kind": "path",
           "token": "review-notes.md",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/start-task/SKILL.md",
           "line": 123,
           "kind": "path",
           "token": "docs/GH-92_API-Documentation",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "stale"
         },
         {
           "file": ".claude/skills/start-task/SKILL.md",
           "line": 810,
           "kind": "path",
           "token": "path/to/file.tsx",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/start-task/SKILL.md",
           "line": 868,
           "kind": "path",
           "token": "path/to/file.tsx",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/start-task/SKILL.md",
           "line": 902,
           "kind": "path",
           "token": "Component.test.tsx",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/start-task/SKILL.md",
           "line": 903,
           "kind": "path",
           "token": "useHook.test.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/storybook/SKILL.md",
           "line": 327,
           "kind": "command",
           "token": "pnpm storybook",
-          "reason": "no such pnpm script"
+          "reason": "no such pnpm script",
+          "likely": "stale"
         },
         {
           "file": ".claude/skills/storybook/SKILL.md",
           "line": 345,
           "kind": "command",
           "token": "pnpm build-storybook",
-          "reason": "no such pnpm script"
+          "reason": "no such pnpm script",
+          "likely": "stale"
         },
         {
           "file": ".claude/skills/storybook/SKILL.md",
           "line": 364,
           "kind": "command",
           "token": "pnpm test-storybook",
-          "reason": "no such pnpm script"
+          "reason": "no such pnpm script",
+          "likely": "stale"
         },
         {
           "file": ".claude/skills/storybook/SKILL.md",
           "line": 367,
           "kind": "command",
           "token": "pnpm test-storybook",
-          "reason": "no such pnpm script"
+          "reason": "no such pnpm script",
+          "likely": "stale"
         },
         {
           "file": ".claude/skills/storybook/SKILL.md",
           "line": 417,
           "kind": "path",
           "token": "Component/Component.stories.tsx",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "stale"
         },
         {
           "file": ".claude/skills/storybook/SKILL.md",
           "line": 418,
           "kind": "path",
           "token": "ComponentName.stories.tsx",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/storybook/SKILL.md",
           "line": 451,
           "kind": "path",
           "token": ".storybook/preview.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/tailwind/SKILL.md",
           "line": 14,
           "kind": "path",
           "token": "tailwind.config.js",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/tailwind/SKILL.md",
           "line": 26,
           "kind": "path",
           "token": "components.json",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/verify-code/SKILL.md",
           "line": 103,
           "kind": "path",
           "token": "import/order",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/verify-code/SKILL.md",
           "line": 159,
           "kind": "path",
           "token": "vitest.config.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/skills/verify-code/SKILL.md",
           "line": 182,
           "kind": "command",
           "token": "pnpm smoke",
-          "reason": "no such pnpm script"
+          "reason": "no such pnpm script",
+          "likely": "stale"
         },
         {
           "file": ".claude/agents/nextjs-architecture-expert.md",
           "line": 163,
           "kind": "path",
           "token": "_app.js",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/agents/nextjs-architecture-expert.md",
           "line": 164,
           "kind": "path",
           "token": "app/api/*/route.ts",
-          "reason": "glob matches no file"
+          "reason": "glob matches no file",
+          "likely": "stale"
         }
       ],
       "exceptions": [
@@ -3009,91 +3113,104 @@
           "line": 8,
           "kind": "path",
           "token": "src/shared/domain/",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "stale"
         },
         {
           "file": ".claude/rules/dry-principle.md",
           "line": 16,
           "kind": "path",
           "token": "src/shared/presentation/components/",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "stale"
         },
         {
           "file": ".claude/rules/naming-conventions.md",
           "line": 7,
           "kind": "path",
           "token": "UserCard.tsx",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/naming-conventions.md",
           "line": 8,
           "kind": "path",
           "token": "UserProfile.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/naming-conventions.md",
           "line": 9,
           "kind": "path",
           "token": "useAuth.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/naming-conventions.md",
           "line": 10,
           "kind": "path",
           "token": "formatDate.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/naming-conventions.md",
           "line": 11,
           "kind": "path",
           "token": "authService.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/naming-conventions.md",
           "line": 12,
           "kind": "path",
           "token": "tailwind.config.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/naming-conventions.md",
           "line": 13,
           "kind": "path",
           "token": "UserCard.test.tsx",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/naming-conventions.md",
           "line": 13,
           "kind": "path",
           "token": "formatDate.test.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/one-component-per-file.md",
           "line": 38,
           "kind": "path",
           "token": ".types.ts",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/portability.md",
           "line": 47,
           "kind": "path",
           "token": "package-lock.json",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "illustrative"
         },
         {
           "file": ".claude/rules/single-source-of-truth.md",
           "line": 48,
           "kind": "path",
           "token": "src/shared/domain/constants/",
-          "reason": "no such file"
+          "reason": "no such file",
+          "likely": "stale"
         }
       ],
       "exceptions": [

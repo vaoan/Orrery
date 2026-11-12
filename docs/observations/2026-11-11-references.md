@@ -6,6 +6,15 @@ Command: `themis references themis libra eclipse-con`
 
 Each link, backticked path, pnpm script, themis command and skill name an instruction file mentions, checked against the body. Exceptions are skipped on purpose and listed; external names are plugin skills, accepted without verification.
 
+## Mark examples, do not weaken the check
+
+An example path that does not exist misleads an agent as much as a stale one, so the check stays strict and authors mark what is illustrative:
+
+- End a line with `<!-- themis: example -->` to skip every reference on that line.
+- Wrap a table, sample tree or sample output in `<!-- themis: examples -->` ... `<!-- themis: end -->` to skip every reference between them.
+- Both show up under Exceptions here. A block that is opened and never closed is itself a failure.
+- "Likely stale" and "likely illustrative" below are a guess from the shape of the line, to help an audit; the json holds every finding.
+
 ## themis
 
 Files read: 1, references checked: 26, broken: 0, exceptions: 12, external: 0
@@ -31,7 +40,46 @@ Exceptions:
 
 Files read: 79, references checked: 831, broken: 104, exceptions: 308, external: 1
 
-Broken:
+Likely stale (a real thing that moved, was renamed or never existed; fix the instruction):
+
+| file | line | kind | token | reason |
+|---|---|---|---|---|
+| .claude/rules/architecture.md | 234 | path | api/types/generated | no such file |
+| .claude/rules/code-review-standards.md | 186 | path | domain/constants.ts | no such file |
+| .claude/rules/one-component-per-file.md | 132 | path | *.spec.tsx | glob matches no file |
+| .claude/rules/one-component-per-file.md | 298 | path | react/no-multi-comp | no such file |
+| .claude/rules/storybook.md | 438 | command | pnpm storybook | no such pnpm script |
+| .claude/rules/storybook.md | 441 | command | pnpm build-storybook | no such pnpm script |
+| .claude/rules/storybook.md | 444 | command | pnpm test-storybook | no such pnpm script |
+| .claude/rules/storybook.md | 447 | command | pnpm test-storybook | no such pnpm script |
+| .claude/rules/tailwind.md | 70 | path | text-foreground/50 | no such file |
+| .claude/rules/url-state.md | 123 | path | src/test/utils.tsx | no such file |
+| .claude/skills/ai-documents-audit/SKILL.md | 314 | path | .ai-context/README.md | no such file |
+| .claude/skills/checkpoint/SKILL.md | 65 | path | .ai-context/checkpoints/ai-structure/RESUME.md | no such file |
+| .claude/skills/checkpoint/SKILL.md | 66 | path | .ai-context/checkpoints/feat-GH-42_User-Auth/RESUME.md | no such file |
+| .claude/skills/checkpoint/SKILL.md | 434 | link | ../../../.ai-context/README.md | no such file |
+| .claude/skills/code-review/SKILL.md | 134 | path | features/X | no such file |
+| .claude/skills/code-review/SKILL.md | 134 | path | features/Y | no such file |
+| .claude/skills/code-review/SKILL.md | 164 | path | bg-green-500/10 | no such file |
+| .claude/skills/code-review/SKILL.md | 164 | path | bg-success/10 | no such file |
+| .claude/skills/create-api-integration/SKILL.md | 275 | path | features/orders/domain/types/order.ts | no such file |
+| .claude/skills/create-api-integration/SKILL.md | 276 | path | features/orders/infrastructure/api/orderApi.ts | no such file |
+| .claude/skills/create-api-integration/SKILL.md | 277 | path | features/orders/application/hooks/useOrders.ts | no such file |
+| .claude/skills/e2e-eval/SKILL.md | 708 | path | .ai-context/reports/e2e-eval-*.md | glob matches no file |
+| .claude/skills/fix-ai-documents-audit/SKILL.md | 46 | path | ai-documents-audit_*.md | glob matches no file |
+| .claude/skills/resume-checkpoint/SKILL.md | 352 | link | ../../../.ai-context/README.md | no such file |
+| .claude/skills/review-pr-comments/SKILL.md | 73 | path | .ai-context/task-outputs/GH-XXXX/08-pr-review-tracking.md | no such file |
+| .claude/skills/review-pr-comments/SKILL.md | 378 | path | .ai-context/task-outputs/GH-XXXX/08-pr-review-tracking.md | no such file |
+| .claude/skills/start-task/SKILL.md | 123 | path | docs/GH-92_API-Documentation | no such file |
+| .claude/skills/storybook/SKILL.md | 327 | command | pnpm storybook | no such pnpm script |
+| .claude/skills/storybook/SKILL.md | 345 | command | pnpm build-storybook | no such pnpm script |
+| .claude/skills/storybook/SKILL.md | 364 | command | pnpm test-storybook | no such pnpm script |
+| .claude/skills/storybook/SKILL.md | 367 | command | pnpm test-storybook | no such pnpm script |
+| .claude/skills/storybook/SKILL.md | 417 | path | Component/Component.stories.tsx | no such file |
+| .claude/skills/verify-code/SKILL.md | 182 | command | pnpm smoke | no such pnpm script |
+| .claude/agents/nextjs-architecture-expert.md | 164 | path | app/api/*/route.ts | glob matches no file |
+
+Likely illustrative (an example name or sample structure that was never meant to exist; mark it as an example):
 
 | file | line | kind | token | reason |
 |---|---|---|---|---|
@@ -39,8 +87,6 @@ Broken:
 | CLAUDE.md | 125 | path | useAuth.ts | no such file |
 | CLAUDE.md | 126 | path | formatDate.ts | no such file |
 | CLAUDE.md | 127 | path | UserTypes.ts | no such file |
-| .claude/rules/architecture.md | 234 | path | api/types/generated | no such file |
-| .claude/rules/code-review-standards.md | 186 | path | domain/constants.ts | no such file |
 | .claude/rules/code-review-standards.md | 250 | path | bg-success/10 | no such file |
 | .claude/rules/code-review-standards.md | 250 | path | bg-green-500/10 | no such file |
 | .claude/rules/code-review-standards.md | 276 | path | .test.tsx | no such file |
@@ -69,49 +115,25 @@ Broken:
 | .claude/rules/no-hardcoding.md | 237 | path | shared/infrastructure/config/features.ts | no such file |
 | .claude/rules/no-hardcoding.md | 237 | path | shared/infrastructure/config/features.ts | no such file |
 | .claude/rules/no-hardcoding.md | 238 | path | features/users/infrastructure/api/endpoints.ts | no such file |
-| .claude/rules/one-component-per-file.md | 132 | path | *.spec.tsx | glob matches no file |
 | .claude/rules/one-component-per-file.md | 180 | path | UserCard.tsx | no such file |
 | .claude/rules/one-component-per-file.md | 181 | path | UserList.tsx | no such file |
 | .claude/rules/one-component-per-file.md | 182 | path | UserForm.tsx | no such file |
-| .claude/rules/one-component-per-file.md | 298 | path | react/no-multi-comp | no such file |
 | .claude/rules/single-source-of-truth.md | 17 | path | domain/constants.ts | no such file |
 | .claude/rules/single-source-of-truth.md | 219 | path | shared/presentation/theme/constants.ts | no such file |
-| .claude/rules/storybook.md | 438 | command | pnpm storybook | no such pnpm script |
-| .claude/rules/storybook.md | 441 | command | pnpm build-storybook | no such pnpm script |
-| .claude/rules/storybook.md | 444 | command | pnpm test-storybook | no such pnpm script |
-| .claude/rules/storybook.md | 447 | command | pnpm test-storybook | no such pnpm script |
 | .claude/rules/tailwind.md | 17 | path | tailwind.config.js | no such file |
-| .claude/rules/tailwind.md | 70 | path | text-foreground/50 | no such file |
 | .claude/rules/telegram-notifications.md | 35 | path | notify-deploy.yml | no such file |
-| .claude/rules/url-state.md | 123 | path | src/test/utils.tsx | no such file |
-| .claude/skills/ai-documents-audit/SKILL.md | 314 | path | .ai-context/README.md | no such file |
 | .claude/skills/ai-documents-audit/SKILL.md | 646 | path | ai-documents-audit_YYYY-MM-DDTHH-MM-SS.md | no such file |
 | .claude/skills/ai-documents-audit/SKILL.md | 650 | path | ai-documents-audit_2026-01-09T17-00-28.md | no such file |
-| .claude/skills/checkpoint/SKILL.md | 65 | path | .ai-context/checkpoints/ai-structure/RESUME.md | no such file |
-| .claude/skills/checkpoint/SKILL.md | 66 | path | .ai-context/checkpoints/feat-GH-42_User-Auth/RESUME.md | no such file |
-| .claude/skills/checkpoint/SKILL.md | 434 | link | ../../../.ai-context/README.md | no such file |
-| .claude/skills/code-review/SKILL.md | 134 | path | features/X | no such file |
-| .claude/skills/code-review/SKILL.md | 134 | path | features/Y | no such file |
-| .claude/skills/code-review/SKILL.md | 164 | path | bg-green-500/10 | no such file |
-| .claude/skills/code-review/SKILL.md | 164 | path | bg-success/10 | no such file |
-| .claude/skills/create-api-integration/SKILL.md | 275 | path | features/orders/domain/types/order.ts | no such file |
-| .claude/skills/create-api-integration/SKILL.md | 276 | path | features/orders/infrastructure/api/orderApi.ts | no such file |
-| .claude/skills/create-api-integration/SKILL.md | 277 | path | features/orders/application/hooks/useOrders.ts | no such file |
 | .claude/skills/create-hook/SKILL.md | 293 | path | src/features/orders/application/hooks/useOrders.ts | no such file |
 | .claude/skills/create-hook/SKILL.md | 301 | path | src/shared/application/hooks/useDebounce.ts | no such file |
 | .claude/skills/create-hook/SKILL.md | 309 | path | src/features/orders/presentation/hooks/useOrderModal.ts | no such file |
 | .claude/skills/e2e-eval/SKILL.md | 45 | path | .ai-context/reports/e2e-eval-*.md | glob matches no file |
-| .claude/skills/e2e-eval/SKILL.md | 708 | path | .ai-context/reports/e2e-eval-*.md | glob matches no file |
-| .claude/skills/fix-ai-documents-audit/SKILL.md | 46 | path | ai-documents-audit_*.md | glob matches no file |
 | .claude/skills/fix-ai-documents-audit/SKILL.md | 55 | path | ai-documents-audit_YYYY-MM-DDTHH-MM-SS.md | no such file |
 | .claude/skills/fix-ai-documents-audit/SKILL.md | 193 | path | mycompany/myproject | no such file |
 | .claude/skills/generate-setup-guide/SKILL.md | 49 | path | .ai-context/setup-guide.md | no such file |
 | .claude/skills/i18n/SKILL.md | 419 | path | routing.ts | no such file |
 | .claude/skills/i18n/SKILL.md | 421 | path | navigation.ts | no such file |
 | .claude/skills/i18n/SKILL.md | 422 | path | middleware.ts | no such file |
-| .claude/skills/resume-checkpoint/SKILL.md | 352 | link | ../../../.ai-context/README.md | no such file |
-| .claude/skills/review-pr-comments/SKILL.md | 73 | path | .ai-context/task-outputs/GH-XXXX/08-pr-review-tracking.md | no such file |
-| .claude/skills/review-pr-comments/SKILL.md | 378 | path | .ai-context/task-outputs/GH-XXXX/08-pr-review-tracking.md | no such file |
 | .claude/skills/run-tests/SKILL.md | 309 | path | vitest.config.ts | no such file |
 | .claude/skills/start-task/SKILL.md | 83 | path | task-overview.md | no such file |
 | .claude/skills/start-task/SKILL.md | 84 | path | setup.md | no such file |
@@ -120,25 +142,17 @@ Broken:
 | .claude/skills/start-task/SKILL.md | 87 | path | implementation-log.md | no such file |
 | .claude/skills/start-task/SKILL.md | 88 | path | testing-results.md | no such file |
 | .claude/skills/start-task/SKILL.md | 89 | path | review-notes.md | no such file |
-| .claude/skills/start-task/SKILL.md | 123 | path | docs/GH-92_API-Documentation | no such file |
 | .claude/skills/start-task/SKILL.md | 810 | path | path/to/file.tsx | no such file |
 | .claude/skills/start-task/SKILL.md | 868 | path | path/to/file.tsx | no such file |
 | .claude/skills/start-task/SKILL.md | 902 | path | Component.test.tsx | no such file |
 | .claude/skills/start-task/SKILL.md | 903 | path | useHook.test.ts | no such file |
-| .claude/skills/storybook/SKILL.md | 327 | command | pnpm storybook | no such pnpm script |
-| .claude/skills/storybook/SKILL.md | 345 | command | pnpm build-storybook | no such pnpm script |
-| .claude/skills/storybook/SKILL.md | 364 | command | pnpm test-storybook | no such pnpm script |
-| .claude/skills/storybook/SKILL.md | 367 | command | pnpm test-storybook | no such pnpm script |
-| .claude/skills/storybook/SKILL.md | 417 | path | Component/Component.stories.tsx | no such file |
 | .claude/skills/storybook/SKILL.md | 418 | path | ComponentName.stories.tsx | no such file |
 | .claude/skills/storybook/SKILL.md | 451 | path | .storybook/preview.ts | no such file |
 | .claude/skills/tailwind/SKILL.md | 14 | path | tailwind.config.js | no such file |
 | .claude/skills/tailwind/SKILL.md | 26 | path | components.json | no such file |
 | .claude/skills/verify-code/SKILL.md | 103 | path | import/order | no such file |
 | .claude/skills/verify-code/SKILL.md | 159 | path | vitest.config.ts | no such file |
-| .claude/skills/verify-code/SKILL.md | 182 | command | pnpm smoke | no such pnpm script |
 | .claude/agents/nextjs-architecture-expert.md | 163 | path | _app.js | no such file |
-| .claude/agents/nextjs-architecture-expert.md | 164 | path | app/api/*/route.ts | glob matches no file |
 
 Exceptions:
 
@@ -463,12 +477,18 @@ External:
 
 Files read: 23, references checked: 156, broken: 13, exceptions: 12, external: 0
 
-Broken:
+Likely stale (a real thing that moved, was renamed or never existed; fix the instruction):
 
 | file | line | kind | token | reason |
 |---|---|---|---|---|
 | .claude/rules/dry-principle.md | 8 | path | src/shared/domain/ | no such file |
 | .claude/rules/dry-principle.md | 16 | path | src/shared/presentation/components/ | no such file |
+| .claude/rules/single-source-of-truth.md | 48 | path | src/shared/domain/constants/ | no such file |
+
+Likely illustrative (an example name or sample structure that was never meant to exist; mark it as an example):
+
+| file | line | kind | token | reason |
+|---|---|---|---|---|
 | .claude/rules/naming-conventions.md | 7 | path | UserCard.tsx | no such file |
 | .claude/rules/naming-conventions.md | 8 | path | UserProfile.ts | no such file |
 | .claude/rules/naming-conventions.md | 9 | path | useAuth.ts | no such file |
@@ -479,7 +499,6 @@ Broken:
 | .claude/rules/naming-conventions.md | 13 | path | formatDate.test.ts | no such file |
 | .claude/rules/one-component-per-file.md | 38 | path | .types.ts | no such file |
 | .claude/rules/portability.md | 47 | path | package-lock.json | no such file |
-| .claude/rules/single-source-of-truth.md | 48 | path | src/shared/domain/constants/ | no such file |
 
 Exceptions:
 

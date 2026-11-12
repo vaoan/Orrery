@@ -6,7 +6,10 @@ import { discoverInstructionFiles, listBodyFiles } from "../lib/instructions/dis
 import { bodyContext, checkFiles } from "../lib/references/resolve.mjs";
 import { renderReferences } from "../lib/references/report.mjs";
 
-const USAGE = "usage: themis references <bodyDir>... [--report <dir>] [--label <name>]";
+const USAGE = `usage: themis references <bodyDir>... [--report <dir>] [--label <name>]
+mark examples, do not weaken the check:
+  end a line with <!-- themis: example --> to skip the references on it
+  wrap a table or sample in <!-- themis: examples --> ... <!-- themis: end --> (an unclosed block fails)`;
 const defaults = { today: () => new Date().toISOString().slice(0, 10) };
 
 export function writeReport(dir, kind, label, date, { md, json }) {

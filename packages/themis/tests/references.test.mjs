@@ -135,6 +135,42 @@ describe("gitignored and directory globs", () => {
   });
 });
 
+describe("example blocks", () => {
+  const table = "| Components | `UserCard.tsx` | `src/shared/domain/x.ts` |";
+  it("skips a table inside a block and reports it as an example with the block's range", async () => {
+    const { code, dir } = await run({ "CLAUDE.md": `intro\n<!-- themis: examples -->\n${table}\n<!-- themis: end -->\n` });
+    expect(code).toBe(0);
+    const report = tmp();
+    await references([dir, "--report", report], deps);
+    const json = JSON.parse(fs.readFileSync(path.join(report, "2026-11-11-references.json"), "utf8"));
+    expect(json.bodies[0].exceptions).toEqual([expect.objectContaining({ token: "UserCard.tsx", why: "example (lines 2-4)" }), expect.objectContaining({ token: "src/shared/domain/x.ts", why: "example (lines 2-4)" })]);
+  });
+  it("fails the same table outside a block, and still checks what follows a closed block", async () => {
+    await bad({ "CLAUDE.md": `${table}\n` });
+    await bad({ "CLAUDE.md": `<!-- themis: examples -->\n${table}\n<!-- themis: end -->\n\`src/gone.ts\`\n` });
+  });
+  it("fails an unclosed block, naming file and line", async () => {
+    const r = await run({ "CLAUDE.md": `a\n<!-- themis: examples -->\n${table}\n` });
+    expect(r.code).toBe(1);
+    expect(r.q.err()).toContain("CLAUDE.md:2");
+    expect(r.q.err()).toContain("never closed");
+  });
+  it("skips fenced sample output inside a block", async () => {
+    await ok({ "CLAUDE.md": "<!-- themis: examples -->\n```\nthemis frobnicate x\n```\n<!-- themis: end -->\n" });
+  });
+  it("puts the markers in the usage text and the report, and splits findings by likelihood", async () => {
+    const q = quiet();
+    expect(await references([], deps)).toBe(2);
+    expect(q.err()).toContain("themis: examples");
+    const dir = body({ "CLAUDE.md": "| a | `Foo.tsx` |\nsee `src/gone.ts`\n" });
+    const report = tmp();
+    await references([dir, "--report", report], deps);
+    const md = fs.readFileSync(path.join(report, "2026-11-11-references.md"), "utf8");
+    expect(md).toContain("Mark examples, do not weaken the check");
+    expect(md).toMatch(/Likely stale[^\n]*\n[\s\S]*src\/gone\.ts[\s\S]*Likely illustrative[^\n]*\n[\s\S]*Foo\.tsx/);
+  });
+});
+
 describe("themis references", () => {
   it("exits 2 without a body", async () => {
     const q = quiet();
